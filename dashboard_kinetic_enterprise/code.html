@@ -1,0 +1,713 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<title>JSB Fitness — Executive Dashboard</title>
+<meta name="description" content="CEO-grade executive dashboard for JSB Fitness. Revenue intelligence, renewal forecasting, churn analytics, and business health monitoring.">
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .glass-card {
+    background: linear-gradient(135deg, rgba(30,30,30,0.6) 0%, rgba(18,18,18,0.8) 100%);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .kpi-card { transition: transform 0.2s, border-color 0.3s; }
+  .kpi-card:hover { transform: translateY(-2px); border-color: rgba(181,196,255,0.3); }
+  .health-gauge { background: conic-gradient(from 220deg, #ff897d 0%, #ffb95f 25%, #81c995 50%, #b5c4ff 75%, #d0bcff 100%); }
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
+  .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .glow-text { text-shadow: 0 0 20px rgba(181,196,255,0.4); }
+  .insight-card { animation: fadeInUp 0.5s ease-out forwards; opacity: 0; }
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .insight-card:nth-child(1) { animation-delay: 0.1s; }
+  .insight-card:nth-child(2) { animation-delay: 0.2s; }
+  .insight-card:nth-child(3) { animation-delay: 0.3s; }
+  .insight-card:nth-child(4) { animation-delay: 0.4s; }
+</style>
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
+<div id="jsb-header" data-page-title="Executive Dashboard"></div>
+
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- BUSINESS ALERTS ENGINE -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="glass-card p-6 rounded-xl border border-outline-variant/30 flex flex-col mb-6">
+    <div class="flex justify-between items-center mb-6">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-error text-[24px]">notifications_active</span>
+        <h3 class="font-title-lg text-title-lg text-on-surface">Business Alerts</h3>
+      </div>
+      <span class="px-2 py-0.5 rounded-full bg-error/10 text-error border border-error/20 font-label-sm text-label-sm animate-pulse" id="alert-count-badge">0 Active</span>
+    </div>
+    <div class="flex flex-col gap-3" id="alerts-container">
+      <p class="font-body-md text-body-md text-on-surface-variant text-center py-4">Scanning business health...</p>
+    </div>
+  </div>
+
+<div id="jsb-sidebar"></div>
+
+<main class="flex-grow pt-6 pb-24 md:pb-12 px-margin-mobile md:px-margin-desktop max-w-[1440px] mx-auto w-full flex flex-col gap-lg">
+
+  <!-- Page Header & Actions -->
+  <div class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-4">
+    <div>
+      <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Revenue Command Center</h1>
+      <p class="font-body-md text-body-md text-on-surface-variant mt-1">Real-time business intelligence for strategic decisions.</p>
+    </div>
+    <div class="flex items-center gap-2 bg-surface-container-low p-1 border border-outline-variant/30 rounded-lg">
+      <button data-range="1" class="range-btn px-3 py-1.5 rounded font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors">This Month</button>
+      <button data-range="3" class="range-btn px-3 py-1.5 rounded font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors">3 Months</button>
+      <button data-range="6" class="range-btn px-3 py-1.5 rounded font-label-caps text-label-caps bg-surface-container-highest text-primary shadow-sm">6 Months</button>
+      <button data-range="12" class="range-btn px-3 py-1.5 rounded font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors">12 Months</button>
+    </div>
+  </div>
+
+  <div class="flex overflow-x-auto gap-3 hide-scrollbar mb-4">
+    <a href="/add-member-step-1" class="flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-lg font-label-md hover:bg-primary/20 transition-colors border border-primary/20 whitespace-nowrap">
+      <span class="material-symbols-outlined text-[18px]">person_add</span> Add Member
+    </a>
+    <a href="/payment-center" class="flex items-center gap-2 bg-surface-container text-on-surface px-4 py-2 rounded-lg font-label-md hover:bg-surface-variant transition-colors border border-outline-variant/30 whitespace-nowrap">
+      <span class="material-symbols-outlined text-[18px]">payments</span> Collect Payment
+    </a>
+    <a href="/marketing" class="flex items-center gap-2 bg-surface-container text-on-surface px-4 py-2 rounded-lg font-label-md hover:bg-surface-variant transition-colors border border-outline-variant/30 whitespace-nowrap">
+      <span class="material-symbols-outlined text-[18px]">campaign</span> Send Promotion
+    </a>
+    <a href="/lead-crm" class="flex items-center gap-2 bg-surface-container text-on-surface px-4 py-2 rounded-lg font-label-md hover:bg-surface-variant transition-colors border border-outline-variant/30 whitespace-nowrap">
+      <span class="material-symbols-outlined text-[18px]">conversion_path</span> Lead Pipeline
+    </a>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- EXECUTIVE KPI GRID (Consolidated) -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-gutter mb-6">
+    <!-- Revenue -->
+    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group">
+      <div class="absolute -right-6 -top-6 w-28 h-28 bg-secondary/5 rounded-full blur-2xl group-hover:bg-secondary/10 transition-all"></div>
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-secondary text-[20px]" style="font-variation-settings:'FILL' 1;">payments</span>
+          <h3 class="font-title-md text-title-md text-on-surface">Revenue</h3>
+        </div>
+        <div id="kpi-revenue-trend" class="text-xs text-secondary flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">trending_up</span>—</div>
+      </div>
+      <div id="kpi-revenue" class="font-display-md text-display-md break-words min-w-0 text-secondary glow-text leading-none mb-2">—</div>
+      <div class="grid grid-cols-2 gap-x-2 gap-y-2 mt-auto pt-3 border-t border-outline-variant/20">
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Collections</span><span id="intel-collections" class="font-label-md text-label-md text-[#81c995] font-bold">—</span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Outstanding</span><span id="intel-outstanding" class="font-label-md text-label-md text-tertiary font-bold">—</span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Forecast</span><span id="intel-forecast" class="font-label-md text-label-md text-on-surface font-bold">—</span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">ARPM</span><span id="intel-arpm" class="font-label-md text-label-md text-on-surface font-bold">—</span></div>
+      </div>
+    </div>
+    <!-- Membership -->
+    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group">
+      <div class="absolute -right-6 -top-6 w-28 h-28 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all"></div>
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings:'FILL' 1;">groups</span>
+          <h3 class="font-title-md text-title-md text-on-surface">Membership</h3>
+        </div>
+        <div id="kpi-active-trend" class="text-xs text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">trending_up</span>—</div>
+      </div>
+      <div id="kpi-active-members" class="font-display-md text-display-md break-words min-w-0 text-primary leading-none mb-2">—</div>
+      <div class="grid grid-cols-2 gap-x-2 gap-y-2 mt-auto pt-3 border-t border-outline-variant/20">
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">New</span><span id="intel-new" class="font-label-md text-label-md text-[#81c995] font-bold">—</span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Lost</span><span id="intel-lost" class="font-label-md text-label-md text-error font-bold">—</span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Expiring</span><span id="intel-expiring" class="font-label-md text-label-md text-tertiary font-bold">—</span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Renewal Rate</span><span id="kpi-renewal" class="font-label-md text-label-md text-[#d0bcff] font-bold">—</span></div>
+      </div>
+    </div>
+    <!-- Leads -->
+    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group">
+      <div class="absolute -right-6 -top-6 w-28 h-28 bg-tertiary/5 rounded-full blur-2xl group-hover:bg-tertiary/10 transition-all"></div>
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-tertiary text-[20px]" style="font-variation-settings:'FILL' 1;">conversion_path</span>
+          <h3 class="font-title-md text-title-md text-on-surface">Leads Pipeline</h3>
+        </div>
+      </div>
+      <div id="intel-leads-total" class="font-display-md text-display-md break-words min-w-0 text-tertiary leading-none mb-2">—</div>
+      <div class="grid grid-cols-2 gap-x-2 gap-y-2 mt-auto pt-3 border-t border-outline-variant/20">
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Conv. Rate</span><span id="intel-leads-conv" class="font-label-md text-label-md text-[#81c995] font-bold">—</span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Pipeline</span><span id="intel-leads-pipeline" class="font-label-md text-label-md text-on-surface font-bold">—</span></div>
+        <div class="col-span-2"><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Top Channel</span><span id="intel-leads-channel" class="font-label-md text-label-md text-primary font-bold truncate block">—</span></div>
+      </div>
+    </div>
+    <!-- Financial Health -->
+    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group">
+      <div class="absolute -right-6 -top-6 w-28 h-28 bg-[#81c995]/5 rounded-full blur-2xl group-hover:bg-[#81c995]/10 transition-all"></div>
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[#81c995] text-[20px]" style="font-variation-settings:'FILL' 1;">health_and_safety</span>
+          <h3 class="font-title-md text-title-md text-on-surface">Health Score</h3>
+        </div>
+        <span id="health-grade" class="px-2 py-0.5 rounded font-label-sm text-label-sm border text-on-surface-variant border-outline-variant/30 bg-surface-container-low">—</span>
+      </div>
+      <div class="flex items-baseline gap-2 mb-2">
+        <span id="health-score-val" class="font-display-md text-display-md break-words min-w-0 text-[#81c995] leading-none">—</span>
+        <span class="text-xs text-on-surface-variant">/ 100</span>
+      </div>
+      <div class="grid grid-cols-2 gap-x-2 gap-y-2 mt-auto pt-3 border-t border-outline-variant/20">
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">MoM Growth</span><span id="intel-growth" class="font-label-md text-label-md text-[#81c995] font-bold">—</span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Churn Rate</span><span id="kpi-churn" class="font-label-md text-label-md text-error font-bold">—</span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Unpaid Inv.</span><span id="intel-unpaid" class="font-label-md text-label-md text-tertiary font-bold">—</span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">At Risk</span><span id="kpi-atrisk-val" class="font-label-md text-label-md text-error font-bold">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- ENGAGEMENT & ATTENDANCE -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-6">
+    <!-- Today's Checkins -->
+    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group">
+      <div class="absolute -right-6 -top-6 w-28 h-28 bg-[#d0bcff]/5 rounded-full blur-2xl group-hover:bg-[#d0bcff]/10 transition-all"></div>
+      <div class="flex items-center gap-2 mb-1">
+        <span class="material-symbols-outlined text-[#d0bcff] text-[20px]" style="font-variation-settings:'FILL' 1;">how_to_reg</span>
+        <h3 class="font-title-md text-title-md text-on-surface">Today's Checkins</h3>
+      </div>
+      <div id="intel-present-today" class="font-display-md text-display-md break-words min-w-0 text-[#d0bcff] glow-text leading-none mb-2">—</div>
+      <p class="text-xs text-on-surface-variant mt-auto">Total verified checkins for today</p>
+    </div>
+    <!-- Peak Hours -->
+    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group">
+      <div class="absolute -right-6 -top-6 w-28 h-28 bg-[#ffb95f]/5 rounded-full blur-2xl group-hover:bg-[#ffb95f]/10 transition-all"></div>
+      <div class="flex items-center gap-2 mb-1">
+        <span class="material-symbols-outlined text-[#ffb95f] text-[20px]" style="font-variation-settings:'FILL' 1;">schedule</span>
+        <h3 class="font-title-md text-title-md text-on-surface">Peak Hour</h3>
+      </div>
+      <div id="intel-peak-hour" class="font-display-md text-display-md break-words min-w-0 text-[#ffb95f] leading-none mb-2">—</div>
+      <p class="text-xs text-on-surface-variant mt-auto">Most active time of the day</p>
+    </div>
+    <!-- Most Active Member -->
+    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group">
+      <div class="absolute -right-6 -top-6 w-28 h-28 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all"></div>
+      <div class="flex items-center gap-2 mb-1">
+        <span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings:'FILL' 1;">stars</span>
+        <h3 class="font-title-md text-title-md text-on-surface">Most Active Member</h3>
+      </div>
+      <div id="intel-most-active" class="font-headline-md text-headline-md break-words min-w-0 text-primary leading-tight mb-2">—</div>
+      <p class="text-xs text-on-surface-variant mt-auto">Highest visits in last 30 days</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- REVENUE TREND -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="glass-card rounded-xl p-6 flex flex-col">
+    <div class="flex justify-between items-center mb-4">
+      <div>
+        <h3 class="font-headline-md text-headline-md text-on-surface">Revenue Trend</h3>
+        <p class="font-body-md text-body-md text-on-surface-variant mt-1">Monthly revenue with growth projection</p>
+      </div>
+      <div id="projected-badge" class="flex items-center gap-2 bg-secondary/10 text-secondary px-3 py-1.5 rounded-lg border border-secondary/20 text-xs font-medium">
+        <span class="material-symbols-outlined text-[16px]">auto_graph</span>
+        <span>Projected: —</span>
+      </div>
+    </div>
+    <div class="flex-grow min-h-[220px] relative">
+      <canvas id="chart-revenue-trend"></canvas>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- RENEWAL FORECAST + MEMBER SEGMENTATION -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+    <!-- Renewal Forecast -->
+    <div class="lg:col-span-7 glass-card rounded-xl p-6">
+      <div class="flex items-center gap-2 mb-5">
+        <span class="material-symbols-outlined text-[#d0bcff]" style="font-variation-settings:'FILL' 1;">event_upcoming</span>
+        <h3 class="font-headline-md text-headline-md text-on-surface">Renewal Forecast</h3>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div class="bg-surface-container-low rounded-xl p-4 border border-outline-variant/20">
+          <p class="font-label-caps text-label-caps text-tertiary mb-2">Expiring 7 Days</p>
+          <div id="rf-7-count" class="font-headline-lg text-headline-lg text-on-surface mb-1">—</div>
+          <p id="rf-7-revenue" class="text-xs text-on-surface-variant">Revenue at risk: —</p>
+        </div>
+        <div class="bg-surface-container-low rounded-xl p-4 border border-outline-variant/20">
+          <p class="font-label-caps text-label-caps text-[#ffb95f] mb-2">Expiring 30 Days</p>
+          <div id="rf-30-count" class="font-headline-lg text-headline-lg text-on-surface mb-1">—</div>
+          <p id="rf-30-revenue" class="text-xs text-on-surface-variant">Revenue at risk: —</p>
+        </div>
+        <div class="bg-surface-container-low rounded-xl p-4 border border-outline-variant/20">
+          <p class="font-label-caps text-label-caps text-on-surface-variant mb-2">Expiring 60 Days</p>
+          <div id="rf-60-count" class="font-headline-lg text-headline-lg text-on-surface mb-1">—</div>
+          <p id="rf-60-revenue" class="text-xs text-on-surface-variant">Revenue at risk: —</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <div class="flex items-center gap-2 bg-[#81c995]/10 text-[#81c995] px-3 py-1.5 rounded-lg border border-[#81c995]/20 text-xs font-medium">
+          <span class="material-symbols-outlined text-[16px]">check_circle</span>
+          Expected Renewals: <span id="rf-expected" class="font-bold">—</span>
+        </div>
+        <div class="flex items-center gap-2 bg-error/10 text-error px-3 py-1.5 rounded-lg border border-error/20 text-xs font-medium">
+          <span class="material-symbols-outlined text-[16px]">cancel</span>
+          Expected Lost: <span id="rf-lost" class="font-bold">—</span>
+        </div>
+        <div class="flex items-center gap-2 bg-surface-container text-on-surface-variant px-3 py-1.5 rounded-lg border border-outline-variant/20 text-xs font-medium">
+          <span class="material-symbols-outlined text-[16px]">history</span>
+          Historical Rate: <span id="rf-rate" class="font-bold">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Member Segmentation Donut -->
+    <div class="lg:col-span-5 glass-card rounded-xl p-6 flex flex-col">
+      <div class="flex items-center gap-2 mb-5">
+        <span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL' 1;">donut_large</span>
+        <h3 class="font-headline-md text-headline-md text-on-surface">Member Segmentation</h3>
+      </div>
+      <div class="flex-grow flex items-center justify-center min-h-[220px] relative">
+        <canvas id="chart-segmentation"></canvas>
+      </div>
+      <div id="segment-legend" class="flex flex-wrap gap-x-4 gap-y-2 mt-4 justify-center"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- CHURN ANALYTICS + VIP MEMBERS -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+    <!-- Churn Analytics -->
+    <div class="lg:col-span-5 glass-card rounded-xl p-6">
+      <div class="flex items-center gap-2 mb-5">
+        <span class="material-symbols-outlined text-error" style="font-variation-settings:'FILL' 1;">trending_down</span>
+        <h3 class="font-headline-md text-headline-md text-on-surface">Churn Analytics</h3>
+      </div>
+      <div class="flex items-center gap-4 mb-5">
+        <div class="flex-1 bg-surface-container-low rounded-xl p-4 border border-outline-variant/20 text-center">
+          <p class="font-label-caps text-label-caps text-on-surface-variant mb-1">Churn Rate</p>
+          <div id="churn-rate-val" class="font-headline-lg text-headline-lg text-error">—</div>
+        </div>
+        <div class="flex-1 bg-surface-container-low rounded-xl p-4 border border-outline-variant/20 text-center">
+          <p class="font-label-caps text-label-caps text-on-surface-variant mb-1">At Risk</p>
+          <div id="churn-atrisk-val" class="font-headline-lg text-headline-lg text-tertiary">—</div>
+        </div>
+        <div class="flex-1 bg-surface-container-low rounded-xl p-4 border border-outline-variant/20 text-center">
+          <p class="font-label-caps text-label-caps text-on-surface-variant mb-1">Lost Revenue</p>
+          <div id="churn-lost-rev" class="font-headline-lg text-headline-lg text-on-surface">—</div>
+        </div>
+      </div>
+      <div class="h-[160px]">
+        <canvas id="chart-churn-trend"></canvas>
+      </div>
+    </div>
+
+    <!-- VIP / High-Value Members -->
+    <div class="lg:col-span-7 glass-card rounded-xl p-6">
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[#d0bcff]" style="font-variation-settings:'FILL' 1;">diamond</span>
+          <h3 class="font-headline-md text-headline-md text-on-surface">VIP Members</h3>
+        </div>
+        <a href="/members" class="text-xs text-primary flex items-center gap-1 hover:underline">View All <span class="material-symbols-outlined text-[14px]">arrow_forward</span></a>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left min-w-[500px]">
+          <thead>
+            <tr class="border-b border-outline-variant/20 text-on-surface-variant text-[10px] font-label-caps">
+              <th class="py-2 px-3">Member</th>
+              <th class="py-2 px-3">Lifetime Value</th>
+              <th class="py-2 px-3">Renewals</th>
+              <th class="py-2 px-3">Status</th>
+            </tr>
+          </thead>
+          <tbody id="vip-table-body" class="text-sm">
+            <tr><td colspan="4" class="py-8 text-center text-on-surface-variant">Loading high-value members…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+
+
+</main>
+
+<div id="jsb-mobile-nav"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DASHBOARD DATA ENGINE
+// ═══════════════════════════════════════════════════════
+let revenueChart = null;
+let segmentChart = null;
+let churnChart = null;
+let currentRange = 6;
+
+const fmt = v => (v != null && !Number.isNaN(Number(v))) ? '₹' + Number(v).toLocaleString('en-IN') : '—';
+const pct = v => (v != null && !Number.isNaN(Number(v))) ? v + '%' : '—';
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Range buttons
+  document.querySelectorAll('.range-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.range-btn').forEach(b => {
+        b.className = 'range-btn px-3 py-1.5 rounded font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors';
+      });
+      btn.className = 'range-btn px-3 py-1.5 rounded font-label-caps text-label-caps bg-surface-container-highest text-primary shadow-sm';
+      currentRange = parseInt(btn.dataset.range);
+      loadAllData();
+    });
+  });
+  loadAllData();
+});
+
+async function loadAllData() {
+  await Promise.all([
+    loadExecutiveSummary(),
+    loadRevenueTrend(),
+    loadRenewalForecast(),
+    loadChurnAnalytics(),
+    loadMemberSegments(),
+    loadVIPMembers(),
+    loadLeadIntelligence(),
+    loadFinanceDashboard()
+  ]);
+  generateInsights();
+}
+
+// 1. Executive Summary (KPIs + Health Score)
+async function loadExecutiveSummary() {
+  try {
+    const res = await window.api.fetch('/analytics/executive-summary');
+    const data = await res.json();
+    const k = data.kpis;
+
+    // Revenue
+    document.getElementById('kpi-revenue').innerText = fmt(k.monthlyRevenue.value);
+    document.getElementById('kpi-revenue-trend').innerHTML = trendBadge(k.monthlyRevenue.growth, 'MoM', true);
+    document.getElementById('intel-collections').innerText = fmt(k.monthlyCollections.value);
+    document.getElementById('intel-outstanding').innerText = fmt(k.outstandingDues.value);
+    document.getElementById('intel-arpm').innerText = fmt(k.arpm.value);
+
+    // Membership
+    document.getElementById('kpi-active-members').innerText = Number(k.activeMembers.value).toLocaleString();
+    document.getElementById('kpi-active-trend').innerHTML = trendBadge(k.activeMembers.growth, 'New');
+    document.getElementById('intel-new').innerText = data.newMembersThisMonth;
+    document.getElementById('kpi-renewal').innerText = pct(k.renewalRate.value);
+
+    // Financial
+    document.getElementById('intel-growth').innerText = (k.monthlyRevenue.growth >= 0 ? '+' : '') + k.monthlyRevenue.growth + '%';
+    document.getElementById('kpi-churn').innerText = pct(k.churnRate.value);
+    document.getElementById('intel-unpaid').innerText = k.outstandingDues.count;
+
+    // Health Score
+    const hs = data.healthScore;
+    document.getElementById('health-score-val').innerText = hs.score;
+
+    // Engagement
+    document.getElementById('intel-present-today').innerText = Number(data.presentToday || 0).toLocaleString();
+    document.getElementById('intel-peak-hour').innerText = data.peakHour || 'N/A';
+    document.getElementById('intel-most-active').innerText = data.mostActiveMember || 'None';
+    const ring = document.getElementById('health-ring');
+    if (ring) {
+        const offset = 314 - (314 * hs.score / 100);
+        setTimeout(() => { ring.style.strokeDashoffset = offset; }, 100);
+        if (hs.score >= 80) ring.setAttribute('stroke', '#81c995');
+        else if (hs.score >= 65) ring.setAttribute('stroke', '#b5c4ff');
+        else if (hs.score >= 50) ring.setAttribute('stroke', '#ffb95f');
+        else ring.setAttribute('stroke', '#ff897d');
+    }
+    const gradeEl = document.getElementById('health-grade');
+    gradeEl.innerText = hs.grade;
+    if (hs.grade === 'Excellent') gradeEl.className = 'px-2 py-0.5 rounded font-label-sm text-label-sm border bg-[#81c995]/10 text-[#81c995] border-[#81c995]/30';
+    else if (hs.grade === 'Good') gradeEl.className = 'px-2 py-0.5 rounded font-label-sm text-label-sm border bg-primary/10 text-primary border-primary/30';
+    else if (hs.grade === 'Fair') gradeEl.className = 'px-2 py-0.5 rounded font-label-sm text-label-sm border bg-tertiary/10 text-tertiary border-tertiary/30';
+    else gradeEl.className = 'px-2 py-0.5 rounded font-label-sm text-label-sm border bg-error/10 text-error border-error/30';
+
+    window._execData = data;
+  } catch (err) { console.error('Executive summary error:', err); }
+}
+
+// 2. Revenue Trend
+async function loadRevenueTrend() {
+  try {
+    const res = await window.api.fetch('/analytics/revenue-trend?months=' + currentRange);
+    const data = await res.json();
+
+    document.getElementById('projected-badge').querySelector('span:last-child').innerText = 'Projected: ' + fmt(data.projected);
+
+    // Intel cards
+    document.getElementById('intel-forecast').innerText = fmt(data.projected);
+
+    const ctx = document.getElementById('chart-revenue-trend').getContext('2d');
+    if (revenueChart) revenueChart.destroy();
+
+    const labels = data.trend.map(t => t.label);
+    const values = data.trend.map(t => t.revenue);
+    const chartEmptyDiv = document.getElementById('revenueChart-empty');
+    if (chartEmptyDiv) {
+      if (!values || values.length === 0 || values.every(v => v === 0)) {
+        chartEmptyDiv.classList.remove('hidden');
+      } else {
+        chartEmptyDiv.classList.add('hidden');
+      }
+    }
+
+    // Add projection point
+    labels.push('Next');
+    values.push(data.projected);
+
+    revenueChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Revenue',
+          data: values,
+          borderColor: '#b5c4ff',
+          backgroundColor: 'rgba(181,196,255,0.08)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: values.map((_, i) => i === values.length - 1 ? 6 : 4),
+          pointBackgroundColor: values.map((_, i) => i === values.length - 1 ? '#81c995' : '#b5c4ff'),
+          pointBorderColor: values.map((_, i) => i === values.length - 1 ? '#81c995' : '#b5c4ff'),
+          borderWidth: 2.5,
+          segment: { borderDash: ctx2 => ctx2.p1DataIndex === values.length - 2 ? [6, 4] : undefined }
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt(c.raw) } } },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#888', font: { size: 11 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#888', font: { size: 11 }, callback: v => '₹' + (v/1000).toFixed(0) + 'k' } }
+        }
+      }
+    });
+    window._revData = data;
+  } catch (err) { console.error('Revenue trend error:', err); }
+}
+
+// 3. Renewal Forecast
+async function loadRenewalForecast() {
+  try {
+    const res = await window.api.fetch('/analytics/renewal-forecast');
+    const data = await res.json();
+
+    document.getElementById('rf-7-count').innerText = data.expiring7.count;
+    document.getElementById('rf-7-revenue').innerText = 'Revenue at risk: ' + fmt(data.expiring7.revenueAtRisk);
+    document.getElementById('rf-30-count').innerText = data.expiring30.count;
+    document.getElementById('rf-30-revenue').innerText = 'Revenue at risk: ' + fmt(data.expiring30.revenueAtRisk);
+    document.getElementById('rf-60-count').innerText = data.expiring60.count;
+    document.getElementById('rf-60-revenue').innerText = 'Revenue at risk: ' + fmt(data.expiring60.revenueAtRisk);
+    document.getElementById('rf-expected').innerText = data.expiring30.expectedRenewals;
+    document.getElementById('rf-lost').innerText = data.expiring30.expectedLost;
+    document.getElementById('rf-rate').innerText = data.historicalRenewalRate + '%';
+
+    // Intel
+    document.getElementById('intel-expiring').innerText = data.expiring30.count;
+    document.getElementById('intel-lost').innerText = data.expiring30.expectedLost;
+
+    window._renewalData = data;
+  } catch (err) { console.error('Renewal forecast error:', err); }
+}
+
+// 4. Churn Analytics
+async function loadChurnAnalytics() {
+  try {
+    const res = await window.api.fetch('/analytics/churn');
+    const data = await res.json();
+
+    document.getElementById('churn-rate-val').innerText = pct(data.churnRate);
+    document.getElementById('churn-atrisk-val').innerText = data.atRiskCount;
+    const kpiAtRisk = document.getElementById('kpi-atrisk-val');
+    if (kpiAtRisk) kpiAtRisk.innerText = data.atRiskCount;
+    document.getElementById('churn-lost-rev').innerText = fmt(data.lostRevenue);
+
+    const ctx = document.getElementById('chart-churn-trend').getContext('2d');
+    if (churnChart) churnChart.destroy();
+
+    churnChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.churnTrend.map(c => c.label),
+        datasets: [{
+          label: 'Churned Members',
+          data: data.churnTrend.map(c => c.count),
+          backgroundColor: 'rgba(255,180,171,0.3)',
+          borderColor: '#ffb4ab',
+          borderWidth: 1.5,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#888', font: { size: 10 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#888', font: { size: 10 }, stepSize: 1 } }
+        }
+      }
+    });
+    window._churnData = data;
+  } catch (err) { console.error('Churn analytics error:', err); }
+}
+
+// 5. Member Segments
+async function loadMemberSegments() {
+  try {
+    const res = await window.api.fetch('/analytics/member-segments');
+    const data = await res.json();
+
+    const ctx = document.getElementById('chart-segmentation').getContext('2d');
+    if (segmentChart) segmentChart.destroy();
+
+    segmentChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: data.segments.map(s => s.label),
+        datasets: [{
+          data: data.segments.map(s => s.count),
+          backgroundColor: data.segments.map(s => s.color),
+          borderColor: 'rgba(18,18,18,0.8)',
+          borderWidth: 3,
+          hoverOffset: 8
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: c => c.label + ': ' + c.raw + ' members' } }
+        }
+      }
+    });
+
+    // Legend
+    const legend = document.getElementById('segment-legend');
+    legend.innerHTML = data.segments.map(s =>
+      `<div class="flex items-center gap-1.5 text-xs text-on-surface-variant">
+        <div class="w-2.5 h-2.5 rounded-full" style="background:${s.color}"></div>
+        ${s.label} (${s.count})
+      </div>`
+    ).join('');
+  } catch (err) { console.error('Segments error:', err); }
+}
+
+// 6. VIP Members
+async function loadVIPMembers() {
+  try {
+    const res = await window.api.fetch('/analytics/high-value-members');
+    const data = await res.json();
+    const tbody = document.getElementById('vip-table-body');
+
+    if (!data.members || data.members.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center"><div class="flex flex-col items-center gap-2"><span class="material-symbols-outlined text-[36px] text-on-surface-variant">diamond</span><p class="text-on-surface-variant text-sm">No payment data available yet.<br>VIP members will appear after transactions are recorded.</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.members.slice(0, 8).map(m => {
+      const initials = m.name ? m.name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : 'M';
+      const statusClass = m.status === 'Active' ? 'bg-[#81c995]/10 text-[#81c995] border-[#81c995]/30' : 'bg-error/10 text-error border-error/30';
+      return `<tr class="border-b border-outline-variant/10 hover:bg-surface-container-high/20 transition-colors cursor-pointer" onclick="window.location.href='/member-profile?id=${m.id}'">
+        <td class="py-3 px-3"><div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold text-xs">${initials}</div>
+          <div><div class="font-medium text-on-surface">${m.name}</div><div class="text-[10px] text-on-surface-variant">${m.phone || ''}</div></div>
+        </div></td>
+        <td class="py-3 px-3 font-bold text-secondary">${fmt(m.lifetimeValue)}</td>
+        <td class="py-3 px-3 text-on-surface-variant">${m.renewals}×</td>
+        <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusClass}">${m.status}</span></td>
+      </tr>`;
+    }).join('');
+  } catch (err) { console.error('VIP error:', err); }
+}
+
+// 7. Lead Intelligence
+async function loadLeadIntelligence() {
+  try {
+    const res = await window.api.fetch('/analytics/lead-intelligence');
+    const data = await res.json();
+
+    document.getElementById('intel-leads-total').innerText = data.totalLeads;
+    document.getElementById('intel-leads-conv').innerText = pct(data.conversionRate);
+    document.getElementById('intel-leads-pipeline').innerText = fmt(data.pipelineValue);
+    document.getElementById('intel-leads-channel').innerText = data.channels.length > 0 ? data.channels[0].acquisition_channel : '—';
+
+    document.getElementById('intel-collections').innerText = fmt(window._execData?.kpis?.monthlyCollections?.value || 0);
+    document.getElementById('intel-outstanding').innerText = fmt(window._execData?.kpis?.outstandingDues?.value || 0);
+
+    window._leadData = data;
+  } catch (err) { console.error('Lead intel error:', err); }
+}
+
+// 8. Finance Dashboard
+async function loadFinanceDashboard() {
+  try {
+    const res = await window.api.fetch('/analytics/finance-dashboard?months=' + currentRange);
+    const data = await res.json();
+    window._finData = data;
+  } catch (err) { console.error('Finance dashboard error:', err); }
+}
+
+// Insight Engine
+function generateInsights() {
+  // Insights UI removed to increase dashboard density
+}
+
+// Helpers
+function trendBadge(value, label, isPercent = false, isCurrency = false) {
+  if (value == null) return `<span class="text-on-surface-variant">—</span>`;
+  const isPos = value >= 0;
+  const icon = isPos ? 'trending_up' : 'trending_down';
+  const color = isPos ? 'text-[#81c995]' : 'text-error';
+  const sign = isPos ? '+' : '';
+  let display = sign + value;
+  if (isPercent) display += '%';
+  if (isCurrency) display = sign + fmt(Math.abs(value));
+  return `<span class="material-symbols-outlined text-[14px] ${color}">${icon}</span><span class="${color}">${display} ${label}</span>`;
+}
+
+// Business Alerts Engine
+async function loadAlerts() {
+  try {
+      const res = await window.api.fetch('/analytics/alerts');
+      const alerts = await res.json();
+      const container = document.getElementById('alerts-container');
+      const badge = document.getElementById('alert-count-badge');
+      
+      if (!container || !badge) return;
+
+      if (alerts.length === 0) {
+          badge.innerText = '0 Active';
+          badge.className = 'px-2 py-0.5 rounded-full bg-[#81c995]/10 text-[#81c995] border border-[#81c995]/20 font-label-sm text-label-sm';
+          container.innerHTML = '<div class="flex items-center gap-2 justify-center py-4 text-[#81c995]"><span class="material-symbols-outlined text-[20px]">check_circle</span><p class="font-body-md text-body-md">All systems healthy. No critical alerts.</p></div>';
+          return;
+      }
+      
+      badge.innerText = alerts.length + ' Active';
+      container.innerHTML = '';
+      alerts.forEach(a => {
+          let colorClass = a.type === 'error' ? 'error' : (a.type === 'warning' ? 'tertiary' : 'primary');
+          let icon = a.type === 'error' ? 'error' : (a.type === 'warning' ? 'warning' : 'info');
+          
+          container.innerHTML += `
+              <div class="flex items-start gap-3 p-3 rounded-lg border border-${colorClass}/20 bg-${colorClass}/5 hover:bg-${colorClass}/10 transition-colors">
+                  <span class="material-symbols-outlined text-${colorClass} shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">${icon}</span>
+                  <div>
+                      <h4 class="font-label-md text-label-md text-on-surface font-bold">${a.title}</h4>
+                      <p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">${a.message}</p>
+                  </div>
+              </div>
+          `;
+      });
+  } catch(err) { console.error(err); }
+}
+document.addEventListener('DOMContentLoaded', () => loadAlerts());
+</script>
+</body></html>

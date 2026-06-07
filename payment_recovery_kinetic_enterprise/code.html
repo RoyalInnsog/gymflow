@@ -1,0 +1,227 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Payment Recovery</title>
+
+<style>
+    .glass-card {
+        background: rgba(27, 27, 27, 0.7);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+    }
+</style>
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
+<div id="jsb-header" data-page-title="Payment Recovery"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- Main Canvas -->
+<main class="flex-grow pt-6 pb-24 md:pb-12 px-margin-mobile md:px-margin-desktop max-w-[1440px] mx-auto w-full flex flex-col gap-lg">
+  
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-4">
+    <div>
+      <h2 class="font-headline-lg text-headline-lg text-on-surface">Recovery Engine</h2>
+      <p class="font-body-md text-body-md text-on-surface-variant mt-1">Track and recover outstanding dues and failed payments.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="window.location.href='/api/v1/export/revenue?format=excel'" class="font-label-md text-label-md bg-primary/10 border border-primary text-primary px-4 py-2 rounded-lg hover:bg-primary/20 transition-colors flex items-center gap-2">
+        Export List <span class="material-symbols-outlined text-[18px]">download</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Recovery Insights & Metrics -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter mb-6">
+    
+    <!-- Revenue Recovery Insights -->
+    <div class="lg:col-span-8 glass-card p-6 rounded-xl border border-outline-variant/30 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-surface-container/50 to-primary/5">
+      <div>
+        <div class="flex items-center gap-2 mb-4">
+            <span class="material-symbols-outlined text-primary text-[28px]">tips_and_updates</span>
+            <h3 class="font-title-lg text-title-lg text-on-surface">Recovery Insights</h3>
+        </div>
+        <div class="space-y-4" id="insights-container">
+            <p class="font-body-lg text-body-lg text-on-surface-variant animate-pulse">Analyzing overdue segments...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary KPIs -->
+    <div class="lg:col-span-4 flex flex-col gap-gutter">
+      <!-- Total Outstanding -->
+      <div class="glass-card p-6 rounded-xl border border-outline-variant/30 flex items-center justify-between">
+        <div>
+          <p class="font-label-caps text-label-caps text-on-surface-variant mb-1">Total Outstanding</p>
+          <h4 class="font-headline-md text-headline-md text-error" id="metric-outstanding">₹0</h4>
+        </div>
+        <div class="h-12 w-12 rounded-full bg-error/10 flex items-center justify-center border border-error/20">
+          <span class="material-symbols-outlined text-error">account_balance_wallet</span>
+        </div>
+      </div>
+
+      <!-- Recovery Rate -->
+      <div class="glass-card p-6 rounded-xl border border-outline-variant/30 flex items-center justify-between">
+        <div>
+          <p class="font-label-caps text-label-caps text-on-surface-variant mb-1">Recovery Rate (30 Days)</p>
+          <div class="flex items-center gap-2">
+            <h4 class="font-headline-md text-headline-md text-[#81c995]" id="metric-recovery-pct">0%</h4>
+            <span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-[#81c995]/20 text-[#81c995]" id="metric-recovery-trend">+0%</span>
+          </div>
+        </div>
+        <div class="h-12 w-12 rounded-full bg-[#81c995]/10 flex items-center justify-center border border-[#81c995]/20">
+          <span class="material-symbols-outlined text-[#81c995]">trending_up</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overdue Segments -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-gutter mb-6">
+    <div class="glass-card p-4 rounded-xl text-center">
+        <p class="font-label-md text-label-md text-on-surface-variant uppercase">1-7 Days</p>
+        <p class="font-title-lg text-title-lg text-on-surface mt-1" id="seg-1-7">₹0</p>
+    </div>
+    <div class="glass-card p-4 rounded-xl text-center">
+        <p class="font-label-md text-label-md text-on-surface-variant uppercase">8-15 Days</p>
+        <p class="font-title-lg text-title-lg text-tertiary mt-1" id="seg-8-15">₹0</p>
+    </div>
+    <div class="glass-card p-4 rounded-xl text-center border-orange-500/30">
+        <p class="font-label-md text-label-md text-on-surface-variant uppercase">16-30 Days</p>
+        <p class="font-title-lg text-title-lg text-orange-400 mt-1" id="seg-16-30">₹0</p>
+    </div>
+    <div class="glass-card p-4 rounded-xl text-center border-error/50 bg-error/5">
+        <p class="font-label-md text-label-md text-on-surface-variant uppercase">30+ Days</p>
+        <p class="font-title-lg text-title-lg text-error mt-1" id="seg-30-plus">₹0</p>
+    </div>
+  </div>
+
+  <!-- Outstanding List -->
+  <div class="flex flex-col gap-4">
+    <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-white/10 text-on-surface-variant font-medium bg-surface-container/50">
+              <th class="py-3 px-4 font-label-md text-label-md">Member</th>
+              <th class="py-3 px-4 font-label-md text-label-md">Invoice #</th>
+              <th class="py-3 px-4 font-label-md text-label-md">Days Overdue</th>
+              <th class="py-3 px-4 font-label-md text-label-md">Amount Due</th>
+              <th class="py-3 px-4 font-label-md text-label-md text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="invoices-table-body" class="divide-y divide-white/5 text-on-surface">
+            <tr>
+              <td colspan="5" class="py-12 text-center text-on-surface-variant">
+                <span class="material-symbols-outlined text-[48px] block mb-2 opacity-50">hourglass_empty</span>
+                Loading outstanding invoices...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="jsb-mobile-nav"></div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  
+  async function loadRecoveryData() {
+    try {
+      const res = await window.api.fetch(`/analytics/payment-recovery`);
+      const data = await res.json();
+
+      document.getElementById('metric-outstanding').innerText = '₹' + Number(data.totalOutstanding).toLocaleString();
+      document.getElementById('metric-recovery-pct').innerText = data.recoveryPercent + '%';
+      document.getElementById('metric-recovery-trend').innerText = data.recoveryTrend;
+
+      document.getElementById('seg-1-7').innerText = '₹' + Number(data.segments['1-7']).toLocaleString();
+      document.getElementById('seg-8-15').innerText = '₹' + Number(data.segments['8-15']).toLocaleString();
+      document.getElementById('seg-16-30').innerText = '₹' + Number(data.segments['16-30']).toLocaleString();
+      document.getElementById('seg-30-plus').innerText = '₹' + Number(data.segments['30+']).toLocaleString();
+
+      // Insights Generation
+      const insightsContainer = document.getElementById('insights-container');
+      insightsContainer.innerHTML = '';
+      
+      let severeCount = 0;
+      let severeAmount = 0;
+      data.invoices.forEach(i => {
+          if (i.daysOverdue > 15) {
+              severeCount++;
+              severeAmount += i.amount;
+          }
+      });
+      
+      if (severeCount > 0) {
+          insightsContainer.innerHTML += \`<div class="flex items-start gap-3 bg-error/10 p-4 rounded-lg border border-error/20"><span class="material-symbols-outlined text-error mt-0.5">warning</span><p class="font-body-md text-body-md text-on-surface"><strong>Critical Risk:</strong> \${severeCount} members are overdue by more than 15 days. Potential recovery of <span class="text-error font-bold">₹\${severeAmount.toLocaleString()}</span> requires immediate intervention.</p></div>\`;
+      }
+      
+      const earlyAmount = data.segments['1-7'] + data.segments['8-15'];
+      if (earlyAmount > 0) {
+          insightsContainer.innerHTML += \`<div class="flex items-start gap-3 bg-tertiary/10 p-4 rounded-lg border border-tertiary/20"><span class="material-symbols-outlined text-tertiary mt-0.5">campaign</span><p class="font-body-md text-body-md text-on-surface"><strong>Soft Follow-Up:</strong> ₹\${earlyAmount.toLocaleString()} is stuck in the 1-15 day window. Automated WhatsApp reminders have an 80% success rate in this segment.</p></div>\`;
+      }
+      
+      if (severeCount === 0 && earlyAmount === 0) {
+          insightsContainer.innerHTML = \`<p class="font-body-lg text-body-lg text-[#81c995]">All dues collected! You are running a highly optimized operation.</p>\`;
+      }
+
+      const tbody = document.getElementById('invoices-table-body');
+      tbody.innerHTML = '';
+      if (data.invoices.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="py-12 text-center text-on-surface-variant">No outstanding invoices!</td></tr>';
+          return;
+      }
+
+      data.invoices.forEach(inv => {
+        const tr = document.createElement('tr');
+        
+        let agingColor = "text-on-surface";
+        if (inv.daysOverdue > 30) agingColor = "text-error font-bold";
+        else if (inv.daysOverdue > 15) agingColor = "text-orange-400";
+        else if (inv.daysOverdue > 7) agingColor = "text-tertiary";
+
+        tr.innerHTML = \`
+          <td class="py-3 px-4 font-body-md text-body-md">\${inv.full_name}<br><span class="text-xs text-on-surface-variant">\${inv.phone || 'N/A'}</span></td>
+          <td class="py-3 px-4 font-body-md text-body-md">\${inv.invoice_number}</td>
+          <td class="py-3 px-4 font-body-md text-body-md \${agingColor}">\${inv.daysOverdue} Days</td>
+          <td class="py-3 px-4 font-body-md text-body-md font-bold">₹ \${inv.amount.toLocaleString()}</td>
+          <td class="py-3 px-4 text-right">
+              <div class="flex items-center justify-end gap-2">
+                <button class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors" title="Send Reminder">
+                    <span class="material-symbols-outlined text-[16px]">send</span>
+                </button>
+                <button class="px-3 py-1 bg-surface-variant text-on-surface hover:bg-surface-container-highest rounded-lg transition-colors font-label-sm text-label-sm">
+                    Collect
+                </button>
+              </div>
+          </td>
+        \`;
+        tbody.appendChild(tr);
+      });
+      
+    } catch (err) {
+      console.error(err);
+      document.getElementById('invoices-table-body').innerHTML = '<tr><td colspan="5" class="py-8 text-center text-error">Failed to load recovery data.</td></tr>';
+    }
+  }
+
+  loadRecoveryData();
+});
+</script>
+</body></html>

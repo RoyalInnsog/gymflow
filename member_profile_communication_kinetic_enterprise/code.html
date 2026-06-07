@@ -1,0 +1,243 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Communications</title>
+
+<style>
+        .glass-panel {
+            background: rgba(27, 27, 27, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-surface">
+<div id="jsb-header" data-page-title="Communications"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- TopAppBar -->
+
+<main class="max-w-container-max mx-auto px-4 md:px-margin py-stack-lg">
+<div class="px-4 md:px-8 pt-4"><a href="/member-profile" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>← Member Profile</span></a></div>
+<!-- Profile Header -->
+<section class="glass-panel rounded-xl p-6 md:p-8 mb-stack-lg relative overflow-hidden">
+<!-- Decorative blur -->
+<div class="absolute -top-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+<div class="flex flex-col md:flex-row items-center md:items-start gap-6 relative z-10">
+<div class="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-2 border-primary/20 relative shrink-0">
+<img alt="Rajesh Kumar Profile" class="w-full h-full object-cover" data-alt="A portrait photograph of an Indian man in his late 30s looking confident. He is wearing dark premium athletic wear. The lighting is moody and dramatic with a subtle electric blue rim light, set against a completely dark, minimalist background. The aesthetic is high-end fitness enterprise, matching a dark mode interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBc_xQLexkUR0FAK4NgDDY5Z5e2ucrOnufGazy0C84k7Og9t1N5EMYAHBsYe_mKukJzMkIORQpEw20ugZbAKYvZ3yb36S9a2iAe-AmG5dSZ3eA-zsfSz7EmsfJnHqXO-Vy6Vjk4L51vh945q3ff1rPu13qzFqzaCdIdoPu5RVPGktUdb46b8tIUk7BPR9iwCIVzskI37Ohb3hcxuwEyhMqoWr8505uTD4gkkYml03bTQrG709ycnyxIqO0V2EoW_9r50Ug43p36ut4L">
+</div>
+<div class="flex-1 text-center md:text-left">
+<div class="flex flex-col md:flex-row items-center gap-3 mb-2">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Rajesh Kumar</h2>
+<div class="flex gap-2">
+<span class="px-3 py-1 rounded-full bg-secondary/10 border border-secondary/30 font-label-md text-label-md text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Active
+                            </span>
+<span class="px-3 py-1 rounded-full bg-tertiary/10 border border-tertiary/30 font-label-md text-label-md text-tertiary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">stars</span> Platinum
+                            </span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">Member since 12 Jan 2024</p>
+<!-- Quick Actions -->
+<div class="flex flex-wrap justify-center md:justify-start gap-3 mt-4">
+<button class="bg-primary text-on-primary font-label-md text-label-md px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">call</span> Call
+                        </button>
+<button class="bg-secondary text-on-secondary font-label-md text-label-md px-4 py-2 rounded-lg hover:bg-secondary/90 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">chat</span> WhatsApp
+                        </button>
+<button class="bg-surface-variant/30 border border-white/10 text-on-surface font-label-md text-label-md px-4 py-2 rounded-lg hover:bg-surface-variant/50 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">mail</span> Send Message
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Navigation Tabs -->
+<div class="flex overflow-x-auto no-scrollbar border-b border-white/10 mb-stack-lg">
+<button class="font-title-lg text-title-lg text-on-surface-variant px-6 py-4 hover:text-on-surface whitespace-nowrap transition-colors">Overview</button>
+<button class="font-title-lg text-title-lg text-on-surface-variant px-6 py-4 hover:text-on-surface whitespace-nowrap transition-colors">Attendance</button>
+<button class="font-title-lg text-title-lg text-on-surface-variant px-6 py-4 hover:text-on-surface whitespace-nowrap transition-colors" onclick="window.location.href='/finance'">Payments</button>
+<button class="font-title-lg text-title-lg text-primary px-6 py-4 relative whitespace-nowrap">
+                Communication
+                <div class="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></div>
+</button>
+</div>
+<!-- Communication Content -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<!-- Timeline -->
+<div class="lg:col-span-2 glass-panel rounded-xl p-6">
+<h3 class="font-title-lg text-title-lg mb-6 border-b border-white/10 pb-4">Communication History</h3>
+<div class="relative pl-6 border-l border-white/10 space-y-8">
+<!-- Event 1 -->
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-background border-2 border-primary"></div>
+<div class="bg-surface-container-low border border-white/5 rounded-lg p-4 hover:border-primary/30 transition-colors">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">chat</span>
+<h4 class="font-label-md text-label-md text-on-surface">Renewal Reminder Sent</h4>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant">2 days ago</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-2">Automated WhatsApp message sent regarding upcoming membership renewal.</p>
+<div class="mt-3 inline-block px-2 py-1 rounded bg-secondary/10 text-secondary font-label-md text-[10px]">WhatsApp</div>
+</div>
+</div>
+<!-- Event 2 -->
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-background border-2 border-outline-variant"></div>
+<div class="bg-surface-container-low border border-white/5 rounded-lg p-4">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">notifications_active</span>
+<h4 class="font-label-md text-label-md text-on-surface">Promotional Offer Received</h4>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant">20 Jan</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-2">New Year Platinum upgrade offer push notification delivered to device.</p>
+<div class="mt-3 inline-block px-2 py-1 rounded bg-primary/10 text-primary font-label-md text-[10px]">App Push</div>
+</div>
+</div>
+<!-- Event 3 -->
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-background border-2 border-outline-variant"></div>
+<div class="bg-surface-container-low border border-white/5 rounded-lg p-4">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[20px]">sms</span>
+<h4 class="font-label-md text-label-md text-on-surface">Welcome Message Sent</h4>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant">14 Jan</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-2">Standard onboarding SMS sent with facility access codes.</p>
+<div class="mt-3 inline-block px-2 py-1 rounded bg-outline/10 text-outline font-label-md text-[10px]">SMS</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Stats/Filters Sidebar -->
+<div class="glass-panel rounded-xl p-6 h-fit">
+<h3 class="font-title-lg text-title-lg mb-6 border-b border-white/10 pb-4">Activity Stats</h3>
+<div class="space-y-4 mb-8">
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant">Open Rate</span>
+<span class="font-title-lg text-title-lg text-secondary">85%</span>
+</div>
+<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden">
+<div class="bg-secondary h-full w-[85%]"></div>
+</div>
+<div class="flex justify-between items-center pt-4">
+<span class="font-body-md text-body-md text-on-surface-variant">Total Messages</span>
+<span class="font-title-lg text-title-lg text-on-surface">24</span>
+</div>
+</div>
+<h3 class="font-title-lg text-title-lg mb-4">Channels</h3>
+<div class="space-y-2">
+<label class="flex items-center gap-3 p-2 hover:bg-surface-variant/30 rounded cursor-pointer">
+<input checked="" class="form-checkbox bg-surface-container border-outline text-primary rounded focus:ring-primary/50 focus:ring-offset-background" type="checkbox">
+<span class="font-body-md text-body-md text-on-surface">WhatsApp</span>
+</label>
+<label class="flex items-center gap-3 p-2 hover:bg-surface-variant/30 rounded cursor-pointer">
+<input checked="" class="form-checkbox bg-surface-container border-outline text-primary rounded focus:ring-primary/50 focus:ring-offset-background" type="checkbox">
+<span class="font-body-md text-body-md text-on-surface">App Push</span>
+</label>
+<label class="flex items-center gap-3 p-2 hover:bg-surface-variant/30 rounded cursor-pointer">
+<input checked="" class="form-checkbox bg-surface-container border-outline text-primary rounded focus:ring-primary/50 focus:ring-offset-background" type="checkbox">
+<span class="font-body-md text-body-md text-on-surface">SMS</span>
+</label>
+<label class="flex items-center gap-3 p-2 hover:bg-surface-variant/30 rounded cursor-pointer">
+<input class="form-checkbox bg-surface-container border-outline text-primary rounded focus:ring-primary/50 focus:ring-offset-background" type="checkbox">
+<span class="font-body-md text-body-md text-on-surface">Email</span>
+</label>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const memberId = urlParams.get('id') || 'm4';
+      
+      const backBtn = document.querySelector('header span.material-symbols-outlined');
+      if (backBtn) {
+        backBtn.onclick = () => window.location.href = '/members';
+      }
+      
+      // Re-bind tabs
+      const tabs = document.querySelectorAll('.flex.overflow-x-auto.no-scrollbar button');
+      const tabRoutes = ['/member-profile', '/member-timeline', '/finance', '/member-communication'];
+      tabs.forEach((tab, idx) => {
+        const parent = tab.parentNode;
+        const link = document.createElement('a');
+        link.className = tab.className;
+        link.innerText = tab.innerText;
+        link.href = `${tabRoutes[idx]}?id=${memberId}`;
+        if (idx === 3) {
+          link.className = "font-title-lg text-title-lg text-primary px-6 py-4 relative whitespace-nowrap";
+          link.innerHTML = `Communication <div class="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></div>`;
+        } else {
+          link.className = "font-title-lg text-title-lg text-on-surface-variant px-6 py-4 hover:text-on-surface whitespace-nowrap transition-colors";
+        }
+        parent.replaceChild(link, tab);
+      });
+      
+      try {
+        const response = await window.api.fetch(`/members/${memberId}`);
+        const data = await response.json();
+        if (!response.ok) return;
+
+        const { member, communications } = data;
+        
+        document.title = `Member Communication - ${member.full_name}`;
+        document.querySelector('h2.font-headline-lg-mobile').innerText = member.full_name;
+        document.querySelector('img[alt^="Rajesh Kumar"]').src = member.photo_url || 'https://via.placeholder.com/150';
+        
+        // Populate outbox logs
+        const logsContainer = document.querySelector('.relative.pl-6.border-l');
+        if (logsContainer && communications.length > 0) {
+          logsContainer.innerHTML = '';
+          communications.forEach(com => {
+            const card = document.createElement('div');
+            card.className = 'relative';
+            card.innerHTML = `
+              <div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-background border-2 border-primary"></div>
+              <div class="bg-surface-container-low border border-white/5 rounded-lg p-4 hover:border-primary/30 transition-colors">
+                <div class="flex justify-between items-start mb-2">
+                  <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-secondary text-[20px]">chat</span>
+                    <h4 class="font-label-md text-label-md text-on-surface">${com.title}</h4>
+                  </div>
+                  <span class="font-label-md text-label-md text-on-surface-variant">just now</span>
+                </div>
+                <p class="font-body-sm text-body-sm text-on-surface-variant mt-2">${com.message}</p>
+                <div class="mt-3 inline-block px-2 py-1 rounded bg-secondary/10 text-secondary font-label-md text-[10px]">${com.type}</div>
+              </div>
+            `;
+            logsContainer.appendChild(card);
+          });
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+    </script>
+
+<div id="jsb-mobile-nav"></div>
+</body></html>

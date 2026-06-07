@@ -1,0 +1,643 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Expiry Management</title>
+
+<style>
+        .glass-panel {
+            background: rgba(27, 27, 27, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .text-glow { text-shadow: 0 0 10px rgba(181, 196, 255, 0.3); }
+        body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    </style>
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-surface">
+<div id="jsb-header" data-page-title="Expiry Management"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- TopAppBar -->
+
+<!-- Main Canvas -->
+<main class="flex-1 w-full max-w-container-max mx-auto px-margin pt-24 pb-32 md:pb-24 space-y-stack-lg">
+<div class="px-4 md:px-8 pt-4"><a href="/dashboard" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>← Dashboard</span></a></div>
+<!-- Page Header & Analytics Bento Grid -->
+<div class="space-y-stack-md">
+<div>
+<h2 class="font-display-lg text-headline-lg-mobile md:text-display-lg break-words min-w-0 text-on-surface text-glow">Expiry Management</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-unit">Monitor and action upcoming membership renewals.</p>
+</div>
+<!-- Bento Analytics -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-stack-md">
+<!-- Stat 1 -->
+<div class="glass-panel rounded-xl p-stack-lg flex flex-col justify-between relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-6xl">group</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Total Expiring (7 Days)</span>
+<div class="mt-stack-sm flex items-end gap-2">
+<span id="total-expiring-val" class="font-display-lg text-display-lg break-words min-w-0 text-on-surface">0</span>
+<span class="font-body-md text-body-md text-tertiary mb-2 flex items-center"><span class="material-symbols-outlined text-[16px]">trending_up</span> +12%</span>
+</div>
+</div>
+<!-- Stat 2 -->
+<div class="glass-panel rounded-xl p-stack-lg flex flex-col justify-between relative overflow-hidden group border-t-2 border-t-primary/50">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Total Revenue At Risk</span>
+<div class="mt-stack-sm flex items-end gap-2">
+<span id="revenue-at-risk-val" class="font-display-lg text-display-lg break-words min-w-0 text-primary text-glow">₹ 0</span>
+</div>
+</div>
+<!-- Stat 3 -->
+<div class="glass-panel rounded-xl p-stack-lg flex flex-col justify-between relative overflow-hidden">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Avg. Renewal Rate</span>
+<div class="mt-stack-sm flex items-center justify-between">
+<span class="font-display-lg text-display-lg break-words min-w-0 text-secondary">78%</span>
+<!-- Circular Progress Pseudo -->
+<div class="w-12 h-12 rounded-full border-4 border-surface-variant border-t-secondary border-r-secondary transform rotate-45"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Filter/Section Tabs -->
+<div class="flex overflow-x-auto pb-2 -mx-margin px-margin md:mx-0 md:px-0 gap-stack-sm hide-scrollbar">
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-tertiary-container/20 text-tertiary border border-tertiary/30 font-label-md text-label-md hover:bg-tertiary-container/30 transition-colors" data-filter="3">Within 3 Days</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass-panel text-on-surface hover:bg-surface-variant/50 transition-colors font-label-md text-label-md" data-filter="7">Within 7 Days</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass-panel text-on-surface hover:bg-surface-variant/50 transition-colors font-label-md text-label-md" data-filter="15">Within 15 Days</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass-panel text-on-surface hover:bg-surface-variant/50 transition-colors font-label-md text-label-md" data-filter="30">Within 30 Days</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass-panel text-error hover:bg-error-container/20 transition-colors font-label-md text-label-md" data-filter="Expired">Expired</button>
+</div>
+<!-- Content Area: Cards Grid -->
+<div class="space-y-stack-md">
+<div class="flex items-center justify-between border-b border-white/5 pb-2">
+<h3 class="font-title-lg text-title-lg text-on-surface">Expiring Today</h3>
+<button class="font-label-md text-label-md text-primary flex items-center gap-1 hover:text-primary-fixed transition-colors">
+                    View All <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-stack-md">
+<!-- Member Card 1 -->
+<div class="glass-panel rounded-xl p-stack-md flex flex-col gap-stack-md relative overflow-hidden group hover:border-tertiary/40 transition-colors">
+<!-- Status Indicator Line -->
+<div class="absolute top-0 left-0 w-1 h-full bg-tertiary"></div>
+<!-- Header: Img + Info -->
+<div class="flex items-center gap-stack-md pl-2">
+<img class="w-16 h-16 rounded-full object-cover border border-white/10 shadow-lg" data-alt="A cinematic, moody portrait of a fit Indian male client in a premium gym environment. The lighting is dramatic and directional, casting subtle shadows to emphasize a sculpted physique. Dark background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1Ul4nnmm4sjrBzOV3dzhsjz6B8oVzOfymGj1y7ORl-kuVlZheCUQfrgrTwU5dyJ_Yn-1MUTjxWZSYM8WCdLUc4rDg8AOyrQzE3cJ-DpurhR7-tPP7e97DDHoqkTUMXcWpbQn4X7eIE5MCxBNY2kW0oSKJj3Vi4gGEW38SzGq5R0G8QDxgAd2StTp7qGiq_HmPlut31o895UdHCfK7hS2tie9_A56W1lyIRFMZJztCescMYl1hFqP-Y5W0pUBrRTLxWmBSDjls-WLk">
+<div class="flex-1">
+<h4 class="font-headline-md text-headline-md text-on-surface">Rahul Sharma</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-2 py-0.5 rounded bg-surface-variant text-on-surface-variant font-label-md text-label-md uppercase text-[10px]">Pro Annual</span>
+<span class="px-2 py-0.5 rounded bg-tertiary-container/20 text-tertiary border border-tertiary/20 font-label-md text-label-md uppercase text-[10px] animate-pulse">0 Days Left</span>
+</div>
+</div>
+</div>
+<!-- Details Grid -->
+<div class="grid grid-cols-2 gap-y-stack-sm gap-x-4 py-stack-sm border-t border-b border-white/5 pl-2">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant">Start Date</p>
+<p class="font-body-md text-body-md text-on-surface">15 Oct 2022</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant">End Date</p>
+<p class="font-body-md text-body-md text-tertiary font-medium">15 Oct 2023</p>
+</div>
+<div class="col-span-2 flex justify-between items-center bg-surface-container-high/50 p-2 rounded-lg mt-1 border border-white/5">
+<p class="font-label-md text-label-md text-on-surface-variant">Pending Dues</p>
+<p class="font-body-md text-body-md text-on-surface">₹ 0</p>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex items-center gap-stack-sm pl-2">
+<button class="flex-1 bg-primary/10 text-primary border border-primary/30 font-label-md text-label-md py-2.5 rounded-lg hover:bg-primary hover:text-on-primary transition-all duration-300">Renew</button>
+<button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-secondary hover:border-secondary/50 hover:bg-secondary/10 transition-colors" title="Call">
+<span class="material-symbols-outlined text-[20px]">call</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-secondary hover:border-secondary/50 hover:bg-secondary/10 transition-colors" title="WhatsApp">
+<span class="material-symbols-outlined text-[20px]">chat</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-primary hover:border-primary/50 hover:bg-primary/10 transition-colors" title="Schedule">
+<span class="material-symbols-outlined text-[20px]">event</span>
+</button>
+</div>
+</div>
+<!-- Member Card 2 (With Dues) -->
+<div class="glass-panel rounded-xl p-stack-md flex flex-col gap-stack-md relative overflow-hidden group hover:border-tertiary/40 transition-colors">
+<div class="absolute top-0 left-0 w-1 h-full bg-tertiary"></div>
+<div class="flex items-center gap-stack-md pl-2">
+<img class="w-16 h-16 rounded-full object-cover border border-white/10 shadow-lg" data-alt="A portrait of a confident Indian female gym member looking directly at the camera. The setting is a high-end, dimly lit fitness studio with neon blue and purple ambient accents. Glassmorphic UI overlays implied." src="https://lh3.googleusercontent.com/aida-public/AB6AXuByMODnVdJuq8Ns9Fd0_9IlcUWDNx97NHbZPdYhzrsk3JUy8belFl0Ano5cJ7CLir6pG7z5uY6gimJSx5HuTjm4bDr68GH4BXKux5c3P9em8If2gd5oWjqccomZTBMMaCMLDqHm5DwYnEENvHPTyD4hQEKQ5fRo6DTE4AioptroqD69Ox5gwiW4Cj6alO8Q9FfigyxeERch67EQeEX9rkjf-MtKL1W6Mj3XTtKm3CCeb_iEeMpTRXOBFaIRuzXSsYJuI-c3Zkb9tUvs">
+<div class="flex-1">
+<h4 class="font-headline-md text-headline-md text-on-surface">Priya Desai</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-2 py-0.5 rounded bg-surface-variant text-on-surface-variant font-label-md text-label-md uppercase text-[10px]">Elite 6-Month</span>
+<span class="px-2 py-0.5 rounded bg-tertiary-container/20 text-tertiary border border-tertiary/20 font-label-md text-label-md uppercase text-[10px]">0 Days Left</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-y-stack-sm gap-x-4 py-stack-sm border-t border-b border-white/5 pl-2">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant">Start Date</p>
+<p class="font-body-md text-body-md text-on-surface">15 Apr 2023</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant">End Date</p>
+<p class="font-body-md text-body-md text-tertiary font-medium">15 Oct 2023</p>
+</div>
+<div class="col-span-2 flex justify-between items-center bg-error-container/10 p-2 rounded-lg mt-1 border border-error/20">
+<p class="font-label-md text-label-md text-on-surface-variant">Pending Dues</p>
+<p class="font-body-md text-body-md text-error font-semibold">₹ 3,500</p>
+</div>
+</div>
+<div class="flex items-center gap-stack-sm pl-2">
+<button class="flex-1 bg-primary/10 text-primary border border-primary/30 font-label-md text-label-md py-2.5 rounded-lg hover:bg-primary hover:text-on-primary transition-all duration-300">Renew</button>
+<button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-secondary hover:border-secondary/50 hover:bg-secondary/10 transition-colors">
+<span class="material-symbols-outlined text-[20px]">call</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-secondary hover:border-secondary/50 hover:bg-secondary/10 transition-colors">
+<span class="material-symbols-outlined text-[20px]">chat</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-primary hover:border-primary/50 hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-[20px]">event</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+
+<style>
+        /* Hide scrollbar for horizontal scrolling tabs */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const tabs = document.querySelectorAll("main .flex.overflow-x-auto button");
+    const container = document.querySelector(".grid.grid-cols-1.lg\\:grid-cols-2.xl\\:grid-cols-3.gap-stack-md");
+    const sectionTitle = document.querySelector("main h3.font-title-lg");
+    let membersList = [];
+    let currentFilter = "3";
+
+    tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+            tabs.forEach(t => t.className = "whitespace-nowrap px-4 py-2 rounded-full glass-panel text-on-surface hover:bg-surface-variant/50 transition-colors font-label-md text-label-md");
+            if (tab.innerText.includes("Expired")) {
+                tab.className = "whitespace-nowrap px-4 py-2 rounded-full bg-error/20 text-error border border-error/30 font-label-md text-label-md";
+            } else {
+                tab.className = "whitespace-nowrap px-4 py-2 rounded-full bg-tertiary-container/20 text-tertiary border border-tertiary/30 font-label-md text-label-md hover:bg-tertiary-container/30 transition-colors";
+            }
+            
+            currentFilter = tab.getAttribute('data-filter');
+            if (sectionTitle) sectionTitle.innerText = tab.innerText.replace(/ \(.*\)/, '');
+            renderCards();
+        });
+    });
+
+    async function loadData() {
+        try {
+            const res = await window.api.fetch("/analytics/renewal-queue");
+            const data = await res.json();
+            membersList = data.queue;
+            
+            const atRiskElem = document.getElementById('revenue-at-risk-val');
+            if(atRiskElem) atRiskElem.innerText = '₹ ' + data.totalRevenueAtRisk.toLocaleString();
+            
+            updateTabs();
+            renderCards();
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    function updateTabs() {
+        const within3 = membersList.filter(m => m.status === 'Active' && m.daysLeft <= 3 && m.daysLeft >= 0);
+        const within7 = membersList.filter(m => m.status === 'Active' && m.daysLeft <= 7 && m.daysLeft >= 0);
+        const within15 = membersList.filter(m => m.status === 'Active' && m.daysLeft <= 15 && m.daysLeft >= 0);
+        const within30 = membersList.filter(m => m.status === 'Active' && m.daysLeft <= 30 && m.daysLeft >= 0);
+        const expired = membersList.filter(m => m.status === 'Expired');
+
+        if (tabs.length >= 5) {
+            tabs[0].innerText = `Within 3 Days (${within3.length})`;
+            tabs[1].innerText = `Within 7 Days (${within7.length})`;
+            tabs[2].innerText = `Within 15 Days (${within15.length})`;
+            tabs[3].innerText = `Within 30 Days (${within30.length})`;
+            tabs[4].innerText = `Expired (${expired.length})`;
+        }
+
+        const expVal = document.getElementById('total-expiring-val');
+        if (expVal) expVal.innerText = within7.length;
+    }
+
+    function renderCards() {
+        if (!container) return;
+        container.innerHTML = "";
+
+        let filtered = [];
+        if (currentFilter === "3") filtered = membersList.filter(m => m.status === 'Active' && m.daysLeft <= 3 && m.daysLeft >= 0);
+        else if (currentFilter === "7") filtered = membersList.filter(m => m.status === 'Active' && m.daysLeft <= 7 && m.daysLeft >= 0);
+        else if (currentFilter === "15") filtered = membersList.filter(m => m.status === 'Active' && m.daysLeft <= 15 && m.daysLeft >= 0);
+        else if (currentFilter === "30") filtered = membersList.filter(m => m.status === 'Active' && m.daysLeft <= 30 && m.daysLeft >= 0);
+        else if (currentFilter === "Expired") filtered = membersList.filter(m => m.status === 'Expired');
+
+        filtered.forEach(m => {
+            const card = document.createElement("div");
+            card.className = "glass-panel rounded-xl p-stack-md flex flex-col gap-stack-md relative overflow-hidden group hover:border-tertiary/40 transition-colors mt-4";
+            
+            let barColor = "bg-tertiary";
+            let alertPulse = "animate-pulse";
+            if (m.status === 'Expired') {
+                barColor = "bg-error";
+                alertPulse = "";
+            }
+
+            const photo = m.photo_url || "https://via.placeholder.com/150";
+            const planName = m.plan_name || "Pro Annual";
+            const probColor = m.renewalProbability === 'High' ? 'text-secondary' : (m.renewalProbability === 'Medium' ? 'text-tertiary' : 'text-error');
+
+            card.innerHTML = `
+                <div class="absolute top-0 left-0 w-1 h-full ${barColor}"></div>
+                <div class="flex items-center gap-stack-md pl-2">
+                    <img class="w-16 h-16 rounded-full object-cover border border-white/10 shadow-lg" src="${photo}"/>
+                    <div class="flex-1">
+                        <h4 class="font-headline-md text-headline-md text-on-surface">${m.full_name}</h4>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="px-2 py-0.5 rounded bg-surface-variant text-on-surface-variant font-label-md text-label-md uppercase text-[10px]">${planName}</span>
+                            <span class="px-2 py-0.5 rounded bg-tertiary-container/20 text-tertiary border border-tertiary/20 font-label-md text-label-md uppercase text-[10px] ${alertPulse}">${m.daysLeft < 0 ? Math.abs(m.daysLeft) + ' Days Ago' : m.daysLeft + ' Days Left'}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-y-stack-sm gap-x-4 py-stack-sm border-t border-b border-white/5 pl-2">
+                    <div>
+                        <p class="font-label-md text-label-md text-on-surface-variant">Renewal Prob</p>
+                        <p class="font-body-md text-body-md ${probColor}">${m.renewalProbability}</p>
+                    </div>
+                    <div>
+                        <p class="font-label-md text-label-md text-on-surface-variant">Expected Rev</p>
+                        <p class="font-body-md text-body-md text-primary font-medium">₹ ${(m.expectedRevenue || 0).toLocaleString()}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-stack-sm pl-2">
+                    <button class="flex-1 bg-primary/10 text-primary border border-primary/30 font-label-md text-label-md py-2.5 rounded-lg hover:bg-primary hover:text-on-primary transition-all duration-300 renew-btn" data-id="${m.member_id}">Renew</button>
+                    <button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-secondary hover:border-secondary/50 hover:bg-secondary/10 transition-colors" title="Call">
+                        <span class="material-symbols-outlined text-[20px]">call</span>
+                    </button>
+                    <button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-secondary hover:border-secondary/50 hover:bg-secondary/10 transition-colors" title="WhatsApp">
+                        <span class="material-symbols-outlined text-[20px]">chat</span>
+                    </button>
+                </div>
+            `;
+
+            card.querySelector(".renew-btn").onclick = () => {
+                window.location.href = `/renew?id=${m.member_id}`;
+            };
+
+            container.appendChild(card);
+        });
+    }
+
+    loadData();
+});
+</script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Expiry Management</title>
+
+<style>
+        .glass-panel {
+            background: rgba(27, 27, 27, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .text-glow { text-shadow: 0 0 10px rgba(181, 196, 255, 0.3); }
+        body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    </style>
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-surface">
+<div id="jsb-header" data-page-title="Expiry Management"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- TopAppBar -->
+
+<!-- Main Canvas -->
+<main class="flex-1 w-full max-w-container-max mx-auto px-margin pt-24 pb-32 md:pb-24 space-y-stack-lg">
+<div class="px-4 md:px-8 pt-4"><a href="/dashboard" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>← Dashboard</span></a></div>
+<!-- Page Header & Analytics Bento Grid -->
+<div class="space-y-stack-md">
+<div>
+<h2 class="font-display-lg text-headline-lg-mobile md:text-display-lg break-words min-w-0 text-on-surface text-glow">Expiry Management</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-unit">Monitor and action upcoming membership renewals.</p>
+</div>
+<!-- Bento Analytics -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-stack-md">
+<!-- Stat 1 -->
+<div class="glass-panel rounded-xl p-stack-lg flex flex-col justify-between relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-6xl">group</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Total Expiring (7 Days)</span>
+<div class="mt-stack-sm flex items-end gap-2">
+<span id="total-expiring-val" class="font-display-lg text-display-lg break-words min-w-0 text-on-surface">0</span>
+<span class="font-body-md text-body-md text-tertiary mb-2 flex items-center"><span class="material-symbols-outlined text-[16px]">trending_up</span> +12%</span>
+</div>
+</div>
+<!-- Stat 2 -->
+<div class="glass-panel rounded-xl p-stack-lg flex flex-col justify-between relative overflow-hidden group border-t-2 border-t-primary/50">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Total Revenue At Risk</span>
+<div class="mt-stack-sm flex items-end gap-2">
+<span id="revenue-at-risk-val" class="font-display-lg text-display-lg break-words min-w-0 text-primary text-glow">₹ 0</span>
+</div>
+</div>
+<!-- Stat 3 -->
+<div class="glass-panel rounded-xl p-stack-lg flex flex-col justify-between relative overflow-hidden">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Avg. Renewal Rate</span>
+<div class="mt-stack-sm flex items-center justify-between">
+<span class="font-display-lg text-display-lg break-words min-w-0 text-secondary">78%</span>
+<!-- Circular Progress Pseudo -->
+<div class="w-12 h-12 rounded-full border-4 border-surface-variant border-t-secondary border-r-secondary transform rotate-45"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Filter/Section Tabs -->
+<div class="flex overflow-x-auto pb-2 -mx-margin px-margin md:mx-0 md:px-0 gap-stack-sm hide-scrollbar">
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-tertiary-container/20 text-tertiary border border-tertiary/30 font-label-md text-label-md hover:bg-tertiary-container/30 transition-colors" data-filter="3">Within 3 Days</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass-panel text-on-surface hover:bg-surface-variant/50 transition-colors font-label-md text-label-md" data-filter="7">Within 7 Days</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass-panel text-on-surface hover:bg-surface-variant/50 transition-colors font-label-md text-label-md" data-filter="15">Within 15 Days</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass-panel text-on-surface hover:bg-surface-variant/50 transition-colors font-label-md text-label-md" data-filter="30">Within 30 Days</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass-panel text-error hover:bg-error-container/20 transition-colors font-label-md text-label-md" data-filter="Expired">Expired</button>
+</div>
+<!-- Content Area: Cards Grid -->
+<div class="space-y-stack-md">
+<div class="flex items-center justify-between border-b border-white/5 pb-2">
+<h3 class="font-title-lg text-title-lg text-on-surface">Expiring Today</h3>
+<button class="font-label-md text-label-md text-primary flex items-center gap-1 hover:text-primary-fixed transition-colors">
+                    View All <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-stack-md">
+<!-- Member Card 1 -->
+<div class="glass-panel rounded-xl p-stack-md flex flex-col gap-stack-md relative overflow-hidden group hover:border-tertiary/40 transition-colors">
+<!-- Status Indicator Line -->
+<div class="absolute top-0 left-0 w-1 h-full bg-tertiary"></div>
+<!-- Header: Img + Info -->
+<div class="flex items-center gap-stack-md pl-2">
+<img class="w-16 h-16 rounded-full object-cover border border-white/10 shadow-lg" data-alt="A cinematic, moody portrait of a fit Indian male client in a premium gym environment. The lighting is dramatic and directional, casting subtle shadows to emphasize a sculpted physique. Dark background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1Ul4nnmm4sjrBzOV3dzhsjz6B8oVzOfymGj1y7ORl-kuVlZheCUQfrgrTwU5dyJ_Yn-1MUTjxWZSYM8WCdLUc4rDg8AOyrQzE3cJ-DpurhR7-tPP7e97DDHoqkTUMXcWpbQn4X7eIE5MCxBNY2kW0oSKJj3Vi4gGEW38SzGq5R0G8QDxgAd2StTp7qGiq_HmPlut31o895UdHCfK7hS2tie9_A56W1lyIRFMZJztCescMYl1hFqP-Y5W0pUBrRTLxWmBSDjls-WLk">
+<div class="flex-1">
+<h4 class="font-headline-md text-headline-md text-on-surface">Rahul Sharma</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-2 py-0.5 rounded bg-surface-variant text-on-surface-variant font-label-md text-label-md uppercase text-[10px]">Pro Annual</span>
+<span class="px-2 py-0.5 rounded bg-tertiary-container/20 text-tertiary border border-tertiary/20 font-label-md text-label-md uppercase text-[10px] animate-pulse">0 Days Left</span>
+</div>
+</div>
+</div>
+<!-- Details Grid -->
+<div class="grid grid-cols-2 gap-y-stack-sm gap-x-4 py-stack-sm border-t border-b border-white/5 pl-2">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant">Start Date</p>
+<p class="font-body-md text-body-md text-on-surface">15 Oct 2022</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant">End Date</p>
+<p class="font-body-md text-body-md text-tertiary font-medium">15 Oct 2023</p>
+</div>
+<div class="col-span-2 flex justify-between items-center bg-surface-container-high/50 p-2 rounded-lg mt-1 border border-white/5">
+<p class="font-label-md text-label-md text-on-surface-variant">Pending Dues</p>
+<p class="font-body-md text-body-md text-on-surface">₹ 0</p>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex items-center gap-stack-sm pl-2">
+<button class="flex-1 bg-primary/10 text-primary border border-primary/30 font-label-md text-label-md py-2.5 rounded-lg hover:bg-primary hover:text-on-primary transition-all duration-300">Renew</button>
+<button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-secondary hover:border-secondary/50 hover:bg-secondary/10 transition-colors" title="Call">
+<span class="material-symbols-outlined text-[20px]">call</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-secondary hover:border-secondary/50 hover:bg-secondary/10 transition-colors" title="WhatsApp">
+<span class="material-symbols-outlined text-[20px]">chat</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-primary hover:border-primary/50 hover:bg-primary/10 transition-colors" title="Schedule">
+<span class="material-symbols-outlined text-[20px]">event</span>
+</button>
+</div>
+</div>
+<!-- Member Card 2 (With Dues) -->
+<div class="glass-panel rounded-xl p-stack-md flex flex-col gap-stack-md relative overflow-hidden group hover:border-tertiary/40 transition-colors">
+<div class="absolute top-0 left-0 w-1 h-full bg-tertiary"></div>
+<div class="flex items-center gap-stack-md pl-2">
+<img class="w-16 h-16 rounded-full object-cover border border-white/10 shadow-lg" data-alt="A portrait of a confident Indian female gym member looking directly at the camera. The setting is a high-end, dimly lit fitness studio with neon blue and purple ambient accents. Glassmorphic UI overlays implied." src="https://lh3.googleusercontent.com/aida-public/AB6AXuByMODnVdJuq8Ns9Fd0_9IlcUWDNx97NHbZPdYhzrsk3JUy8belFl0Ano5cJ7CLir6pG7z5uY6gimJSx5HuTjm4bDr68GH4BXKux5c3P9em8If2gd5oWjqccomZTBMMaCMLDqHm5DwYnEENvHPTyD4hQEKQ5fRo6DTE4AioptroqD69Ox5gwiW4Cj6alO8Q9FfigyxeERch67EQeEX9rkjf-MtKL1W6Mj3XTtKm3CCeb_iEeMpTRXOBFaIRuzXSsYJuI-c3Zkb9tUvs">
+<div class="flex-1">
+<h4 class="font-headline-md text-headline-md text-on-surface">Priya Desai</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-2 py-0.5 rounded bg-surface-variant text-on-surface-variant font-label-md text-label-md uppercase text-[10px]">Elite 6-Month</span>
+<span class="px-2 py-0.5 rounded bg-tertiary-container/20 text-tertiary border border-tertiary/20 font-label-md text-label-md uppercase text-[10px]">0 Days Left</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-y-stack-sm gap-x-4 py-stack-sm border-t border-b border-white/5 pl-2">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant">Start Date</p>
+<p class="font-body-md text-body-md text-on-surface">15 Apr 2023</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant">End Date</p>
+<p class="font-body-md text-body-md text-tertiary font-medium">15 Oct 2023</p>
+</div>
+<div class="col-span-2 flex justify-between items-center bg-error-container/10 p-2 rounded-lg mt-1 border border-error/20">
+<p class="font-label-md text-label-md text-on-surface-variant">Pending Dues</p>
+<p class="font-body-md text-body-md text-error font-semibold">₹ 3,500</p>
+</div>
+</div>
+<div class="flex items-center gap-stack-sm pl-2">
+<button class="flex-1 bg-primary/10 text-primary border border-primary/30 font-label-md text-label-md py-2.5 rounded-lg hover:bg-primary hover:text-on-primary transition-all duration-300">Renew</button>
+<button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-secondary hover:border-secondary/50 hover:bg-secondary/10 transition-colors">
+<span class="material-symbols-outlined text-[20px]">call</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-secondary hover:border-secondary/50 hover:bg-secondary/10 transition-colors">
+<span class="material-symbols-outlined text-[20px]">chat</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-primary hover:border-primary/50 hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-[20px]">event</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+
+<style>
+        /* Hide scrollbar for horizontal scrolling tabs */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const tabs = document.querySelectorAll("main .flex.overflow-x-auto button");
+    const container = document.querySelector(".grid.grid-cols-1.lg\\:grid-cols-2.xl\\:grid-cols-3.gap-stack-md");
+    const sectionTitle = document.querySelector("main h3.font-title-lg");
+    let membersList = [];
+    let currentFilter = "Expiring Today";
+
+    // Bind tab clicks
+    tabs.forEach((tab, index) => {
+        tab.addEventListener("click", () => {
+            tabs.forEach(t => {
+                t.className = "whitespace-nowrap px-4 py-2 rounded-full glass-panel text-on-surface hover:bg-surface-variant/50 transition-colors font-label-md text-label-md";
+            });
+            // check if tab is expired tab for red styling
+            if (tab.innerText.includes("Expired")) {
+                tab.className = "whitespace-nowrap px-4 py-2 rounded-full bg-error/20 text-error border border-error/30 font-label-md text-label-md";
+            } else {
+                tab.className = "whitespace-nowrap px-4 py-2 rounded-full bg-tertiary-container/20 text-tertiary border border-tertiary/30 font-label-md text-label-md hover:bg-tertiary-container/30 transition-colors";
+            }
+            
+            if (tab.innerText.includes("Today")) currentFilter = "Expiring Today";
+            else if (tab.innerText.includes("3 Days")) currentFilter = "Within 3 Days";
+            else if (tab.innerText.includes("7 Days")) currentFilter = "Within 7 Days";
+            else if (tab.innerText.includes("Expired")) currentFilter = "Expired";
+
+            if (sectionTitle) sectionTitle.innerText = currentFilter;
+            renderCards();
+        });
+    });
+
+    async function loadData() {
+        try {
+            const res = await window.api.fetch("/members");
+            membersList = await res.json();
+            
+            // Calculate tab counts
+            updateTabs();
+            renderCards();
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    function updateTabs() {
+        const expiringToday = membersList.filter(m => m.status === 'Active' && m.daysLeft <= 1);
+        const within3 = membersList.filter(m => m.status === 'Active' && m.daysLeft <= 3);
+        const within7 = membersList.filter(m => m.status === 'Active' && m.daysLeft <= 7);
+        const expired = membersList.filter(m => m.status === 'Expired');
+
+        if (tabs.length >= 4) {
+            tabs[0].innerText = `Expiring Today (${expiringToday.length})`;
+            tabs[1].innerText = `Within 3 Days (${within3.length})`;
+            tabs[2].innerText = `Within 7 Days (${within7.length})`;
+            tabs[3].innerText = `Expired (${expired.length})`;
+        }
+
+        // Update top summary cards dynamically
+        const totalExpiringCard = document.querySelector(".grid.grid-cols-1.md\\:grid-cols-3.gap-stack-md > div:nth-child(1) .font-display-lg");
+        if (totalExpiringCard) totalExpiringCard.innerText = within7.length;
+
+        const projectedRevenueCard = document.querySelector(".grid.grid-cols-1.md\\:grid-cols-3.gap-stack-md > div:nth-child(2) .font-display-lg");
+        if (projectedRevenueCard) {
+            // Sum plan prices of expiring members
+            const sum = within7.reduce((acc, m) => acc + (m.plan_price || 25000), 0);
+            projectedRevenueCard.innerText = `₹ ${(sum / 100000).toFixed(2)}L`;
+        }
+    }
+
+    function renderCards() {
+        if (!container) return;
+        container.innerHTML = "";
+
+        let filtered = [];
+        if (currentFilter === "Expiring Today") {
+            filtered = membersList.filter(m => m.status === 'Active' && m.daysLeft <= 1);
+        } else if (currentFilter === "Within 3 Days") {
+            filtered = membersList.filter(m => m.status === 'Active' && m.daysLeft <= 3);
+        } else if (currentFilter === "Within 7 Days") {
+            filtered = membersList.filter(m => m.status === 'Active' && m.daysLeft <= 7);
+        } else if (currentFilter === "Expired") {
+            filtered = membersList.filter(m => m.status === 'Expired');
+        }
+
+        filtered.forEach(m => {
+            const card = document.createElement("div");
+            card.className = "glass-panel rounded-xl p-stack-md flex flex-col gap-stack-md relative overflow-hidden group hover:border-tertiary/40 transition-colors mt-4";
+            
+            let barColor = "bg-tertiary";
+            let alertPulse = "animate-pulse";
+            if (m.status === 'Expired') {
+                barColor = "bg-error";
+                alertPulse = "";
+            }
+
+            const photo = m.photo_url || "https://via.placeholder.com/150";
+            const planName = m.plan_name || "Pro Annual";
+
+            card.innerHTML = `
+                <div class="absolute top-0 left-0 w-1 h-full ${barColor}"></div>
+                <div class="flex items-center gap-stack-md pl-2">
+                    <img class="w-16 h-16 rounded-full object-cover border border-white/10 shadow-lg" src="${photo}"/>
+                    <div class="flex-1">
+                        <h4 class="font-headline-md text-headline-md text-on-surface">${m.full_name}</h4>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="px-2 py-0.5 rounded bg-surface-variant text-on-surface-variant font-label-md text-label-md uppercase text-[10px]">${planName}</span>
+                            <span class="px-2 py-0.5 rounded bg-tertiary-container/20 text-tertiary border border-tertiary/20 font-label-md text-label-md uppercase text-[10px] ${alertPulse}">${m.daysLeft} Days Left</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-y-stack-sm gap-x-4 py-stack-sm border-t border-b border-white/5 pl-2">
+                    <div>
+                        <p class="font-label-md text-label-md text-on-surface-variant">Start Date</p>
+                        <p class="font-body-md text-body-md text-on-surface">${m.start_date ? new Date(m.start_date).toLocaleDateString() : 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p class="font-label-md text-label-md text-on-surface-variant">End Date</p>
+                        <p class="font-body-md text-body-md text-tertiary font-medium">${m.end_date ? new Date(m.end_date).toLocaleDateString() : 'N/A'}</p>
+                    </div>
+                    <div class="col-span-2 flex justify-between items-center bg-surface-container-high/50 p-2 rounded-lg mt-1 border border-white/5">
+                        <p class="font-label-md text-label-md text-on-surface-variant">Pending Dues</p>
+                        <p class="font-body-md text-body-md text-on-surface">₹ 0</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-stack-sm pl-2">
+                    <button class="flex-1 bg-primary/10 text-primary border border-primary/30 font-label-md text-label-md py-2.5 rounded-lg hover:bg-primary hover:text-on-primary transition-all duration-300 renew-btn" data-id="${m.id}">Renew</button>
+                    <button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-secondary hover:border-secondary/50 hover:bg-secondary/10 transition-colors" title="Call">
+                        <span class="material-symbols-outlined text-[20px]">call</span>
+                    </button>
+                    <button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-secondary hover:border-secondary/50 hover:bg-secondary/10 transition-colors" title="WhatsApp">
+                        <span class="material-symbols-outlined text-[20px]">chat</span>
+                    </button>
+                </div>
+            `;
+
+            card.querySelector(".renew-btn").onclick = () => {
+                window.location.href = `/renew?id=${m.id}`;
+            };
+
+            container.appendChild(card);
+        });
+    }
+
+    loadData();
+});
+</script>
+
+<div id="jsb-mobile-nav"></div>
+</body></html>

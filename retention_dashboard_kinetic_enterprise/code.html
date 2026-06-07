@@ -1,0 +1,636 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Retention Dashboard</title>
+
+<style>
+        .glass-card {
+            background-color: rgba(27, 27, 27, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .active-indicator::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: var(--color-primary, #b5c4ff);
+            border-radius: 0 4px 4px 0;
+        }
+    </style>
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
+<div id="jsb-header" data-page-title="Retention Dashboard"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- TopAppBar -->
+
+<!-- Main Content -->
+<main class="max-w-container-max mx-auto px-4 md:px-margin mt-stack-lg">
+<div class="px-4 md:px-8 pt-4"><a href="/dashboard" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>← Dashboard</span></a></div>
+<div class="mb-stack-lg">
+<h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-background mb-unit">Inactive Member Retention</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Monitor and recover at-risk members to reduce churn rate.</p>
+</div>
+<!-- Metrics Dashboard -->
+<section class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-gutter mb-stack-lg">
+<!-- Churn Rate -->
+<div class="glass-card rounded-xl p-stack-md flex flex-col justify-between">
+<div class="flex justify-between items-start mb-4">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Churn Rate</span>
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">trending_down</span>
+</div>
+<div>
+<div class="font-display-lg text-display-lg break-words min-w-0 text-on-background" id="metric-churn-rate">-%</div>
+<div class="font-body-md text-body-md text-on-surface-variant mt-1">Overall Churn Rate</div>
+</div>
+</div>
+<!-- Retention Rate -->
+<div class="glass-card rounded-xl p-stack-md flex flex-col justify-between">
+<div class="flex justify-between items-start mb-4">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Retention Rate</span>
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
+</div>
+<div>
+<div class="font-display-lg text-display-lg break-words min-w-0 text-on-background" id="metric-retention-rate">-%</div>
+<div class="font-body-md text-body-md text-on-surface-variant mt-1">Overall Retention Rate</div>
+</div>
+</div>
+<!-- Inactive Count -->
+<div class="glass-card rounded-xl p-stack-md flex flex-col justify-between">
+<div class="flex justify-between items-start mb-4">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Inactive Members</span>
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div>
+<div class="font-display-lg text-display-lg break-words min-w-0 text-on-background" id="metric-inactive-count">-</div>
+<div class="font-body-md text-body-md text-on-surface-variant mt-1">At-risk inactive list</div>
+</div>
+</div>
+<!-- Recovered Count -->
+<div class="glass-card rounded-xl p-stack-md flex flex-col justify-between">
+<div class="flex justify-between items-start mb-4">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Recovered (Mtd)</span>
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">replay</span>
+</div>
+<div>
+<div class="font-display-lg text-display-lg break-words min-w-0 text-on-background" id="metric-recovered-count">-</div>
+<div class="font-body-md text-body-md text-primary mt-1">Contact logged this month</div>
+</div>
+</div>
+</section>
+<!-- Risk Categories Bento Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter mb-stack-lg">
+<!-- Critical Risk (30+ Days) -->
+<div class="lg:col-span-12 xl:col-span-8 glass-card rounded-xl p-stack-lg relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1 bg-error"></div>
+<div class="flex justify-between items-center mb-stack-md pb-stack-sm border-b border-white/10">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-error text-3xl" style="font-variation-settings: 'FILL' 1;">error</span>
+<h3 class="font-title-lg text-title-lg text-on-background">Critical Risk <span class="text-error ml-2">(30+ Days Absent)</span></h3>
+</div>
+<span class="bg-error/10 text-error border border-error/30 px-3 py-1 rounded-full font-label-md text-label-md">12 Members</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Member Card -->
+<div class="bg-surface-container/50 border border-white/5 rounded-lg p-4 hover:bg-surface-variant/30 transition-colors">
+<div class="flex items-start gap-4">
+<img alt="Aman Verma" class="w-12 h-12 rounded-full object-cover border border-error/50" data-alt="A professional headshot of a male gym member in his late 20s. He has short dark hair and a serious expression. The lighting is cinematic and dark, fitting the premium JSB Fitness aesthetic. The background is a blurred, high-end fitness facility." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAozqP8o8JcdVp0orWKp59h_6fHX2x_E6goDxtbMXY6DaCM9Fs_hNDMaFTxchQ8qomeMaK48Yk9iEekCa1IK6IVBz-al9hLRfni2QaCNGL1Hn-zjSZFBg5JtJi5-J8qWD53VCgFOF9OIpHmjj40UHo2-Izkx_PdMhDKX0az_QBRsYDkVVWWtP9Ukm_ocjD7JAh-pWrlnmXaIRUy2fXKyXwmIslKprOiyAYaGq-E-LvWZsHKDmxQY8z2vfUAOeKsuC2b63zPQiDTaNin">
+<div class="flex-1">
+<h4 class="font-title-lg text-title-lg text-on-background text-base">Aman Verma</h4>
+<div class="font-body-md text-body-md text-on-surface-variant mb-2">Last Visit: Oct 12, 2023</div>
+<div class="flex gap-2">
+<span class="bg-error/10 text-error border border-error/30 px-2 py-0.5 rounded text-xs font-medium">35 Days Absent</span>
+<span class="bg-surface-variant text-on-surface-variant border border-outline/30 px-2 py-0.5 rounded text-xs font-medium">Premium Plan</span>
+</div>
+</div>
+</div>
+<div class="mt-4 flex gap-2">
+<button class="flex-1 bg-surface-bright hover:bg-surface-variant text-on-background font-label-md py-2 px-3 rounded flex items-center justify-center gap-2 border border-white/10 transition-colors">
+<span class="material-symbols-outlined text-[18px]">call</span> Call
+                            </button>
+<button class="flex-1 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] font-label-md py-2 px-3 rounded flex items-center justify-center gap-2 border border-[#25D366]/30 transition-colors">
+<span class="material-symbols-outlined text-[18px]">chat</span> WhatsApp
+                            </button>
+</div>
+</div>
+<!-- Member Card -->
+<div class="bg-surface-container/50 border border-white/5 rounded-lg p-4 hover:bg-surface-variant/30 transition-colors">
+<div class="flex items-start gap-4">
+<img alt="Priya Sharma" class="w-12 h-12 rounded-full object-cover border border-error/50" data-alt="A professional headshot of a female gym member in her 30s. She has dark hair tied back. The lighting is cinematic and dark, fitting the premium JSB Fitness aesthetic. The background is a subtle, out-of-focus modern gym environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvJSH29oKMOGc0QDsLl7hcilRzV1GCEMBQYiSEFzqrvlzlULretF2ad4CfoxiTaWdwDFjq-OYISbndnfT-odZjZNyMEfD5FaU3RP9auRETbSfuecyN873snyQUz5osvGRJJ1tDBGnbVrjdLkw-KHPXAYoYQ6hngqBjcLLRlm4Xu-RVoJ4QdF-DrSFYq-f72pAdUURQmxx4tlIUOzdWHM5tUC6mZuNRXSAyjXtas1sIiSaPVtpWN1SoXy5-IdXLVTtrejyRL1cSPrK7">
+<div class="flex-1">
+<h4 class="font-title-lg text-title-lg text-on-background text-base">Priya Sharma</h4>
+<div class="font-body-md text-body-md text-on-surface-variant mb-2">Last Visit: Oct 15, 2023</div>
+<div class="flex gap-2">
+<span class="bg-error/10 text-error border border-error/30 px-2 py-0.5 rounded text-xs font-medium">32 Days Absent</span>
+</div>
+</div>
+</div>
+<div class="mt-4 flex gap-2">
+<button class="flex-1 bg-primary text-on-primary font-label-md py-2 px-3 rounded flex items-center justify-center gap-2 transition-colors hover:bg-primary-fixed">
+<span class="material-symbols-outlined text-[18px]">event_available</span> Mark Contacted
+                            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- High Risk (20+ Days) -->
+<div class="lg:col-span-12 xl:col-span-4 glass-card rounded-xl p-stack-lg relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1 bg-tertiary"></div>
+<div class="flex justify-between items-center mb-stack-md pb-stack-sm border-b border-white/10">
+<h3 class="font-title-lg text-title-lg text-on-background flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">warning</span>
+                        High Risk <span class="text-tertiary text-sm">(20+ Days)</span>
+</h3>
+</div>
+<div class="space-y-4">
+<!-- Minimal Member Row -->
+<div class="flex items-center justify-between p-3 bg-surface-container/30 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold text-sm">RS</div>
+<div>
+<div class="font-body-lg text-on-background text-sm font-medium">Rohit Singh</div>
+<div class="text-xs text-tertiary">24 Days Absent</div>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<!-- Minimal Member Row -->
+<div class="flex items-center justify-between p-3 bg-surface-container/30 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold text-sm">AK</div>
+<div>
+<div class="font-body-lg text-on-background text-sm font-medium">Arjun Kumar</div>
+<div class="text-xs text-tertiary">21 Days Absent</div>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<!-- Minimal Member Row -->
+<div class="flex items-center justify-between p-3 bg-surface-container/30 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold text-sm">NP</div>
+<div>
+<div class="font-body-lg text-on-background text-sm font-medium">Neha Patel</div>
+<div class="text-xs text-tertiary">20 Days Absent</div>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Medium Risk (10+ Days) -->
+<div class="lg:col-span-6 glass-card rounded-xl p-stack-lg relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1 bg-secondary-fixed-dim"></div>
+<div class="flex justify-between items-center mb-stack-md pb-stack-sm border-b border-white/10">
+<h3 class="font-title-lg text-title-lg text-on-background flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary-fixed-dim" style="font-variation-settings: 'FILL' 1;">schedule</span>
+                        Medium Risk <span class="text-secondary-fixed-dim text-sm">(10+ Days)</span>
+</h3>
+<span class="text-on-surface-variant text-sm">34 Members</span>
+</div>
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<img alt="Vikram" class="w-10 h-10 rounded-full object-cover" data-alt="Professional headshot of a male gym member in dark athletic wear. Premium dark gym setting background. Lighting is sharp and high-contrast, fitting the elite JSB Fitness CRM style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKJn1ydoRT2kCfZWVoS_DCwuEsAVnSbf1V-2n3cknE0AJKz78moA1xR-poy9X-q5KlgW2NIEHYTuxSWnk1-xrnJshWUQXikTzESNjyegQyUdOx2DPmrgK4QuJ4C6FXeS1agaekbVUUQ6hrhGx3whFVI2U4Y9xdSLISwErg5HyP0puRFHA62I77cCSN1FaySxt8Mgvv-ctCI4_ijTOW6OtSrWXIKLtIDcE5hKho1Mzw0noKFUKudiCQUX_aGIX7meaFhJsbTqgS-PLb">
+<div>
+<div class="text-sm font-medium text-on-background">Vikram Malhotra</div>
+<div class="text-xs text-on-surface-variant">Last visit: Nov 05</div>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-secondary-fixed-dim text-sm font-medium">12 Days</span>
+<button class="w-8 h-8 rounded-full bg-surface-bright flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors border border-white/10">
+<span class="material-symbols-outlined text-[16px]">calendar_month</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Low Risk (5+ Days) -->
+<div class="lg:col-span-6 glass-card rounded-xl p-stack-lg relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1 bg-surface-variant"></div>
+<div class="flex justify-between items-center mb-stack-md pb-stack-sm border-b border-white/10">
+<h3 class="font-title-lg text-title-lg text-on-background flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant" style="font-variation-settings: 'FILL' 1;">info</span>
+                        Early Warning <span class="text-on-surface-variant text-sm">(5+ Days)</span>
+</h3>
+<span class="text-on-surface-variant text-sm">82 Members</span>
+</div>
+<div class="space-y-3">
+<div class="flex items-center justify-between opacity-80 hover:opacity-100 transition-opacity">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold text-sm">SJ</div>
+<div>
+<div class="text-sm font-medium text-on-background">Sanjay Jain</div>
+<div class="text-xs text-on-surface-variant">Last visit: Nov 12</div>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-on-surface-variant text-sm font-medium">5 Days</span>
+<button class="w-8 h-8 rounded-full bg-surface-bright flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors border border-white/10" onclick="window.location.href='/notifications'">
+<span class="material-symbols-outlined text-[16px]">notifications</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- SideNav (Desktop) -->
+
+<!-- BottomNavBar (Mobile) -->
+
+
+<!-- Modal for Log Contact -->
+<div id="logContactModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 hidden" style="background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px);">
+  <div class="glass-card w-full max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] border border-white/20">
+      <div class="p-6 border-b border-white/10 flex justify-between items-center">
+          <h3 class="font-headline-md text-headline-md text-on-surface">Log Retention Contact</h3>
+          <button id="closeContactModal" type="button" class="text-on-surface-variant hover:text-on-surface p-1 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center">
+              <span class="material-symbols-outlined">close</span>
+          </button>
+      </div>
+      <form id="logContactForm" class="p-6 flex flex-col gap-4">
+          <input type="hidden" name="member_id" id="contactMemberId">
+          <input type="hidden" name="risk_level" id="contactRiskLevel">
+          <div class="flex flex-col gap-1">
+              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Member</label>
+              <input type="text" id="contactMemberName" readonly="" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface/70 focus:outline-none cursor-not-allowed">
+          </div>
+          <div class="flex flex-col gap-1">
+              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Contact Channel</label>
+              <select name="channel" id="contactChannel" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-surface-container">
+                  <option value="WhatsApp">WhatsApp</option>
+                  <option value="Call">Phone Call</option>
+                  <option value="Email">Email</option>
+                  <option value="SMS">SMS</option>
+              </select>
+          </div>
+          <div id="whatsappFields" class="flex flex-col gap-4">
+              <div class="flex flex-col gap-1">
+                  <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Select Message Template</label>
+                  <select id="retentionTemplate" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-surface-container">
+                      <option value="inactive">Inactive Member Follow-Up</option>
+                      <option value="welcome">Welcome Message</option>
+                      <option value="expiry">Membership Expiry Reminder</option>
+                      <option value="payment">Payment Due Reminder</option>
+                      <option value="festival">Festival Promotion</option>
+                  </select>
+              </div>
+              <div class="flex flex-col gap-1">
+                  <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Personalized Message Preview</label>
+                  <textarea id="retentionMessagePreview" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none h-24" placeholder="Message preview..."></textarea>
+              </div>
+          </div>
+          <div class="flex flex-col gap-1">
+              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Notes / Conversation Details</label>
+              <textarea name="notes" required="" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none h-24" placeholder="e.g. Discussed travel plans, will return next Monday..."></textarea>
+          </div>
+          <button type="submit" class="bg-primary text-on-primary w-full py-3 rounded-lg font-title-lg text-title-lg flex items-center justify-center gap-2 mt-2 hover:bg-primary/90 transition-colors active:scale-95">
+              Save Log Note
+          </button>
+      </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const modal = document.getElementById("logContactModal");
+    const closeBtn = document.getElementById("closeContactModal");
+    const form = document.getElementById("logContactForm");
+    
+    const contactMemberIdInput = document.getElementById("contactMemberId");
+    const contactRiskLevelInput = document.getElementById("contactRiskLevel");
+    const contactMemberNameInput = document.getElementById("contactMemberName");
+    const contactChannelSelect = document.getElementById("contactChannel");
+
+    const whatsappFields = document.getElementById("whatsappFields");
+    const retentionTemplateSelect = document.getElementById("retentionTemplate");
+    const retentionMessagePreview = document.getElementById("retentionMessagePreview");
+
+    let activeContactMember = null;
+    let activeContactMembership = null;
+
+    function toggleWhatsappFields() {
+        if (!whatsappFields) return;
+        const channel = contactChannelSelect.value;
+        if (channel === "WhatsApp") {
+            whatsappFields.classList.remove("hidden");
+        } else {
+            whatsappFields.classList.add("hidden");
+        }
+    }
+
+    if (contactChannelSelect) {
+        contactChannelSelect.addEventListener("change", () => {
+            toggleWhatsappFields();
+            updateRetentionPreview();
+        });
+    }
+
+    if (retentionTemplateSelect) {
+        retentionTemplateSelect.addEventListener("change", updateRetentionPreview);
+    }
+
+    function updateRetentionPreview() {
+        if (!activeContactMember || !retentionMessagePreview) return;
+        const templateId = retentionTemplateSelect.value;
+        let msg = '';
+        if (templateId === 'welcome') {
+            msg = `Hello *${activeContactMember.full_name}*, welcome to *JSB Fitness*! Your profile is set up. Let's crush those fitness goals! 💪`;
+        } else if (templateId === 'expiry') {
+            const endDate = activeContactMembership ? activeContactMembership.end_date : 'N/A';
+            msg = `Hi *${activeContactMember.full_name}*, this is a friendly reminder from *JSB Fitness*. Your membership is expiring on *${endDate}*. Renew today to keep training! 🏋️‍♂️`;
+        } else if (templateId === 'payment') {
+            const amount = activeContactMembership ? activeContactMembership.price : '1,500';
+            msg = `Hi *${activeContactMember.full_name}*, you have a pending payment of *₹${amount}* at *JSB Fitness*. Please clear it at your earliest convenience. Thank you!`;
+        } else if (templateId === 'inactive') {
+            msg = `Hello *${activeContactMember.full_name}*, we missed you at *JSB Fitness*! You haven't checked in for some days. Is everything okay? Let us know if you need help getting back on track! 🤝`;
+        } else if (templateId === 'festival') {
+            msg = `Dear *${activeContactMember.full_name}*, warm greetings from *JSB Fitness*! Celebrate this festival season with a healthy lifestyle. Special 20% discount on annual renewals this week! 🌟`;
+        }
+        retentionMessagePreview.value = msg;
+    }
+
+    // Close modal handlers
+    if (closeBtn) {
+        closeBtn.addEventListener("click", () => modal.classList.add("hidden"));
+    }
+    window.addEventListener("click", (e) => {
+        if (e.target === modal) modal.classList.add("hidden");
+    });
+
+    // Form submit handler
+    if (form) {
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const payload = {
+                member_id: contactMemberIdInput.value,
+                risk_level: contactRiskLevelInput.value,
+                channel: contactChannelSelect.value,
+                notes: form.querySelector('textarea[name="notes"]').value
+            };
+            try {
+                // If WhatsApp, dispatch it first
+                if (contactChannelSelect.value === 'WhatsApp') {
+                    const templateId = retentionTemplateSelect.value;
+                    const customMsg = retentionMessagePreview.value;
+                    try {
+                        const wsRes = await window.api.fetch('/whatsapp/send', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                member_id: contactMemberIdInput.value,
+                                template_id: templateId,
+                                custom_message: customMsg,
+                                type: 'Attendance'
+                            })
+                        });
+                        const wsData = await wsRes.json();
+                        if (wsRes.ok) {
+                            window.open(wsData.whatsappUrl, '_blank');
+                        }
+                    } catch(wsErr) {
+                        console.error('WhatsApp send error:', wsErr);
+                    }
+                }
+
+                const res = await window.api.fetch("/retention/contact", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    modal.classList.add("hidden");
+                    form.reset();
+                    alert("Contact log saved successfully.");
+                    loadRisks();
+                } else {
+                    const err = await res.json();
+                    alert(err.error || "Failed to log contact.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Network error.");
+            }
+        });
+    }
+
+    // Open log contact modal
+    window.openContactModal = async function(id, name, risk, prefilledChannel = "WhatsApp") {
+        if (contactMemberIdInput) contactMemberIdInput.value = id;
+        if (contactMemberNameInput) contactMemberNameInput.value = name;
+        if (contactRiskLevelInput) contactRiskLevelInput.value = risk;
+        if (contactChannelSelect) contactChannelSelect.value = prefilledChannel;
+        toggleWhatsappFields();
+        if (modal) modal.classList.remove("hidden");
+
+        // Fetch details to build real preview
+        try {
+            const res = await window.api.fetch(`/members/${id}`);
+            const data = await res.json();
+            activeContactMember = data.member;
+            activeContactMembership = data.membership;
+            updateRetentionPreview();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    async function loadRisks() {
+        try {
+            const res = await window.api.fetch("/retention/inactive");
+            const data = await res.json();
+
+            // Total inactive count calculation
+            const totalCount = data.critical.length + data.high.length + data.medium.length + data.early.length;
+            const totalCountEl = document.getElementById("metric-inactive-count");
+            if (totalCountEl) {
+                totalCountEl.innerText = totalCount;
+            }
+
+            // Fetch Churn & Retention metrics
+            try {
+              const resChurn = await window.api.fetch("/analytics/churn");
+              const churnData = await resChurn.json();
+              document.getElementById("metric-churn-rate").innerText = Number(churnData.churnRate).toFixed(1) + "%";
+              document.getElementById("metric-retention-rate").innerText = Number(100 - churnData.churnRate).toFixed(1) + "%";
+              
+              // Count total retention contact logs this month as recovered
+              const resBi = await window.api.fetch("/analytics/bi?range=1");
+              const biData = await resBi.json();
+              document.getElementById("metric-recovered-count").innerText = biData.renewals || 0;
+            } catch (err) {
+              console.error("Error loading churn analytics on retention page:", err);
+            }
+
+            // Update Critical Column Count badge
+            const critBadge = document.querySelector("main .lg\\:col-span-12.xl\\:col-span-8 .flex.justify-between.items-center span");
+            if (critBadge) {
+                critBadge.innerText = `${data.critical.length} Members`;
+            }
+            
+            // Update Medium column header count
+            const medBadge = document.querySelector("main .lg\\:col-span-6:nth-of-type(3) .flex.justify-between span");
+            if (medBadge) {
+                medBadge.innerText = `${data.medium.length} Members`;
+            }
+
+            // Update Early column header count
+            const earlyBadge = document.querySelector("main .lg\\:col-span-6:nth-of-type(4) .flex.justify-between span");
+            if (earlyBadge) {
+                earlyBadge.innerText = `${data.early.length} Members`;
+            }
+
+            // 1. Render Critical Risk Cards
+            const criticalContainer = document.querySelector("main .lg\\:col-span-12.xl\\:col-span-8 .grid");
+            if (criticalContainer) {
+                criticalContainer.innerHTML = "";
+                data.critical.forEach(m => {
+                    const card = document.createElement("div");
+                    card.className = "bg-surface-container/50 border border-white/5 rounded-lg p-4 hover:bg-surface-variant/30 transition-colors flex flex-col justify-between";
+                    
+                    const avatar = m.photo_url || 'https://lh3.googleusercontent.com/aida-public/AB6AXuAozqP8o8JcdVp0orWKp59h_6fHX2x_E6goDxtbMXY6DaCM9Fs_hNDMaFTxchQ8qomeMaK48Yk9iEekCa1IK6IVBz-al9hLRfni2QaCNGL1Hn-zjSZFBg5JtJi5-J8qWD53VCgFOF9OIpHmjj40UHo2-Izkx_PdMhDKX0az_QBRsYDkVVWWtP9Ukm_ocjD7JAh-pWrlnmXaIRUy2fXKyXwmIslKprOiyAYaGq-E-LvWZsHKDmxQY8z2vfUAOeKsuC2b63zPQiDTaNin';
+                    
+                    card.innerHTML = `
+                        <div class="flex items-start gap-4">
+                            <img alt="${m.full_name}" class="w-12 h-12 rounded-full object-cover border border-error/50" src="${avatar}"/>
+                            <div class="flex-1">
+                                <h4 class="font-title-lg text-title-lg text-on-background text-base">${m.full_name}</h4>
+                                <div class="font-body-md text-body-md text-on-surface-variant mb-2">Last Visit: ${m.last_visit}</div>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="bg-error/10 text-error border border-error/30 px-2 py-0.5 rounded text-xs font-medium">${m.absence_days} Days Absent</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex gap-2">
+                            <button onclick="openContactModal('${m.id}', '${m.full_name}', 'Critical', 'Call')" class="flex-1 bg-surface-bright hover:bg-surface-variant text-on-background font-label-md py-2 px-3 rounded flex items-center justify-center gap-2 border border-white/10 transition-colors">
+                                <span class="material-symbols-outlined text-[18px]">call</span> Call
+                            </button>
+                            <button onclick="openContactModal('${m.id}', '${m.full_name}', 'Critical', 'WhatsApp')" class="flex-1 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] font-label-md py-2 px-3 rounded flex items-center justify-center gap-2 border border-[#25D366]/30 transition-colors">
+                                <span class="material-symbols-outlined text-[18px]">chat</span> WhatsApp
+                            </button>
+                            <button onclick="openContactModal('${m.id}', '${m.full_name}', 'Critical', 'WhatsApp')" class="flex-1 bg-primary text-on-primary font-label-md py-2 px-3 rounded flex items-center justify-center gap-2 transition-colors hover:bg-primary-fixed">
+                                <span class="material-symbols-outlined text-[18px]">event_available</span> Log Contact
+                            </button>
+                        </div>
+                    `;
+                    criticalContainer.appendChild(card);
+                });
+            }
+
+            // 2. Render High Risk Cards
+            const highContainer = document.querySelector("main .lg\\:col-span-12.xl\\:col-span-4 .space-y-4");
+            if (highContainer) {
+                highContainer.innerHTML = "";
+                data.high.forEach(m => {
+                    const initials = m.full_name.split(" ").map(n => n[0]).join("").substring(0,2).toUpperCase();
+                    const row = document.createElement("div");
+                    row.className = "flex items-center justify-between p-3 bg-surface-container/30 rounded-lg border border-white/5 hover:border-white/10 transition-colors cursor-pointer";
+                    row.onclick = () => openContactModal(m.id, m.full_name, 'High', 'WhatsApp');
+                    row.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold text-sm">${initials}</div>
+                            <div>
+                                <div class="font-body-lg text-on-background text-sm font-medium">${m.full_name}</div>
+                                <div class="text-xs text-tertiary">${m.absence_days} Days Absent</div>
+                            </div>
+                        </div>
+                        <button class="text-on-surface-variant hover:text-primary transition-colors p-1">
+                            <span class="material-symbols-outlined text-[20px]">chat</span>
+                        </button>
+                    `;
+                    highContainer.appendChild(row);
+                });
+            }
+
+            // 3. Render Medium Risk Cards
+            const mediumContainer = document.querySelector("main .lg\\:col-span-6:nth-of-type(3) .space-y-3");
+            if (mediumContainer) {
+                mediumContainer.innerHTML = "";
+                data.medium.forEach(m => {
+                    const initials = m.full_name.split(" ").map(n => n[0]).join("").substring(0,2).toUpperCase();
+                    const avatar = m.photo_url || '';
+                    const row = document.createElement("div");
+                    row.className = "flex items-center justify-between p-2 hover:bg-surface-container/20 rounded transition-colors cursor-pointer";
+                    row.onclick = () => openContactModal(m.id, m.full_name, 'Medium', 'WhatsApp');
+                    row.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            ${avatar ? `<img src="${avatar}" class="w-10 h-10 rounded-full object-cover" />` : `<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold text-sm">${initials}</div>`}
+                            <div>
+                                <div class="text-sm font-medium text-on-background">${m.full_name}</div>
+                                <div class="text-xs text-on-surface-variant">Last visit: ${m.last_visit}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-secondary-fixed-dim text-sm font-medium">${m.absence_days} Days</span>
+                            <button class="w-8 h-8 rounded-full bg-surface-bright flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors border border-white/10">
+                                <span class="material-symbols-outlined text-[16px]">chat</span>
+                            </button>
+                        </div>
+                    `;
+                    mediumContainer.appendChild(row);
+                });
+            }
+
+            // 4. Render Early Warning Cards
+            const earlyContainer = document.querySelector("main .lg\\:col-span-6:nth-of-type(4) .space-y-3");
+            if (earlyContainer) {
+                earlyContainer.innerHTML = "";
+                data.early.forEach(m => {
+                    const initials = m.full_name.split(" ").map(n => n[0]).join("").substring(0,2).toUpperCase();
+                    const avatar = m.photo_url || '';
+                    const row = document.createElement("div");
+                    row.className = "flex items-center justify-between p-2 hover:bg-surface-container/20 rounded transition-colors cursor-pointer opacity-80 hover:opacity-100";
+                    row.onclick = () => openContactModal(m.id, m.full_name, 'Early', 'WhatsApp');
+                    row.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            ${avatar ? `<img src="${avatar}" class="w-10 h-10 rounded-full object-cover" />` : `<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold text-sm">${initials}</div>`}
+                            <div>
+                                <div class="text-sm font-medium text-on-background">${m.full_name}</div>
+                                <div class="text-xs text-on-surface-variant">Last visit: ${m.last_visit}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-on-surface-variant text-sm font-medium">${m.absence_days} Days</span>
+                            <button class="w-8 h-8 rounded-full bg-surface-bright flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors border border-white/10">
+                                <span class="material-symbols-outlined text-[16px]">chat</span>
+                            </button>
+                        </div>
+                    `;
+                    earlyContainer.appendChild(row);
+                });
+            }
+
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    loadRisks();
+});
+</script>
+
+<div id="jsb-mobile-nav"></div>
+</body></html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Verify Email</title>
+
+<style>
+    .material-symbols-outlined {
+        font-family: 'Material Symbols Outlined';
+        font-weight: normal;
+        font-style: normal;
+        font-size: 24px;
+        line-height: 1;
+        letter-spacing: normal;
+        text-transform: none;
+        display: inline-block;
+        white-space: nowrap;
+        word-wrap: normal;
+        direction: ltr;
+        -webkit-font-feature-settings: 'liga';
+        -webkit-font-smoothing: antialiased;
+    }
+    .bg-mesh {
+        background-color: #131313;
+        background-image: 
+            radial-gradient(at 0% 0%, rgba(53, 53, 53, 0.4) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, rgba(31, 31, 31, 0.5) 0px, transparent 50%);
+    }
+</style>
+
+</head>
+<body class="bg-mesh min-h-screen flex items-center justify-center p-margin-mobile md:p-margin-desktop text-on-surface font-body-md antialiased selection:bg-primary/30 selection:text-primary md:pl-[280px]">
+
+<div class="absolute top-1/4 left-1/4 w-96 h-96 bg-surface-variant/20 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[150px] pointer-events-none"></div>
+
+<main class="w-full max-w-[440px] relative z-10 flex flex-col">
+<div class="bg-surface-container/60 backdrop-blur-xl border border-outline-variant/30 rounded-xl p-8 md:p-10 shadow-2xl flex flex-col relative overflow-hidden text-center">
+<div class="absolute inset-0 bg-gradient-to-br from-surface-bright/10 to-transparent pointer-events-none"></div>
+<div class="relative z-10">
+
+<div class="flex justify-center mb-xl">
+<div class="h-16 w-16 flex items-center justify-center rounded-lg bg-surface-container-highest border border-outline-variant/50 shadow-inner" id="status-icon-container">
+<span class="material-symbols-outlined text-4xl text-primary animate-pulse" id="status-icon" style="font-variation-settings: 'FILL' 1;">hourglass_empty</span>
+</div>
+</div>
+
+<h1 class="font-headline-lg text-headline-lg text-on-surface mb-xs" id="status-title">Verifying Email...</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-xl" id="status-desc">Please wait while we confirm your account.</p>
+
+<button class="w-full bg-primary text-on-primary py-4 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-primary-fixed-dim hover:scale-[0.98] active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/10 border border-primary-fixed/20 hidden" id="login-btn" onclick="window.location.href='/login'" type="button">
+<span>PROCEED TO SIGN IN</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+
+</div>
+</div>
+</main>
+
+<script>
+window.addEventListener('DOMContentLoaded', async () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  
+  const icon = document.getElementById('status-icon');
+  const title = document.getElementById('status-title');
+  const desc = document.getElementById('status-desc');
+  const btn = document.getElementById('login-btn');
+  
+  if (!token) {
+      icon.innerText = 'error';
+      icon.classList.replace('text-primary', 'text-error');
+      icon.classList.remove('animate-pulse');
+      title.innerText = 'Verification Failed';
+      desc.innerText = 'Invalid or missing verification token.';
+      return;
+  }
+  
+  try {
+    const response = await window.api.fetch(`/auth/verify-email?token=${token}`, {
+      method: 'GET'
+    });
+    
+    if (response.ok) {
+      icon.innerText = 'check_circle';
+      icon.classList.replace('text-primary', 'text-success');
+      icon.classList.remove('animate-pulse');
+      title.innerText = 'Email Verified!';
+      desc.innerText = 'Your account has been successfully verified. You can now log in.';
+      btn.classList.remove('hidden');
+    } else {
+      const data = await response.json();
+      icon.innerText = 'error';
+      icon.classList.replace('text-primary', 'text-error');
+      icon.classList.remove('animate-pulse');
+      title.innerText = 'Verification Failed';
+      desc.innerText = data.error || 'Failed to verify email.';
+    }
+  } catch (err) {
+    console.error(err);
+    icon.innerText = 'wifi_off';
+    icon.classList.replace('text-primary', 'text-error');
+    icon.classList.remove('animate-pulse');
+    title.innerText = 'System Offline';
+    desc.innerText = 'Unable to connect to the server.';
+  }
+});
+</script>
+</body></html>

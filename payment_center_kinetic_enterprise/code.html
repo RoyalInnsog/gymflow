@@ -1,0 +1,360 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Payment Center</title>
+
+<style>
+        .glass-panel {
+            background: rgba(27, 27, 27, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .text-glow {
+            text-shadow: 0 0 10px rgba(181, 196, 255, 0.5);
+        }
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+      </style>
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-surface">
+<div id="jsb-header" data-page-title="Payment Center"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- TopAppBar -->
+
+<!-- Main Content Canvas -->
+<main class="flex-grow w-full max-w-container-max mx-auto px-4 md:px-margin py-stack-lg md:py-margin pb-32">
+<div class="px-4 md:px-8 pt-4"><a href="/finance" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>← Finance</span></a></div>
+<div class="mb-stack-lg">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Payment Collection Center</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-unit">Manage outstanding dues and process transactions.</p>
+</div>
+<!-- Summary Header Grid (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md md:gap-gutter mb-stack-lg">
+<!-- Outstanding Dues Card -->
+<div class="glass-panel rounded-xl p-stack-lg flex flex-col relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-error/5 to-transparent z-0"></div>
+<div class="relative z-10 flex items-start justify-between">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Outstanding Dues</p>
+<div class="mt-stack-sm flex items-baseline gap-2">
+<span class="font-display-lg text-display-lg break-words min-w-0 text-error text-glow">₹85,000</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-unit">Across 42 active members</p>
+</div>
+<div class="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center border border-error/20 text-error">
+<span class="material-symbols-outlined text-3xl" data-icon="account_balance_wallet" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+</div>
+</div>
+</div>
+<!-- Today's Collections Card -->
+<div class="glass-panel rounded-xl p-stack-lg flex flex-col relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-secondary/5 to-transparent z-0"></div>
+<div class="relative z-10 flex items-start justify-between">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Today's Collections</p>
+<div class="mt-stack-sm flex items-baseline gap-2">
+<span class="font-display-lg text-display-lg break-words min-w-0 text-secondary">₹12,400</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-unit">Updated 5 mins ago</p>
+</div>
+<div class="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center border border-secondary/20 text-secondary">
+<span class="material-symbols-outlined text-3xl" data-icon="trending_up" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Pending Payments Section -->
+<h3 class="font-title-lg text-title-lg text-on-surface mb-stack-md border-b border-white/10 pb-2">Pending Payments</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-stack-md md:gap-gutter">
+<!-- Member Card: Ananya Singh -->
+<div class="glass-panel rounded-xl p-stack-md flex flex-col">
+<div class="flex items-center justify-between mb-stack-md">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high border border-white/10 overflow-hidden">
+<img alt="Ananya Singh" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0roygR7EGYmQSYrQkHmY8SZ7kUVfpmtM8EtVKlOWOFZXYgcFgb2XCfpjmIvudWC1MZFczfku9H_l8QVUuvJVWNgKzqBn2Z8Ji-nducwPVNRwXOUDp_hBejRCLxYfrrph1Zq0fnD1qKI2IfXHaVBk4fK5lcilpWyIhKh2ZlEngyoAITJ7yc-YgMB9Hg12axPqiao-vNiQ3NoVY34zBsztJ8WqhGp0Oc0DQMLGS9iGVHmWF21FLPh4sI6O6s9ffvT1_zvQnoKOZJJJS">
+</div>
+<div>
+<h4 class="font-title-lg text-title-lg text-on-surface leading-tight">Ananya Singh</h4>
+<p class="font-label-md text-label-md text-on-surface-variant">ID: KIN-8892</p>
+</div>
+</div>
+<div class="bg-tertiary/10 border border-tertiary/30 px-2 py-1 rounded text-tertiary font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="schedule" style="font-variation-settings: 'FILL' 1;">schedule</span>
+                        Due in 2 days
+                    </div>
+</div>
+<div class="border-t border-white/10 py-stack-sm my-stack-sm">
+<div class="flex justify-between items-end">
+<span class="font-body-md text-body-md text-on-surface-variant">Amount Due</span>
+<span class="font-headline-md text-headline-md text-on-surface">₹4,500</span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant text-right">Quarterly Membership</p>
+</div>
+<button class="mt-auto w-full bg-transparent border border-primary text-primary hover:bg-primary/10 transition-colors font-body-md text-body-md font-medium py-2 rounded-lg flex items-center justify-center gap-2" onclick="window.location.href='/payment-center'">
+<span class="material-symbols-outlined" data-icon="payment" style="font-variation-settings: 'FILL' 0;">payment</span>
+                    Collect Payment
+                </button>
+</div>
+<!-- Member Card: Rohan Mehta (Active State for Modal Demo) -->
+<div class="glass-panel rounded-xl p-stack-md flex flex-col relative">
+<!-- Active Indicator -->
+<div class="absolute left-0 top-0 bottom-0 w-[2px] bg-primary rounded-l-xl"></div>
+<div class="absolute inset-0 bg-primary/5 pointer-events-none rounded-xl"></div>
+<div class="flex items-center justify-between mb-stack-md relative z-10">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high border border-white/10 overflow-hidden">
+<img alt="Rohan Mehta" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEyQBjHGUXjSxyX-_c08KxIA-f8v3eg6Xt2e7k7lpNFiIx2sbZOqMM4CWes4HJ0Lqsc7pCu0KHlUpTEgZubfY3liNxfuUwcVzLfJwk6oKhv_nME7V2QmMKTd-IuzKxiWGNLfeGHNwM8Pa9iWa2wU2kJns0yINobnLlaNmSD6ee9Jjk5JXka3Ni0TnvWyt9d3FTKrL_z8TfR7x2-vm9z4VU_t0rdAbtGveHd2xuLOuQAGWAzRJ2dJDZytXMnbHUlv3yDtVkEX8lew7L">
+</div>
+<div>
+<h4 class="font-title-lg text-title-lg text-on-surface leading-tight">Rohan Mehta</h4>
+<p class="font-label-md text-label-md text-on-surface-variant">ID: KIN-9014</p>
+</div>
+</div>
+<div class="bg-error/10 border border-error/30 px-2 py-1 rounded text-error font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="error" style="font-variation-settings: 'FILL' 1;">error</span>
+                        Overdue
+                    </div>
+</div>
+<div class="border-t border-white/10 py-stack-sm my-stack-sm relative z-10">
+<div class="flex justify-between items-end">
+<span class="font-body-md text-body-md text-on-surface-variant">Amount Due</span>
+<span class="font-headline-md text-headline-md text-error">₹2,200</span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant text-right">Personal Training x2</p>
+</div>
+<button class="mt-auto w-full bg-primary text-on-primary hover:bg-primary-fixed transition-colors font-body-md text-body-md font-medium py-2 rounded-lg flex items-center justify-center gap-2 relative z-10 shadow-[0_0_15px_rgba(45,106,255,0.3)]" onclick="window.location.href='/payment-center'">
+<span class="material-symbols-outlined" data-icon="payment" style="font-variation-settings: 'FILL' 0;">payment</span>
+                    Collect Payment
+                </button>
+</div>
+<!-- Member Card: Vikram Sharma -->
+<div class="glass-panel rounded-xl p-stack-md flex flex-col opacity-75">
+<div class="flex items-center justify-between mb-stack-md">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high border border-white/10 overflow-hidden">
+<img alt="Vikram Sharma" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDH4KLlQDvCKfYR5oKEtt742YzD71CL-6u9a7IE04gaCSVcfAAuEGZW2_yWnka3_GuwQEzPbxre1yZvaMy5VzDEqglu5u9LFIk17ke7S27fZb7w36OYNqUcxpC53ScSEt-yRs-UNEenaeE3bGJWipCemmKbPXeJfyV7SpTZFNVzJm-MTa_lGzjI2s4VR0s1Nz-ARaQcFfVmCG-Uh1xYwhfRslqAskL5NHb17JR9op1S_ERlMP9Y6LyHP_BVy19ccJ2wWLeNl_KKIKEZ">
+</div>
+<div>
+<h4 class="font-title-lg text-title-lg text-on-surface leading-tight">Vikram Sharma</h4>
+<p class="font-label-md text-label-md text-on-surface-variant">ID: KIN-7731</p>
+</div>
+</div>
+<div class="bg-tertiary/10 border border-tertiary/30 px-2 py-1 rounded text-tertiary font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="schedule" style="font-variation-settings: 'FILL' 1;">schedule</span>
+                        Due Today
+                    </div>
+</div>
+<div class="border-t border-white/10 py-stack-sm my-stack-sm">
+<div class="flex justify-between items-end">
+<span class="font-body-md text-body-md text-on-surface-variant">Amount Due</span>
+<span class="font-headline-md text-headline-md text-on-surface">₹12,000</span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant text-right">Annual Renewal</p>
+</div>
+<button class="mt-auto w-full bg-transparent border border-outline text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-colors font-body-md text-body-md font-medium py-2 rounded-lg flex items-center justify-center gap-2" onclick="window.location.href='/payment-center'">
+<span class="material-symbols-outlined" data-icon="payment" style="font-variation-settings: 'FILL' 0;">payment</span>
+                    Collect Payment
+                </button>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+
+<!-- Modal / Bottom Sheet for Rohan Mehta -->
+<div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-overlay p-4">
+<div class="glass-panel w-full max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] border border-white/20 translate-y-0 transition-transform duration-300">
+<!-- Handle for mobile -->
+<div class="w-12 h-1.5 bg-surface-variant rounded-full mx-auto mt-3 sm:hidden"></div>
+<div class="p-stack-lg pb-stack-sm border-b border-white/10 flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Process Payment</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Rohan Mehta • ₹2,200 Overdue</p>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="close" style="font-variation-settings: 'FILL' 0;">close</span>
+</button>
+</div>
+<div class="p-stack-lg flex flex-col gap-stack-md">
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-2">Select Payment Method</p>
+<!-- Action: Collect Cash -->
+<button class="w-full bg-surface-container border border-white/10 hover:border-primary/50 hover:bg-primary/5 transition-all p-4 rounded-xl flex items-center gap-4 text-left group" onclick="window.location.href='/finance'">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined" data-icon="payments" style="font-variation-settings: 'FILL' 0;">payments</span>
+</div>
+<div class="flex-grow">
+<h4 class="font-title-lg text-title-lg text-on-surface">Collect Cash</h4>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">Record manual cash transaction</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary" data-icon="chevron_right" style="font-variation-settings: 'FILL' 0;">chevron_right</span>
+</button>
+<!-- Action: UPI -->
+<button class="w-full bg-surface-container border border-white/10 hover:border-primary/50 hover:bg-primary/5 transition-all p-4 rounded-xl flex items-center gap-4 text-left group relative overflow-hidden">
+<!-- Subtle glow for preferred method -->
+<div class="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="relative z-10 w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined" data-icon="qr_code_scanner" style="font-variation-settings: 'FILL' 0;">qr_code_scanner</span>
+</div>
+<div class="flex-grow relative z-10">
+<h4 class="font-title-lg text-title-lg text-on-surface">UPI (PhonePe/GPay)</h4>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">Send payment link or scan QR</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary relative z-10" data-icon="chevron_right" style="font-variation-settings: 'FILL' 0;">chevron_right</span>
+</button>
+</div>
+<div class="p-stack-lg pt-stack-sm bg-surface-container-low border-t border-white/5">
+<!-- Action: Generate Receipt (Secondary) -->
+<button class="w-full bg-transparent border border-outline text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-colors font-body-md text-body-md font-medium py-3 rounded-lg flex items-center justify-center gap-2" onclick="window.location.href='/daily-closing'">
+<span class="material-symbols-outlined" data-icon="receipt_long" style="font-variation-settings: 'FILL' 0;">receipt_long</span>
+                    Generate Receipt Only
+                </button>
+</div>
+</div>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const modal = document.querySelector('.modal-overlay');
+  if (modal) modal.style.display = 'none'; // Hide modal initially
+
+  let selectedInvoiceId = null;
+  let selectedInvoiceNumber = null;
+  let selectedAmount = null;
+
+  async function loadPendingPayments() {
+    try {
+      const response = await window.api.fetch('/finance/pending');
+      const invoices = await response.json();
+      
+      const grid = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3');
+      if (grid) {
+        grid.innerHTML = '';
+        invoices.forEach(inv => {
+          const photo = inv.photo_url || 'https://via.placeholder.com/150';
+          const card = document.createElement('div');
+          card.className = "glass-panel rounded-xl p-stack-md flex flex-col relative";
+          card.innerHTML = `
+            <div class="flex items-center justify-between mb-stack-md">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-surface-container-high border border-white/10 overflow-hidden">
+                  <img alt="${inv.full_name}" class="w-full h-full object-cover" src="${photo}"/>
+                </div>
+                <div>
+                  <h4 class="font-title-lg text-title-lg text-on-surface leading-tight">${inv.full_name}</h4>
+                  <p class="font-label-md text-label-md text-on-surface-variant">ID: ${inv.member_id}</p>
+                </div>
+              </div>
+              <div class="bg-error/10 border border-error/30 px-2 py-1 rounded text-error font-label-md text-label-md flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px]">error</span>
+                Overdue
+              </div>
+            </div>
+            <div class="border-t border-white/10 py-stack-sm my-stack-sm">
+              <div class="flex justify-between items-end">
+                <span class="font-body-md text-body-md text-on-surface-variant">Amount Due</span>
+                <span class="font-headline-md text-headline-md text-error">₹${inv.total_amount.toLocaleString()}</span>
+              </div>
+            </div>
+            <button class="mt-auto w-full bg-primary text-on-primary hover:bg-primary-fixed transition-colors font-body-md text-body-md font-medium py-2 rounded-lg flex items-center justify-center gap-2 relative z-10 shadow-[0_0_15px_rgba(45,106,255,0.3)]">
+              <span class="material-symbols-outlined">payment</span>
+              Collect Payment
+            </button>
+          `;
+          
+          // Attach collect payment click
+          const btn = card.querySelector('button');
+          btn.onclick = () => {
+            selectedInvoiceId = inv.id;
+            selectedInvoiceNumber = inv.invoice_number;
+            selectedAmount = inv.total_amount;
+            
+            // Update modal text
+            const modalTitle = modal.querySelector('.font-body-md.text-body-md');
+            if (modalTitle) {
+              modalTitle.innerText = `${inv.full_name} • ₹${inv.total_amount.toLocaleString()} Overdue`;
+            }
+            
+            modal.style.display = 'flex';
+          };
+          
+          grid.appendChild(card);
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // Handle modal close
+  const closeBtn = modal.querySelector('button.text-on-surface-variant');
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      modal.style.display = 'none';
+    };
+  }
+
+  // Process manual collection
+  async function processCollection(method) {
+    if (!selectedInvoiceId) return;
+    
+    try {
+      const response = await window.api.fetch('/finance/collect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoice_id: selectedInvoiceId,
+          method: method,
+          amount: selectedAmount
+        })
+      });
+      
+      const resData = await response.json();
+      if (response.ok) {
+        alert(`${resData.message}\\nTransaction Ref: ${resData.transactionReference}`);
+        modal.style.display = 'none';
+        // Redirect to receipt
+        window.location.href = `/receipt?receipt=${selectedInvoiceNumber}`;
+      } else {
+        alert(resData.error || 'Failed to process transaction.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('POS system offline.');
+    }
+  }
+
+  // Bind modal payment option buttons
+  const cashBtn = Array.from(modal.querySelectorAll('button')).find(b => b.textContent.includes('Collect Cash'));
+  if (cashBtn) {
+    cashBtn.onclick = () => processCollection('Cash');
+  }
+
+  const upiBtn = Array.from(modal.querySelectorAll('button')).find(b => b.textContent.includes('UPI'));
+  if (upiBtn) {
+    upiBtn.onclick = () => processCollection('UPI');
+  }
+
+  const receiptBtn = Array.from(modal.querySelectorAll('button')).find(b => b.textContent.includes('Generate Receipt Only'));
+  if (receiptBtn) {
+    receiptBtn.onclick = () => processCollection('Bank Transfer');
+  }
+
+  loadPendingPayments();
+});
+</script>
+
+<div id="jsb-mobile-nav"></div>
+</body></html>

@@ -1,0 +1,558 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Lead CRM</title>
+
+<style>
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+</style>
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-surface overflow-x-hidden">
+<div id="jsb-header" data-page-title="Lead CRM"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- Main Content Area -->
+<main class="flex-grow pt-6 pb-24 md:pb-12 px-margin-mobile md:px-margin-desktop max-w-[1600px] mx-auto w-full flex flex-col gap-lg">
+  
+  <!-- Header & Actions -->
+  <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
+    <div>
+      <h1 class="font-headline-lg text-headline-lg text-on-surface mb-1">Lead Pipeline</h1>
+      <p class="font-body-lg text-body-lg text-on-surface-variant">Manage prospective members and track conversion rates.</p>
+    </div>
+    <div class="flex items-center gap-3 w-full lg:w-auto">
+      <div class="relative flex-1 lg:w-64">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+        <input id="lead-search-input" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 pl-10 pr-4 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all font-body-md placeholder:text-on-surface-variant/50" placeholder="Search leads..." type="text">
+      </div>
+      <button class="bg-primary text-on-primary px-4 py-2 rounded-lg font-title-lg text-title-lg flex items-center gap-2 hover:bg-primary/90 transition-colors active:scale-95 whitespace-nowrap" id="open-new-lead-modal-btn">
+        <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">add</span>
+        New Lead
+      </button>
+    </div>
+  </div>
+
+  <!-- Lead Intelligence Analytics Section (Phase 2.5) -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter mb-6">
+    <!-- Top 4 Bento KPI Cards -->
+    <div class="lg:col-span-12 grid grid-cols-1 md:grid-cols-4 gap-gutter">
+      <!-- Total Leads -->
+      <div class="glass-card rounded-xl p-6 relative overflow-hidden group">
+        <div class="flex justify-between items-start mb-4">
+          <div class="p-2 bg-surface-container border border-white/5 rounded-lg">
+            <span class="material-symbols-outlined text-primary">groups</span>
+          </div>
+          <span class="flex items-center text-[#81c995] font-label-md text-label-md bg-[#81c995]/10 px-2 py-0.5 rounded-md border border-[#81c995]/20">
+            Active Pipeline
+          </span>
+        </div>
+        <p class="font-body-md text-body-md text-on-surface-variant mb-1">Total Active Leads</p>
+        <h3 class="font-headline-lg text-headline-lg text-on-surface" id="stat-total-leads">-</h3>
+      </div>
+      
+      <!-- Conversion Rate -->
+      <div class="glass-card rounded-xl p-6 relative overflow-hidden group">
+        <div class="flex justify-between items-start mb-4">
+          <div class="p-2 bg-surface-container border border-white/5 rounded-lg">
+            <span class="material-symbols-outlined text-secondary">donut_large</span>
+          </div>
+          <span class="flex items-center text-secondary font-label-md text-label-md bg-secondary/10 px-2 py-0.5 rounded-md border border-secondary/20">
+            MTD Target 25%
+          </span>
+        </div>
+        <p class="font-body-md text-body-md text-on-surface-variant mb-1">Avg. Conversion Rate</p>
+        <h3 class="font-headline-lg text-headline-lg text-on-surface" id="stat-conversion-rate">-%</h3>
+      </div>
+      
+      <!-- Projected Value -->
+      <div class="glass-card rounded-xl p-6 relative overflow-hidden group">
+        <div class="flex justify-between items-start mb-4">
+          <div class="p-2 bg-surface-container border border-white/5 rounded-lg">
+            <span class="material-symbols-outlined text-tertiary">payments</span>
+          </div>
+        </div>
+        <p class="font-body-md text-body-md text-on-surface-variant mb-1">Projected Revenue Pipeline</p>
+        <h3 class="font-headline-lg text-headline-lg text-secondary" id="stat-projected-value">₹0</h3>
+      </div>
+      
+      <!-- Top Source -->
+      <div class="glass-card rounded-xl p-6 relative overflow-hidden group">
+        <div class="flex justify-between items-start mb-4">
+          <div class="p-2 bg-surface-container border border-white/5 rounded-lg">
+            <span class="material-symbols-outlined text-primary-fixed">share</span>
+          </div>
+        </div>
+        <p class="font-body-md text-body-md text-on-surface-variant mb-1">Top Acquisition Channel</p>
+        <h3 class="font-headline-md text-headline-md text-on-surface mt-2" id="stat-top-channel">Instagram</h3>
+        <div class="w-full bg-surface-container-high h-1.5 rounded-full mt-3 overflow-hidden">
+          <div class="bg-gradient-to-r from-pink-500 to-purple-500 h-full rounded-full" id="stat-channel-progress" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="lg:col-span-6 glass-card p-6 rounded-xl border border-outline-variant/30 flex flex-col h-[280px]">
+      <h3 class="font-title-lg text-title-lg text-on-surface mb-4">Lead Source Analytics</h3>
+      <div class="flex-grow relative">
+        <canvas id="chart-lead-sources"></canvas>
+      </div>
+    </div>
+
+    <div class="lg:col-span-6 glass-card p-6 rounded-xl border border-outline-variant/30 flex flex-col h-[280px]">
+      <h3 class="font-title-lg text-title-lg text-on-surface mb-4">Conversion Funnel</h3>
+      <div id="funnel-container" class="flex-grow flex flex-col justify-around text-sm">
+        <!-- populated dynamically with CSS funnel segments -->
+        <div class="text-center py-8 text-on-surface-variant">Loading funnel...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pipeline Board -->
+  <div id="pipeline-container" class="grid grid-cols-1 lg:grid-cols-4 gap-6 pb-8 overflow-x-auto select-none min-h-[400px]">
+    <!-- Column 1: New (Lead) -->
+    <div class="flex flex-col h-auto lg:h-[calc(100vh-280px)] mb-6 lg:mb-0 min-w-[280px]">
+      <div class="flex items-center justify-between mb-4 px-2">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+          <h3 class="font-title-lg text-title-lg text-on-surface">New</h3>
+          <span class="bg-surface-container-low px-2 py-0.5 rounded-full text-on-surface-variant font-label-md text-label-md border border-white/5" id="count-new">0</span>
+        </div>
+      </div>
+      <div class="flex-1 column-card-container overflow-y-visible md:overflow-y-auto hide-scrollbar space-y-4 pr-0 md:pr-2" id="col-new">
+        <!-- Dynamically loaded cards -->
+      </div>
+    </div>
+    
+    <!-- Column 2: Trial/Consultation -->
+    <div class="flex flex-col h-auto lg:h-[calc(100vh-280px)] mb-6 lg:mb-0 min-w-[280px]">
+      <div class="flex items-center justify-between mb-4 px-2">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-tertiary"></div>
+          <h3 class="font-title-lg text-title-lg text-on-surface">Trial / Consult</h3>
+          <span class="bg-surface-container-low px-2 py-0.5 rounded-full text-on-surface-variant font-label-md text-label-md border border-white/5" id="count-trial">0</span>
+        </div>
+      </div>
+      <div class="flex-1 column-card-container overflow-y-visible md:overflow-y-auto hide-scrollbar space-y-4 pr-0 md:pr-2" id="col-trial">
+        <!-- Dynamically loaded cards -->
+      </div>
+    </div>
+    
+    <!-- Column 3: Follow-up -->
+    <div class="flex flex-col h-auto lg:h-[calc(100vh-280px)] mb-6 lg:mb-0 min-w-[280px]">
+      <div class="flex items-center justify-between mb-4 px-2">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-error"></div>
+          <h3 class="font-title-lg text-title-lg text-on-surface">Follow-up</h3>
+          <span class="bg-surface-container-low px-2 py-0.5 rounded-full text-on-surface-variant font-label-md text-label-md border border-white/5" id="count-followup">0</span>
+        </div>
+      </div>
+      <div class="flex-1 column-card-container overflow-y-visible md:overflow-y-auto hide-scrollbar space-y-4 pr-0 md:pr-2" id="col-followup">
+        <!-- Dynamically loaded cards -->
+      </div>
+    </div>
+    
+    <!-- Column 4: Closed / Won -->
+    <div class="flex flex-col h-auto lg:h-[calc(100vh-280px)] mb-6 lg:mb-0 min-w-[280px]">
+      <div class="flex items-center justify-between mb-4 px-2">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-secondary"></div>
+          <h3 class="font-title-lg text-title-lg text-on-surface">Closed (Won)</h3>
+          <span class="bg-surface-container-low px-2 py-0.5 rounded-full text-on-surface-variant font-label-md text-label-md border border-white/5" id="count-closed">0</span>
+        </div>
+      </div>
+      <div class="flex-1 column-card-container overflow-y-visible md:overflow-y-auto hide-scrollbar space-y-4 pr-0 md:pr-2" id="col-closed">
+        <!-- Dynamically loaded cards -->
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Modal for New Lead -->
+<div id="newLeadModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 hidden" style="background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px);">
+  <div class="glass-card w-full max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] border border-white/20">
+    <div class="p-6 border-b border-white/10 flex justify-between items-center">
+      <h3 class="font-headline-md text-headline-md text-on-surface">Capture New Lead</h3>
+      <button id="closeLeadModal" type="button" class="text-on-surface-variant hover:text-on-surface p-1 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <form id="newLeadForm" class="p-6 flex flex-col gap-4">
+      <div class="flex flex-col gap-1">
+        <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Full Name</label>
+        <input type="text" name="full_name" required="" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" placeholder="e.g. Rahul Sharma">
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Phone Number</label>
+        <input type="text" name="phone" required="" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" placeholder="e.g. +91 98765 43210">
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Email Address</label>
+        <input type="email" name="email" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" placeholder="e.g. rahul@example.com">
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Acquisition Channel</label>
+        <select name="channel" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-surface-container">
+          <option value="Walk-in">Walk-in</option>
+          <option value="Instagram">Instagram</option>
+          <option value="Google">Google</option>
+          <option value="Facebook">Facebook</option>
+          <option value="Reference">Reference</option>
+        </select>
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Notes / Interest</label>
+        <textarea name="note" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none h-20" placeholder="e.g. Wants personal trainer..."></textarea>
+      </div>
+      <button type="submit" class="bg-primary text-on-primary w-full py-3 rounded-lg font-title-lg text-title-lg flex items-center justify-center gap-2 mt-2 hover:bg-primary/90 transition-colors active:scale-95">
+        Save Lead
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const modal = document.getElementById("newLeadModal");
+  const openBtn = document.getElementById("open-new-lead-modal-btn");
+  const closeBtn = document.getElementById("closeLeadModal");
+  const form = document.getElementById("newLeadForm");
+  const searchInput = document.getElementById("lead-search-input");
+  
+  let sourceChart = null;
+  let allLeads = [];
+
+  // Modal handlers
+  if (openBtn) openBtn.addEventListener("click", () => modal.classList.remove("hidden"));
+  if (closeBtn) closeBtn.addEventListener("click", () => modal.classList.add("hidden"));
+  window.addEventListener("click", (e) => { if (e.target === modal) modal.classList.add("hidden"); });
+
+  // Submit Lead
+  if (form) {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const payload = {
+        full_name: formData.get("full_name"),
+        phone: formData.get("phone"),
+        email: formData.get("email"),
+        channel: formData.get("channel"),
+        note: formData.get("note")
+      };
+      try {
+        const res = await window.api.fetch("/crm/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          modal.classList.add("hidden");
+          form.reset();
+          loadLeadData();
+        } else {
+          const err = await res.json();
+          alert(err.error || "Failed to capture lead");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Network failure");
+      }
+    });
+  }
+
+  // Load Lead data and Analytics
+  async function loadLeadData() {
+    try {
+      // 1. Fetch CRM Leads
+      const resCRM = await window.api.fetch("/crm/leads");
+      allLeads = await resCRM.json();
+      renderPipeline(allLeads);
+
+      // 2. Fetch Lead Intelligence
+      const resIntel = await window.api.fetch("/analytics/lead-intelligence");
+      const intel = await resIntel.json();
+
+      // Update KPIs
+      document.getElementById('stat-total-leads').innerText = intel.totalLeads;
+      document.getElementById('stat-conversion-rate').innerText = intel.conversionRate + '%';
+      document.getElementById('stat-projected-value').innerText = '₹' + Number(intel.pipelineValue).toLocaleString();
+      
+      // Top Channel
+      let topCh = "N/A", topCount = 0;
+      intel.channels.forEach(ch => {
+        if (ch.count > topCount) {
+          topCount = ch.count;
+          topCh = ch.acquisition_channel;
+        }
+      });
+      document.getElementById('stat-top-channel').innerText = topCh;
+      const pctProgress = intel.totalLeads > 0 ? Math.round((topCount / intel.totalLeads) * 100) : 0;
+      document.getElementById('stat-channel-progress').style.width = pctProgress + '%';
+
+      // Draw Funnel
+      const f = intel.funnel;
+      const fTotal = Math.max(1, f.new + f.trial + f.followUp + f.closed);
+      const funnelContainer = document.getElementById('funnel-container');
+      funnelContainer.innerHTML = `
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-on-surface flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-primary"></span> New Contact</span>
+            <span class="font-mono font-bold text-on-background">${f.new} (${Math.round(f.new/fTotal*100)}%)</span>
+          </div>
+          <div class="w-full bg-surface-container h-3 rounded overflow-hidden">
+            <div class="bg-primary h-full" style="width: ${f.new/fTotal*100}%"></div>
+          </div>
+        </div>
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-on-surface flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-tertiary"></span> Trial / Consult</span>
+            <span class="font-mono font-bold text-on-background">${f.trial} (${Math.round(f.trial/fTotal*100)}%)</span>
+          </div>
+          <div class="w-full bg-surface-container h-3 rounded overflow-hidden">
+            <div class="bg-tertiary h-full" style="width: ${f.trial/fTotal*100}%"></div>
+          </div>
+        </div>
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-on-surface flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-error"></span> Follow-Up</span>
+            <span class="font-mono font-bold text-on-background">${f.followUp} (${Math.round(f.followUp/fTotal*100)}%)</span>
+          </div>
+          <div class="w-full bg-surface-container h-3 rounded overflow-hidden">
+            <div class="bg-error h-full" style="width: ${f.followUp/fTotal*100}%"></div>
+          </div>
+        </div>
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-on-surface flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-secondary"></span> Closed Won</span>
+            <span class="font-mono font-bold text-[#81c995]">${f.closed} (${Math.round(f.closed/fTotal*100)}%)</span>
+          </div>
+          <div class="w-full bg-surface-container h-3 rounded overflow-hidden">
+            <div class="bg-secondary h-full" style="width: ${f.closed/fTotal*100}%"></div>
+          </div>
+        </div>
+      `;
+
+      // Draw Lead Source Chart
+      const chLabels = intel.channels.map(c => c.acquisition_channel);
+      const chCounts = intel.channels.map(c => c.count);
+      const sourceCtx = document.getElementById('chart-lead-sources').getContext('2d');
+
+      if (sourceChart) sourceChart.destroy();
+      sourceChart = new Chart(sourceCtx, {
+        type: 'bar',
+        data: {
+          labels: chLabels,
+          datasets: [{
+            data: chCounts,
+            backgroundColor: '#b5c4ff',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#888' } },
+            y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#888', stepSize: 5 } }
+          }
+        }
+      });
+
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function renderPipeline(leadsList) {
+    const cols = {
+      "New": [],
+      "Trial / Consult": [],
+      "Follow-up": [],
+      "Closed (Won)": []
+    };
+
+    leadsList.forEach(lead => {
+      let stage = lead.stage;
+      if (stage.includes("Trial") || stage.includes("Consult")) {
+        cols["Trial / Consult"].push(lead);
+      } else if (stage.includes("Closed") || stage.includes("Won")) {
+        cols["Closed (Won)"].push(lead);
+      } else if (stage === "Follow-up") {
+        cols["Follow-up"].push(lead);
+      } else {
+        cols["New"].push(lead);
+      }
+    });
+
+    // Update Counts
+    document.getElementById('count-new').innerText = cols["New"].length;
+    document.getElementById('count-trial').innerText = cols["Trial / Consult"].length;
+    document.getElementById('count-followup').innerText = cols["Follow-up"].length;
+    document.getElementById('count-closed').innerText = cols["Closed (Won)"].length;
+
+    // Render cards into containers
+    const colIds = ["New", "Trial / Consult", "Follow-up", "Closed (Won)"];
+    const containerElements = [
+      document.getElementById('col-new'),
+      document.getElementById('col-trial'),
+      document.getElementById('col-followup'),
+      document.getElementById('col-closed')
+    ];
+
+    colIds.forEach((colId, index) => {
+      const container = containerElements[index];
+      container.innerHTML = '';
+      if (cols[colId].length === 0) {
+        container.innerHTML = `
+          <div class="border border-dashed border-white/5 rounded-xl p-6 text-center text-xs text-on-surface-variant/40">
+            Empty Stage
+          </div>
+        `;
+        return;
+      }
+
+      cols[colId].forEach(lead => {
+        const card = document.createElement("div");
+        card.className = "glass-card rounded-xl p-4 cursor-pointer hover:border-primary/50 transition-colors group relative flex flex-col gap-2";
+        
+        let borderClass = "bg-primary";
+        if (colId === "Trial / Consult") borderClass = "bg-tertiary";
+        else if (colId === "Follow-up") borderClass = "bg-error";
+        else if (colId === "Closed (Won)") borderClass = "bg-secondary";
+
+        let badgeColor = "bg-pink-500/10 text-pink-400 border-pink-500/20";
+        if (lead.acquisition_channel === "Google") badgeColor = "bg-blue-500/10 text-blue-400 border-blue-500/20";
+        else if (lead.acquisition_channel === "Walk-in") badgeColor = "bg-surface-variant text-on-surface-variant border-outline/20";
+
+        card.innerHTML = `
+          <div class="absolute top-0 left-0 w-1 h-full ${borderClass} rounded-l-xl"></div>
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <h4 class="font-title-lg text-title-lg text-on-surface mb-0.5">${lead.full_name}</h4>
+              <span class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px]">phone_iphone</span> ${lead.phone || 'N/A'}
+              </span>
+            </div>
+            <span class="${badgeColor} border px-2 py-0.5 rounded-md font-label-md text-label-md flex items-center gap-1">
+              ${lead.acquisition_channel}
+            </span>
+          </div>
+          ${lead.note ? `
+          <div class="bg-surface-container-low rounded-lg p-3 mb-2 border border-white/5">
+            <p class="font-body-md text-body-md text-on-surface-variant italic line-clamp-2">"${lead.note}"</p>
+          </div>` : ''}
+          <div class="flex justify-between items-center mt-auto pt-3 border-t border-white/10 gap-2">
+            <div class="flex items-center gap-1 text-on-surface-variant text-xs">
+              <span class="material-symbols-outlined text-[16px]">schedule</span>
+              <span>Stage:</span>
+            </div>
+            <select class="stage-select bg-surface-container-high border border-white/10 rounded px-2 py-1 text-xs text-on-surface font-label-md focus:ring-0 focus:outline-none" data-lead-id="${lead.id}">
+              <option value="New" ${lead.stage === 'New' ? 'selected' : ''}>New</option>
+              <option value="Trial / Consult" ${lead.stage === 'Trial / Consult' ? 'selected' : ''}>Trial</option>
+              <option value="Follow-up" ${lead.stage === 'Follow-up' ? 'selected' : ''}>Follow-up</option>
+              <option value="Closed (Won)" ${lead.stage === 'Closed (Won)' ? 'selected' : ''}>Closed</option>
+            </select>
+          </div>
+        `;
+        
+        const select = card.querySelector(".stage-select");
+        select.addEventListener("click", e => e.stopPropagation());
+        select.addEventListener("change", async (e) => {
+          const newStage = e.target.value;
+          try {
+            const res = await window.api.fetch(`/crm/leads/${lead.id}/stage`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ stage: newStage })
+            });
+            if (res.ok) {
+              loadLeadData();
+            } else {
+              alert("Failed to transition lead stage");
+            }
+          } catch (err) {
+            console.error(err);
+            alert("Network error");
+          }
+        });
+
+        container.appendChild(card);
+      });
+    });
+  }
+
+  // Lead search filter
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      if (!q) {
+        renderPipeline(allLeads);
+      } else {
+        const filtered = allLeads.filter(l => 
+          l.full_name.toLowerCase().includes(q) || 
+          (l.phone && l.phone.includes(q)) || 
+          (l.acquisition_channel && l.acquisition_channel.toLowerCase().includes(q))
+        );
+        renderPipeline(filtered);
+      }
+    });
+  }
+
+  // Initial load
+  loadLeadData();
+
+  // Mouse wheel and Drag-to-scroll support for Lead CRM columns
+  const pContainer = document.getElementById('pipeline-container');
+  if (pContainer) {
+    pContainer.addEventListener('wheel', (e) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        pContainer.scrollLeft += e.deltaY * 1.2;
+      }
+    }, { passive: false });
+
+    let isDown = false, startX, scrollLeft;
+    pContainer.addEventListener('mousedown', (e) => {
+      if (e.target.closest('button, input, select, textarea, a')) return;
+      isDown = true;
+      pContainer.style.cursor = 'grabbing';
+      startX = e.pageX - pContainer.offsetLeft;
+      scrollLeft = pContainer.scrollLeft;
+    });
+    pContainer.addEventListener('mouseleave', () => {
+      isDown = false;
+      pContainer.style.cursor = 'grab';
+    });
+    pContainer.addEventListener('mouseup', () => {
+      isDown = false;
+      pContainer.style.cursor = 'grab';
+    });
+    pContainer.addEventListener('mousemove', (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - pContainer.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      pContainer.scrollLeft = scrollLeft - walk;
+    });
+  }
+});
+</script>
+</body></html>

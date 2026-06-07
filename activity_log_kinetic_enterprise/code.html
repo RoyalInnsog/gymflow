@@ -1,0 +1,143 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>JSB Fitness - Activity Log</title>
+
+<style>
+    .glass-card {
+        background: rgba(27, 27, 27, 0.7);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+    }
+    .timeline-dot {
+        box-shadow: 0 0 0 4px rgba(27,27,27,1);
+    }
+</style>
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
+<div id="jsb-header" data-page-title="Activity Log"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- Main Canvas -->
+<main class="flex-grow pt-6 pb-24 md:pb-12 px-margin-mobile md:px-margin-desktop max-w-[1440px] mx-auto w-full flex flex-col gap-lg">
+  
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-4">
+    <div>
+      <h2 class="font-headline-lg text-headline-lg text-on-surface">Staff Activity Log</h2>
+      <p class="font-body-md text-body-md text-on-surface-variant mt-1">Audit trail for accountability and tracking daily operations.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="window.location.href='/api/v1/export/activity?format=excel'" class="font-label-md text-label-md bg-surface-container border border-outline-variant px-4 py-2 rounded-lg hover:bg-surface-variant transition-colors flex items-center gap-2">
+        Export Log <span class="material-symbols-outlined text-[18px]">download</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="glass-card p-6 rounded-xl border border-outline-variant/30 flex flex-col">
+    <div class="flex items-center gap-4 mb-6 border-b border-white/10 pb-4">
+      <select id="staff-filter" class="bg-surface-container border border-outline-variant px-4 py-2 rounded-lg font-label-md text-label-md text-on-background hover:bg-surface-variant transition-colors focus:outline-none focus:ring-1 focus:ring-primary w-48">
+        <option value="all">All Staff</option>
+      </select>
+      <input type="date" id="date-filter" class="bg-surface-container border border-outline-variant px-4 py-2 rounded-lg font-label-md text-label-md text-on-background hover:bg-surface-variant transition-colors focus:outline-none focus:ring-1 focus:ring-primary">
+    </div>
+
+    <!-- Timeline Container -->
+    <div class="relative pl-6 border-l border-white/10 ml-4 space-y-8" id="timeline-container">
+        <!-- populated dynamically -->
+        <div class="py-12 text-center text-on-surface-variant">Loading activity logs...</div>
+    </div>
+  </div>
+</main>
+
+<div id="jsb-mobile-nav"></div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const container = document.getElementById('timeline-container');
+  
+  async function loadLogs() {
+    try {
+      const res = await window.api.fetch("/activity-logs");
+      const logs = await res.json();
+      
+      container.innerHTML = '';
+      if(logs.length === 0) {
+        container.innerHTML = '<div class="py-12 text-center text-on-surface-variant">No activity recorded yet.</div>';
+        return;
+      }
+
+      logs.forEach(log => {
+          let icon = 'edit_note';
+          let iconColor = 'text-tertiary';
+          let iconBg = 'bg-tertiary/10';
+
+          if (log.action === 'CREATE') {
+              icon = 'add_circle'; iconColor = 'text-[#81c995]'; iconBg = 'bg-[#81c995]/10';
+          } else if (log.action === 'DELETE') {
+              icon = 'delete'; iconColor = 'text-error'; iconBg = 'bg-error/10';
+          } else if (log.action === 'PAYMENT_PROCESS') {
+              icon = 'payments'; iconColor = 'text-primary'; iconBg = 'bg-primary/10';
+          } else if (log.action === 'CHECK_IN') {
+              icon = 'how_to_reg'; iconColor = 'text-secondary'; iconBg = 'bg-secondary/10';
+          }
+
+          const actionLabel = log.action.replace(/_/g, ' ');
+          const email = log.user_email || log.user_id;
+          
+          let detailHtml = '';
+          try {
+             const parsed = JSON.parse(log.new_values);
+             if (parsed && Object.keys(parsed).length > 0) {
+                 detailHtml = '<div class="mt-2 p-3 bg-surface-container-lowest rounded-md text-xs font-mono text-on-surface-variant overflow-x-auto">' + JSON.stringify(parsed) + '</div>';
+             }
+          } catch(e){}
+
+          const item = document.createElement('div');
+          item.className = 'relative';
+          item.innerHTML = \`
+            <!-- Timeline Line Connector & Dot -->
+            <div class="absolute -left-[43px] top-1 w-10 flex justify-end">
+                <div class="w-8 h-8 rounded-full \${iconBg} flex items-center justify-center timeline-dot border border-white/5 z-10">
+                    <span class="material-symbols-outlined \${iconColor} text-[16px]">\${icon}</span>
+                </div>
+            </div>
+
+            <div class="bg-surface-container/50 border border-white/5 rounded-lg p-4 hover:border-white/10 transition-colors">
+                <div class="flex justify-between items-start mb-1">
+                    <p class="font-label-md text-label-md font-bold text-on-surface uppercase tracking-wider">\${actionLabel} <span class="text-on-surface-variant lowercase font-normal ml-2">on \${log.table_name}</span></p>
+                    <span class="font-label-sm text-label-sm text-on-surface-variant">\${new Date(log.created_at).toLocaleString()}</span>
+                </div>
+                <p class="font-body-sm text-body-sm text-on-surface-variant mb-1">
+                    <span class="material-symbols-outlined text-[14px] align-middle mr-1">person</span>
+                    \${email}
+                </p>
+                <p class="font-body-sm text-body-sm text-on-surface">Record ID: <span class="font-mono text-xs">\${log.record_id}</span></p>
+                \${detailHtml}
+            </div>
+          \`;
+          container.appendChild(item);
+      });
+
+    } catch (err) {
+      console.error(err);
+      container.innerHTML = '<div class="py-12 text-center text-error">Failed to load activity logs.</div>';
+    }
+  }
+
+  loadLogs();
+});
+</script>
+</body></html>

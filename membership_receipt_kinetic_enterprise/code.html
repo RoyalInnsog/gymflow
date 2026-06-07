@@ -1,0 +1,262 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Receipt</title>
+<!-- Tailwind CSS -->
+
+<!-- Google Fonts & Material Symbols -->
+
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-surface flex flex-col items-center py-12 px-4 sm:px-8">
+<div id="jsb-header" data-page-title="Receipt"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- Ambient Background Glows for Depth -->
+<div class="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/5 blur-[120px] pointer-events-none"></div>
+<div class="fixed bottom-[-10%] right-[-10%] w-[30%] h-[30%] rounded-full bg-secondary/5 blur-[100px] pointer-events-none"></div>
+<!-- UI Controls (Not printable content) -->
+<div class="w-full max-w-[800px] flex justify-between items-center mb-stack-lg z-10">
+<button class="flex items-center gap-unit text-on-surface-variant hover:text-on-surface transition-colors group" onclick="window.location.href='/finance'">
+<span class="material-symbols-outlined text-[20px] group-hover:-translate-x-1 transition-transform">arrow_back</span>
+<span class="font-label-md text-label-md uppercase tracking-wider">Back to Transactions</span>
+</button>
+<div class="flex gap-stack-sm">
+<button class="flex items-center gap-unit px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-variant/30 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[18px]">print</span>
+<span class="font-label-md text-label-md">Print</span>
+</button>
+<button class="flex items-center gap-unit px-4 py-2 rounded-lg bg-primary text-on-primary hover:bg-primary-fixed transition-colors shadow-[0_0_20px_rgba(181,196,255,0.15)] hover:shadow-[0_0_25px_rgba(181,196,255,0.25)]">
+<span class="material-symbols-outlined text-[18px]">download</span>
+<span class="font-label-md text-label-md">Save PDF</span>
+</button>
+</div>
+</div>
+<!-- Receipt Canvas (Glassmorphism Container) -->
+<div class="w-full max-w-[800px] bg-surface-container/70 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl relative overflow-hidden z-10 flex flex-col">
+<!-- Subtle Top Accent Line -->
+<div class="h-1 w-full bg-gradient-to-r from-primary via-secondary to-primary opacity-80"></div>
+<div class="p-margin sm:p-12 flex flex-col gap-stack-lg">
+<!-- Header Section -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-stack-lg pb-stack-lg border-b border-white/10">
+<!-- Brand Identity -->
+<div class="flex flex-col gap-unit">
+<div class="flex items-center gap-stack-sm text-primary mb-1">
+<span class="material-symbols-outlined text-[32px] dynamic-logo">fitness_center</span>
+<h1 class="font-headline-md text-headline-md tracking-tight"><span class="dynamic-gym-name">JSB Fitness</span></h1>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                        High-Performance Facility Management<br>
+                        <span class="dynamic-gym-address">Bandra West, Mumbai 400050, IN</span>
+                    </p>
+</div>
+<!-- Receipt Metadata -->
+<div class="flex flex-col items-start sm:items-end gap-unit text-left sm:text-right">
+<div class="inline-flex items-center gap-unit px-3 py-1 rounded-full bg-secondary/10 border border-secondary/20 text-secondary mb-2">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+<span class="font-label-md text-label-md uppercase tracking-wider">Paid</span>
+</div>
+<p class="font-headline-md text-headline-md text-on-surface">Receipt #RCPT-2023-089</p>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-unit justify-start sm:justify-end">
+<span class="material-symbols-outlined text-[16px] opacity-70">calendar_today</span>
+                        Oct 24, 2023
+                    </p>
+</div>
+</div>
+<!-- Entities Section -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-gutter">
+<!-- Billed To -->
+<div class="flex flex-col gap-2 p-6 rounded-xl bg-surface-container-high/50 border border-white/5">
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1 flex items-center gap-unit">
+<span class="material-symbols-outlined text-[16px]">person</span> Billed To
+                    </p>
+<p class="font-title-lg text-title-lg text-on-surface">Karan Meena</p>
+<div class="flex flex-col gap-1 text-on-surface-variant font-body-md text-body-md">
+<p>ID: MEM-99420-KM</p>
+<p>karan.meena@example.com</p>
+<p>+91 98765 43210</p>
+</div>
+</div>
+<!-- Payment Info -->
+<div class="flex flex-col gap-2 p-6 rounded-xl bg-surface-container-high/50 border border-white/5">
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1 flex items-center gap-unit">
+<span class="material-symbols-outlined text-[16px]">account_balance_wallet</span> Payment Details
+                    </p>
+<div class="flex items-center gap-stack-sm text-primary mb-1">
+<span class="material-symbols-outlined text-[24px]">qr_code_scanner</span>
+<p class="font-title-lg text-title-lg">UPI Transaction</p>
+</div>
+<div class="flex flex-col gap-1 text-on-surface-variant font-body-md text-body-md">
+<p>Txn ID: UPI/329810482910</p>
+<p>Status: Successful verified</p>
+</div>
+</div>
+</div>
+<!-- Line Items Table -->
+<div class="flex flex-col rounded-xl border border-white/10 overflow-hidden bg-surface-container-highest/20 mt-stack-sm">
+<!-- Table Header -->
+<div class="grid grid-cols-12 gap-4 p-4 bg-surface-container-highest/40 border-b border-white/10">
+<div class="col-span-8 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Plan Description</div>
+<div class="col-span-4 text-right font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Amount</div>
+</div>
+<!-- Single Item Row -->
+<div class="grid grid-cols-12 gap-4 p-6 items-center">
+<div class="col-span-8 flex flex-col gap-2">
+<div class="flex items-center gap-stack-sm">
+<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-tertiary/20 text-tertiary border border-tertiary/30 uppercase tracking-widest">Premium</span>
+<p class="font-title-lg text-title-lg text-on-surface">Elite Annual Membership</p>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Validity: Oct 24, 2023 - Oct 23, 2024</p>
+<ul class="list-disc list-inside font-body-md text-body-md text-on-surface-variant/70 mt-1 space-y-1">
+<li>24/7 All-Access Facility Pass</li>
+<li>4 Personal Training Sessions / Month</li>
+<li>Recovery Zone Access (Sauna/Ice Bath)</li>
+</ul>
+</div>
+<div class="col-span-4 text-right font-title-lg text-title-lg text-on-surface">
+                        ₹25,000.00
+                    </div>
+</div>
+</div>
+<!-- Totals Section -->
+<div class="flex justify-end pt-stack-sm">
+<div class="w-full sm:w-1/2 flex flex-col gap-stack-sm">
+<div class="flex justify-between items-center text-on-surface-variant font-body-lg text-body-lg px-2">
+<span>Subtotal</span>
+<span>₹21,186.44</span>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant font-body-lg text-body-lg px-2 pb-stack-sm border-b border-white/10">
+<span>GST (18%)</span>
+<span>₹3,813.56</span>
+</div>
+<div class="flex justify-between items-center pt-stack-sm px-2">
+<span class="font-headline-md text-headline-md text-on-surface">Total Paid</span>
+<span class="font-headline-lg text-headline-lg text-primary font-bold tracking-tight">₹25,000</span>
+</div>
+</div>
+</div>
+<!-- Footer & Signature -->
+<div class="mt-stack-lg pt-stack-lg border-t border-white/10 flex flex-col-reverse sm:flex-row justify-between items-end sm:items-start gap-stack-lg">
+<!-- Legal / Notes -->
+<div class="flex flex-col gap-2 w-full sm:w-1/2 text-center sm:text-left">
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider flex items-center justify-center sm:justify-start gap-unit">
+<span class="material-symbols-outlined text-[14px]">info</span> Important Information
+                    </p>
+<p class="font-body-md text-body-md text-on-surface-variant/60 text-sm leading-relaxed">
+                        This is a computer-generated digital receipt and does not require a physical signature. Membership fees are strictly non-refundable and non-transferable. For support, contact <span class="dynamic-support-email">billing@jsbfitness.in</span>.
+                    </p>
+</div>
+<!-- Digital Signature Area -->
+<div class="flex flex-col items-center sm:items-end gap-1 w-full sm:w-auto">
+<div class="w-48 h-20 relative flex items-center justify-center bg-surface-container-high/30 rounded-lg border border-white/5 mb-2 group">
+<!-- Abstract signature path SVG -->
+<svg class="w-full h-full stroke-primary opacity-60 group-hover:opacity-100 transition-opacity duration-500 drop-shadow-[0_0_5px_rgba(181,196,255,0.3)]" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 200 60">
+<path d="M20,40 Q40,10 60,35 T100,25 T130,45 Q150,15 170,30"></path>
+<path d="M50,45 L80,15"></path>
+</svg>
+<div class="absolute bottom-4 w-3/4 border-b border-on-surface-variant/20 border-dashed"></div>
+<div class="absolute top-2 right-2 flex items-center gap-1 text-[10px] text-on-surface-variant/50 font-label-md uppercase">
+<span class="material-symbols-outlined text-[12px]">verified</span> Digital Sign
+                        </div>
+</div>
+<p class="font-title-lg text-title-lg text-on-surface">Admin</p>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Authorized Signatory</p>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const receiptNum = urlParams.get('receipt') || 'RCPT-2023-089';
+
+  // Wire Print and Save PDF buttons
+  const printBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Print'));
+  if (printBtn) {
+    printBtn.onclick = () => window.print();
+  }
+
+  try {
+    const response = await window.api.fetch(`/finance/receipt/${receiptNum}`);
+    const data = await response.json();
+    if (!response.ok) {
+      alert(data.error || 'Failed to load receipt.');
+      return;
+    }
+
+    // 1. Metadata
+    const receiptNumEl = document.querySelector('.flex-col.items-start.sm\\:items-end p.font-headline-md');
+    if (receiptNumEl) receiptNumEl.innerText = `Receipt #${data.invoice_number}`;
+
+    const dateEl = document.querySelector('.flex-col.items-start.sm\\:items-end p.font-body-md');
+    if (dateEl && data.payment_date) {
+      const pDate = new Date(data.payment_date);
+      dateEl.innerHTML = `<span class="material-symbols-outlined text-[16px] opacity-70">calendar_today</span> ${pDate.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })}`;
+    }
+
+    // 2. Billed To
+    const billedToCard = document.querySelectorAll('.grid-cols-1.sm\\:grid-cols-2 > div')[0];
+    if (billedToCard) {
+      billedToCard.querySelector('p.font-title-lg').innerText = data.full_name;
+      const details = billedToCard.querySelectorAll('div.font-body-md p');
+      if (details.length >= 3) {
+        details[0].innerText = `ID: ${data.member_number}`;
+        details[1].innerText = data.email || '--';
+        details[2].innerText = data.phone || '--';
+      }
+    }
+
+    // 3. Payment Details
+    const paymentCard = document.querySelectorAll('.grid-cols-1.sm\\:grid-cols-2 > div')[1];
+    if (paymentCard) {
+      paymentCard.querySelector('p.font-title-lg').innerText = `${data.method || 'UPI'} Transaction`;
+      const details = paymentCard.querySelectorAll('div.font-body-md p');
+      if (details.length >= 2) {
+        details[0].innerText = `Txn ID: ${data.transaction_reference || 'N/A'}`;
+        details[1].innerText = `Status: Successful verified`;
+      }
+    }
+
+    // 4. Item table details
+    const itemTitle = document.querySelector('.col-span-8 p.font-title-lg');
+    if (itemTitle) {
+      itemTitle.innerText = data.total_amount >= 25000 ? 'Elite Platinum (12 Months)' : (data.total_amount >= 15000 ? 'Pro Gold (6 Months)' : 'Base Silver (Monthly)');
+    }
+
+    const priceCell = document.querySelector('.col-span-4.text-right.font-title-lg');
+    if (priceCell) priceCell.innerText = `₹${Number(data.total_amount).toLocaleString()}`;
+
+    // 5. Totals
+    const subtotalCell = document.querySelectorAll('.w-full.sm\\:w-1/2 .flex.justify-between.text-on-surface-variant span:last-child')[0];
+    if (subtotalCell) subtotalCell.innerText = `₹${Number(data.subtotal).toLocaleString()}`;
+
+    const taxCell = document.querySelectorAll('.w-full.sm\\:w-1/2 .flex.justify-between.text-on-surface-variant span:last-child')[1];
+    if (taxCell) taxCell.innerText = `₹${Number(data.tax_amount).toLocaleString()}`;
+
+    const totalCell = document.querySelector('.pt-stack-sm.px-2 span:last-child');
+    if (totalCell) totalCell.innerText = `₹${Number(data.total_amount).toLocaleString()}`;
+
+  } catch (err) {
+    console.error(err);
+  }
+});
+</script>
+
+<div id="jsb-mobile-nav"></div>
+</body></html>

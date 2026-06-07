@@ -1,0 +1,499 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Communication Center</title>
+
+<style>
+        .glass-card {
+            background-color: rgba(27, 27, 27, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .critical-glow {
+            box-shadow: inset 2px 0 0 0 #ffb4ab;
+        }
+        .high-glow {
+            box-shadow: inset 2px 0 0 0 #ffb95f;
+        }
+        .medium-glow {
+            box-shadow: inset 2px 0 0 0 #b5c4ff;
+        }
+        .low-glow {
+            box-shadow: inset 2px 0 0 0 #8d90a1;
+        }
+        
+        /* Custom scrollbar for dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #131313;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #353534;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #434655;
+        }
+    </style>
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-surface">
+<div id="jsb-header" data-page-title="Communication Center"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- TopAppBar -->
+<!-- TopAppBar -->
+
+<!-- NavigationDrawer (Desktop) -->
+
+<!-- Main Content Canvas -->
+<main class="max-w-[1440px] mx-auto px-margin md:px-gutter lg:px-margin pt-stack-lg">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-stack-lg gap-stack-md border-b border-white/10 pb-stack-lg">
+<div>
+<h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-unit">Communication Center</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Manage alerts and track outgoing member communications.</p>
+</div>
+<div class="flex gap-stack-sm overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0 hide-scrollbar">
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-primary text-on-primary font-label-md text-label-md transition-colors">Internal Alerts</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md" id="tab-outbox">WhatsApp Outbox</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md" onclick="window.location.href='/members'">Membership</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md">Attendance</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md">Payment</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md">System</button>
+</div>
+</div>
+
+<!-- Communication Outbox (Hidden by default) -->
+<div id="outbox-container" class="hidden flex-col gap-gutter">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-gutter mb-6">
+    <div class="glass-card p-4 rounded-xl text-center">
+        <p class="font-label-md text-label-md text-on-surface-variant uppercase">Sent</p>
+        <p class="font-title-lg text-title-lg text-on-surface mt-1" id="stat-sent">0</p>
+    </div>
+    <div class="glass-card p-4 rounded-xl text-center">
+        <p class="font-label-md text-label-md text-on-surface-variant uppercase">Delivered</p>
+        <p class="font-title-lg text-title-lg text-tertiary mt-1" id="stat-delivered">0</p>
+    </div>
+    <div class="glass-card p-4 rounded-xl text-center">
+        <p class="font-label-md text-label-md text-on-surface-variant uppercase">Read</p>
+        <p class="font-title-lg text-title-lg text-[#81c995] mt-1" id="stat-read">0</p>
+    </div>
+    <div class="glass-card p-4 rounded-xl text-center border-error/50 bg-error/5">
+        <p class="font-label-md text-label-md text-on-surface-variant uppercase">Failed</p>
+        <p class="font-title-lg text-title-lg text-error mt-1" id="stat-failed">0</p>
+    </div>
+  </div>
+  <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-sm">
+        <thead>
+          <tr class="border-b border-white/10 text-on-surface-variant font-medium bg-surface-container/50">
+            <th class="py-3 px-4 font-label-md text-label-md">Timestamp</th>
+            <th class="py-3 px-4 font-label-md text-label-md">Recipient</th>
+            <th class="py-3 px-4 font-label-md text-label-md">Type</th>
+            <th class="py-3 px-4 font-label-md text-label-md">Message</th>
+            <th class="py-3 px-4 font-label-md text-label-md text-right">Status</th>
+          </tr>
+        </thead>
+        <tbody id="outbox-table-body" class="divide-y divide-white/5 text-on-surface">
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Left Column: High Priority & Actionable (Spans 8 cols on large screens) -->
+<div class="lg:col-span-8 flex flex-col gap-stack-md">
+<h3 class="font-title-lg text-title-lg text-on-surface mb-stack-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
+                    Requires Attention
+                </h3>
+<!-- Critical Notification -->
+<div class="glass-card rounded-xl p-6 critical-glow relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-error/10 border border-error/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">credit_card_off</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-error/10 text-error border border-error/20">Critical</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Payment</span>
+<span class="font-label-md text-label-md text-on-surface-variant ml-auto">2 hours ago</span>
+</div>
+<h4 class="font-title-lg text-title-lg text-on-surface mb-2">Payment overdue - ₹2,500</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">Member Rahul Sharma's annual subscription payment has failed twice. Their access card is currently restricted.</p>
+<div class="flex gap-3">
+<button class="px-4 py-2 bg-error text-on-error rounded font-label-md text-label-md hover:bg-error/90 transition-colors">Send Reminder</button>
+<button class="px-4 py-2 bg-transparent border border-outline text-on-surface rounded font-label-md text-label-md hover:bg-surface-variant transition-colors">View Profile</button>
+</div>
+</div>
+</div>
+</div>
+<!-- High Priority Notification -->
+<div class="glass-card rounded-xl p-6 high-glow relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-tertiary/10 border border-tertiary/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">event_busy</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-tertiary/10 text-tertiary border border-tertiary/20">High</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Membership</span>
+<span class="font-label-md text-label-md text-on-surface-variant ml-auto">5 hours ago</span>
+</div>
+<h4 class="font-title-lg text-title-lg text-on-surface mb-2">Membership expires tomorrow</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">5 premium members have memberships expiring in the next 24 hours without an auto-renewal setup.</p>
+<div class="flex gap-3">
+<button class="px-4 py-2 bg-primary text-on-primary rounded font-label-md text-label-md hover:bg-primary/90 transition-colors">Review List</button>
+</div>
+</div>
+</div>
+</div>
+<!-- High Priority Notification 2 -->
+<div class="glass-card rounded-xl p-6 high-glow relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-tertiary/10 border border-tertiary/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">directions_run</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-tertiary/10 text-tertiary border border-tertiary/20">High</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Attendance</span>
+<span class="font-label-md text-label-md text-on-surface-variant ml-auto">Yesterday</span>
+</div>
+<h4 class="font-title-lg text-title-lg text-on-surface mb-2">Member absent 7 days</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">Priya Patel (Personal Training Client) has missed 3 scheduled sessions and hasn't swiped in for 7 consecutive days.</p>
+<div class="flex gap-3">
+<button class="px-4 py-2 bg-transparent border border-outline text-on-surface rounded font-label-md text-label-md hover:bg-surface-variant transition-colors">Message Trainer</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Medium & Low Priority (Spans 4 cols on large screens) -->
+<div class="lg:col-span-4 flex flex-col gap-stack-md">
+<h3 class="font-title-lg text-title-lg text-on-surface mb-stack-sm flex items-center gap-2 mt-stack-lg lg:mt-0">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">info</span>
+                    Updates &amp; System
+                </h3>
+<!-- Medium Priority -->
+<div class="glass-card rounded-xl p-4 medium-glow">
+<div class="flex gap-3">
+<div class="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">campaign</span>
+</div>
+<div>
+<div class="flex justify-between items-center mb-1">
+<span class="font-label-md text-label-md text-on-surface-variant">Marketing</span>
+<span class="text-[10px] text-on-surface-variant">1 day ago</span>
+</div>
+<h4 class="font-body-md text-body-md font-semibold text-on-surface">Summer Promo Campaign</h4>
+<p class="font-body-md text-[13px] text-on-surface-variant mt-1">Campaign achieved 15% conversion rate on day 1.</p>
+</div>
+</div>
+</div>
+<!-- Low Priority -->
+<div class="glass-card rounded-xl p-4 low-glow">
+<div class="flex gap-3">
+<div class="w-10 h-10 rounded-full bg-outline/10 border border-outline/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-outline text-sm" style="font-variation-settings: 'FILL' 1;">cloud_done</span>
+</div>
+<div>
+<div class="flex justify-between items-center mb-1">
+<span class="font-label-md text-label-md text-on-surface-variant">System</span>
+<span class="text-[10px] text-on-surface-variant">2 days ago</span>
+</div>
+<h4 class="font-body-md text-body-md font-semibold text-on-surface">Backup completed</h4>
+<p class="font-body-md text-[13px] text-on-surface-variant mt-1">Database backup to encrypted cloud storage successful.</p>
+</div>
+</div>
+</div>
+<!-- Low Priority -->
+<div class="glass-card rounded-xl p-4 low-glow">
+<div class="flex gap-3">
+<div class="w-10 h-10 rounded-full bg-outline/10 border border-outline/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-outline text-sm" style="font-variation-settings: 'FILL' 1;">group_add</span>
+</div>
+<div>
+<div class="flex justify-between items-center mb-1">
+<span class="font-label-md text-label-md text-on-surface-variant">Membership</span>
+<span class="text-[10px] text-on-surface-variant">3 days ago</span>
+</div>
+<h4 class="font-body-md text-body-md font-semibold text-on-surface">New Leads Imported</h4>
+<p class="font-body-md text-[13px] text-on-surface-variant mt-1">24 new leads imported from website contact form.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const attentionContainer = document.querySelector(".lg\\:col-span-8.flex.flex-col");
+    const systemContainer = document.querySelector(".lg\\:col-span-4.flex.flex-col");
+    
+    const bentoGrid = document.querySelector(".grid.grid-cols-1.lg\\:grid-cols-12.gap-gutter");
+    const outboxContainer = document.getElementById("outbox-container");
+let currentFilter = 'All';
+
+    // Bind filter buttons
+    const filterButtons = document.querySelectorAll("main .flex.gap-stack-sm button");
+    filterButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            filterButtons.forEach(b => {
+                b.className = "whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md";
+            });
+            btn.className = "whitespace-nowrap px-4 py-2 rounded-full bg-primary text-on-primary font-label-md text-label-md transition-colors";
+            
+            currentFilter = btn.innerText;
+            if (currentFilter === 'WhatsApp Outbox') {
+                bentoGrid.classList.add('hidden');
+                outboxContainer.classList.remove('hidden');
+                outboxContainer.classList.add('flex');
+                loadOutbox();
+            } else {
+                outboxContainer.classList.remove('flex');
+                outboxContainer.classList.add('hidden');
+                bentoGrid.classList.remove('hidden');
+                loadNotifications();
+            }
+
+        });
+    });
+
+    
+    async function loadOutbox() {
+        try {
+            const res = await window.api.fetch('/communications/history');
+            const data = await res.json();
+            
+            document.getElementById('stat-sent').innerText = data.stats.Sent || 0;
+            document.getElementById('stat-delivered').innerText = data.stats.Delivered || 0;
+            document.getElementById('stat-read').innerText = data.stats.Read || 0;
+            document.getElementById('stat-failed').innerText = data.stats.Failed || 0;
+            
+            const tbody = document.getElementById('outbox-table-body');
+            tbody.innerHTML = '';
+            
+            if (data.history.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-on-surface-variant">No communication history found.</td></tr>';
+                return;
+            }
+            
+            data.history.forEach(h => {
+                const tr = document.createElement('tr');
+                let statusColor = "text-on-surface";
+                if (h.status === 'Delivered') statusColor = "text-tertiary";
+                else if (h.status === 'Read') statusColor = "text-[#81c995]";
+                else if (h.status === 'Failed') statusColor = "text-error";
+                
+                tr.innerHTML = "<td class='py-3 px-4 font-body-sm'>" + new Date(h.created_at).toLocaleString() + "</td>" +
+                               "<td class='py-3 px-4 font-body-sm'>" + h.recipient_name + "<br><span class='text-xs text-on-surface-variant'>" + (h.recipient_phone || '') + "</span></td>" +
+                               "<td class='py-3 px-4 font-body-sm'>" + (h.category || 'Auto') + "</td>" +
+                               "<td class='py-3 px-4 font-body-sm max-w-xs truncate' title='" + h.message.replace(/'/g, "&#39;") + "'>" + h.message + "</td>" +
+                               "<td class='py-3 px-4 font-label-sm text-right " + statusColor + "'>" + h.status + "</td>";
+                tbody.appendChild(tr);
+            });
+        } catch(err) { console.error(err); }
+    }
+async function loadNotifications() {
+        try {
+            const res = await window.api.fetch("/notifications");
+            const alerts = await res.json();
+
+            // Filter unread alerts
+            const unread = alerts.filter(a => !a.is_read);
+
+            // Apply category filter
+            let filtered = unread;
+            if (currentFilter !== 'All') {
+                filtered = unread.filter(a => a.type === currentFilter);
+            }
+
+            // Re-partition
+            const attentionAlerts = filtered.filter(a => a.priority === "Critical" || a.priority === "High");
+            const systemAlerts = filtered.filter(a => a.priority !== "Critical" && a.priority !== "High");
+
+            if (attentionContainer) {
+                const h3 = attentionContainer.querySelector("h3");
+                attentionContainer.innerHTML = "";
+                if (h3) attentionContainer.appendChild(h3);
+
+                attentionAlerts.forEach(a => {
+                    const card = document.createElement("div");
+                    
+                    let glowClass = "medium-glow";
+                    let textBadge = "bg-primary/10 text-primary border-primary/20";
+                    let iconName = "info";
+                    let iconColor = "text-primary";
+                    let iconBg = "bg-primary/10 border-primary/20";
+
+                    if (a.priority === "Critical") {
+                        glowClass = "critical-glow";
+                        textBadge = "bg-error/10 text-error border-error/20";
+                        iconName = "credit_card_off";
+                        iconColor = "text-error";
+                        iconBg = "bg-error/10 border-error/20";
+                    } else if (a.priority === "High") {
+                        glowClass = "high-glow";
+                        textBadge = "bg-tertiary/10 text-tertiary border-tertiary/20";
+                        iconName = "event_busy";
+                        iconColor = "text-tertiary";
+                        iconBg = "bg-tertiary/10 border-tertiary/20";
+                    }
+
+                    card.className = `glass-card rounded-xl p-6 ${glowClass} relative overflow-hidden group mt-4`;
+                    card.innerHTML = `
+                        <div class="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button class="text-on-surface-variant hover:text-on-surface dismiss-btn" data-id="${a.id}">
+                                <span class="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <div class="flex items-start gap-4">
+                            <div class="w-12 h-12 rounded-full ${iconBg} flex items-center justify-center shrink-0 border">
+                                <span class="material-symbols-outlined ${iconColor}" style="font-variation-settings: 'FILL' 1;">${iconName}</span>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${textBadge} border">${a.priority}</span>
+                                    <span class="font-label-md text-label-md text-on-surface-variant">${a.type}</span>
+                                    <span class="font-label-md text-label-md text-on-surface-variant ml-auto">${new Date(a.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                </div>
+                                <h4 class="font-title-lg text-title-lg text-on-surface mb-2">${a.title}</h4>
+                                <p class="font-body-md text-body-md text-on-surface-variant mb-4">${a.message}</p>
+                                <div class="flex gap-3">
+                                    <button class="px-4 py-2 bg-error text-on-error rounded font-label-md text-label-md hover:bg-error/90 transition-colors action-btn" data-id="${a.id}">${a.priority === "Critical" ? "Send Reminder" : "Action"}</button>
+                                    <button class="px-4 py-2 bg-transparent border border-outline text-on-surface rounded font-label-md text-label-md hover:bg-surface-variant transition-colors dismiss-btn-sec" data-id="${a.id}">Dismiss</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    card.querySelectorAll(".dismiss-btn, .dismiss-btn-sec, .action-btn").forEach(btn => {
+                        btn.addEventListener("click", async (e) => {
+                            e.stopPropagation();
+                            const id = btn.getAttribute("data-id");
+                            try {
+                                const updateRes = await window.api.fetch(`/notifications/${id}/read`, {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json" }
+                                });
+                                if (updateRes.ok) {
+                                    loadNotifications();
+                                } else {
+                                    alert("Failed to dismiss alert");
+                                }
+                            } catch (err) {
+                                console.error(err);
+                            }
+                        });
+                    });
+
+                    attentionContainer.appendChild(card);
+                });
+            }
+
+            if (systemContainer) {
+                const h3 = systemContainer.querySelector("h3");
+                systemContainer.innerHTML = "";
+                if (h3) systemContainer.appendChild(h3);
+
+                systemAlerts.forEach(a => {
+                    const card = document.createElement("div");
+                    card.className = "glass-card rounded-xl p-4 low-glow relative group mt-4";
+                    
+                    let iconName = "info";
+                    if (a.type === "System") iconName = "cloud_done";
+                    else if (a.type === "Marketing") iconName = "campaign";
+                    else if (a.type === "Membership") iconName = "group_add";
+
+                    card.innerHTML = `
+                        <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button class="text-on-surface-variant hover:text-on-surface dismiss-btn-mini" data-id="${a.id}">
+                                <span class="material-symbols-outlined text-[16px]">close</span>
+                            </button>
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="w-10 h-10 rounded-full bg-outline/10 border border-outline/20 flex items-center justify-center shrink-0">
+                                <span class="material-symbols-outlined text-outline text-sm" style="font-variation-settings: 'FILL' 1;">${iconName}</span>
+                            </div>
+                            <div class="flex-grow">
+                                <div class="flex justify-between items-center mb-1 pr-4">
+                                    <span class="font-label-md text-label-md text-on-surface-variant">${a.type}</span>
+                                    <span class="text-[10px] text-on-surface-variant">${new Date(a.created_at).toLocaleDateString()}</span>
+                                </div>
+                                <h4 class="font-body-md text-body-md font-semibold text-on-surface">${a.title}</h4>
+                                <p class="font-body-md text-[13px] text-on-surface-variant mt-1">${a.message}</p>
+                            </div>
+                        </div>
+                    `;
+
+                    const closeBtn = card.querySelector(".dismiss-btn-mini");
+                    if (closeBtn) {
+                        closeBtn.addEventListener("click", async (e) => {
+                            e.stopPropagation();
+                            const id = closeBtn.getAttribute("data-id");
+                            try {
+                                const updateRes = await window.api.fetch(`/notifications/${id}/read`, {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json" }
+                                });
+                                if (updateRes.ok) {
+                                    loadNotifications();
+                                } else {
+                                    alert("Failed to dismiss alert");
+                                }
+                            } catch (err) {
+                                console.error(err);
+                            }
+                        });
+                    }
+
+                    systemContainer.appendChild(card);
+                });
+            }
+
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    loadNotifications();
+});
+</script>
+
+<div id="jsb-mobile-nav"></div>
+</body></html>

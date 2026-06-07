@@ -1,0 +1,370 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Finance Dashboard</title>
+
+<style>
+    .glass-card {
+        background: rgba(27, 27, 27, 0.7);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+    }
+</style>
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
+<div id="jsb-header" data-page-title="Finance Dashboard"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- Main Canvas -->
+<main class="flex-grow pt-6 pb-24 md:pb-12 px-margin-mobile md:px-margin-desktop max-w-[1440px] mx-auto w-full flex flex-col gap-lg">
+  
+  <!-- Header & Filters -->
+  <div class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-4">
+    <div>
+      <h2 class="font-headline-lg text-headline-lg text-on-surface">Financial Overview</h2>
+      <p class="font-body-md text-body-md text-on-surface-variant mt-1">Real-time revenue, collections, outstanding dues and forecasting.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <select id="time-range-select" class="bg-surface-container border border-outline-variant px-4 py-2 rounded-lg font-label-md text-label-md text-on-background hover:bg-surface-variant transition-colors focus:outline-none focus:ring-1 focus:ring-primary">
+        <option value="6">Last 6 Months</option>
+        <option value="3">Last 3 Months</option>
+        <option value="12">Last 12 Months</option>
+      </select>
+      <button onclick="window.location.href='/api/v1/reports/export?type=revenue&days=30&format=excel'" class="font-label-md text-label-md bg-primary/10 border border-primary text-primary px-4 py-2 rounded-lg hover:bg-primary/20 transition-colors flex items-center gap-2">
+        Export <span class="material-symbols-outlined text-[18px]">download</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Bento Grid Layout -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter mb-6">
+    
+    <!-- Summary Column (KPI Cards) -->
+    <div class="lg:col-span-4 flex flex-col gap-gutter">
+      <!-- Total Month Revenue Card -->
+      <div class="glass-card p-6 rounded-xl border border-outline-variant/30 relative overflow-hidden group">
+        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+          <span class="material-symbols-outlined text-[64px] text-primary">account_balance</span>
+        </div>
+        <p class="font-label-caps text-label-caps text-on-surface-variant mb-2">Month-To-Date Revenue</p>
+        <h3 class="font-headline-lg text-headline-lg text-on-background animate-pulse" id="metric-mtd-revenue">₹0</h3>
+        <div class="flex items-center gap-1 mt-4 text-[#81c995]" id="revenue-growth-container">
+          <span class="material-symbols-outlined text-[16px]">trending_up</span>
+          <span class="font-label-sm text-label-sm"><span id="metric-growth-pct">0</span>% vs last month</span>
+        </div>
+      </div>
+
+      <!-- Outstanding Dues Card -->
+      <div class="glass-card p-6 rounded-xl border border-outline-variant/30 flex items-center justify-between hover:border-primary/50 transition-colors">
+        <div>
+          <p class="font-label-caps text-label-caps text-on-surface-variant mb-1">Outstanding Dues</p>
+          <h4 class="font-headline-md text-headline-md text-error" id="metric-dues">₹0</h4>
+          <span class="text-xs text-on-surface-variant block mt-1" id="metric-dues-count">0 unpaid invoices</span>
+        </div>
+        <div class="h-12 w-12 rounded-full bg-error/10 flex items-center justify-center border border-error/20">
+          <span class="material-symbols-outlined text-error">pending_actions</span>
+        </div>
+      </div>
+
+      <!-- Forecasted Revenue Card -->
+      <div class="glass-card p-6 rounded-xl border border-outline-variant/30 flex items-center justify-between hover:border-primary/50 transition-colors">
+        <div>
+          <p class="font-label-caps text-label-caps text-on-surface-variant mb-1">Next Month Forecast</p>
+          <h4 class="font-headline-md text-headline-md text-[#81c995]" id="metric-forecast">₹0</h4>
+          <span class="text-xs text-on-surface-variant block mt-1">Based on rolling 3-mo trend</span>
+        </div>
+        <div class="h-12 w-12 rounded-full bg-[#81c995]/10 flex items-center justify-center border border-[#81c995]/20">
+          <span class="material-symbols-outlined text-[#81c995]">insights</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Chart Area -->
+    <div class="lg:col-span-8 glass-card p-6 rounded-xl border border-outline-variant/30 flex flex-col min-h-[300px]">
+      <h3 class="font-title-lg text-title-lg text-on-surface mb-6">Revenue &amp; Collections Trend</h3>
+      <div class="flex-grow relative h-64">
+        <canvas id="chart-revenue-collections"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row for Payment Distribution & Dues Trend -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter mb-6">
+    <!-- Payment Methods -->
+    <div class="lg:col-span-5 glass-card p-6 rounded-xl border border-outline-variant/30 flex flex-col">
+      <h3 class="font-title-lg text-title-lg text-on-surface mb-6">Payment Methods (Current Month)</h3>
+      <div class="h-56 relative flex items-center justify-center">
+        <canvas id="chart-payment-methods"></canvas>
+      </div>
+      <div id="method-legend" class="space-y-1.5 text-sm mt-4 text-on-surface-variant">
+        <!-- populated dynamically -->
+      </div>
+    </div>
+
+    <!-- Dues Trend -->
+    <div class="lg:col-span-7 glass-card p-6 rounded-xl border border-outline-variant/30 flex flex-col">
+      <h3 class="font-title-lg text-title-lg text-on-surface mb-6">Outstanding Dues Trend</h3>
+      <div class="h-64 relative">
+        <canvas id="chart-dues-trend"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Transactions -->
+  <div class="flex flex-col gap-4">
+    <div class="flex justify-between items-center">
+      <h3 class="font-headline-md text-headline-md text-on-surface">Recent Transactions</h3>
+      <button onclick="window.location.href='/payment-center'" class="px-4 py-1.5 bg-primary/10 border border-primary text-primary hover:bg-primary/20 rounded-lg text-xs font-bold transition-all">Collect Payment</button>
+    </div>
+    <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-white/10 text-on-surface-variant font-medium">
+              <th class="py-3 px-4">Member</th>
+              <th class="py-3 px-4">Reference</th>
+              <th class="py-3 px-4">Date</th>
+              <th class="py-3 px-4">Method</th>
+              <th class="py-3 px-4">Amount</th>
+              <th class="py-3 px-4">Status</th>
+            </tr>
+          </thead>
+          <tbody id="transactions-table-body" class="divide-y divide-white/5 text-on-surface">
+            <tr>
+              <td colspan="6" class="py-12 text-center text-on-surface-variant">
+                <span class="material-symbols-outlined text-[48px] block mb-2 opacity-50">receipt_long</span>
+                No recent transactions found.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="jsb-mobile-nav"></div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const rangeSelect = document.getElementById("time-range-select");
+  
+  let mainChart = null;
+  let methodChart = null;
+  let duesChart = null;
+
+  async function loadFinanceData(months) {
+    try {
+      // 1. Fetch dashboard data
+      const res = await window.api.fetch(`/analytics/finance-dashboard?months=${months}`);
+      const data = await res.json();
+
+      // Update KPIs
+      document.getElementById('metric-mtd-revenue').innerText = '₹' + Number(data.currentMonthRevenue).toLocaleString();
+      document.getElementById('metric-growth-pct').innerText = Math.abs(data.monthlyGrowth);
+      const growthContainer = document.getElementById('revenue-growth-container');
+      if (data.monthlyGrowth >= 0) {
+        growthContainer.className = 'flex items-center gap-1 mt-4 text-[#81c995]';
+        growthContainer.querySelector('span').innerText = 'trending_up';
+      } else {
+        growthContainer.className = 'flex items-center gap-1 mt-4 text-error';
+        growthContainer.querySelector('span').innerText = 'trending_down';
+      }
+
+      document.getElementById('metric-dues').innerText = '₹' + Number(data.totalOutstanding).toLocaleString();
+      document.getElementById('metric-dues-count').innerText = `${data.unpaidInvoices} unpaid invoices`;
+      document.getElementById('metric-forecast').innerText = '₹' + Number(data.forecast).toLocaleString();
+
+      // Render Revenue & Collections Chart
+      const labels = data.revenueTrend.map(r => r.label);
+      const revValues = data.revenueTrend.map(r => r.revenue);
+      const colValues = data.collectionsTrend.map(c => c.collections);
+
+      const mainCtx = document.getElementById('chart-revenue-collections').getContext('2d');
+      if (mainChart) mainChart.destroy();
+      mainChart = new Chart(mainCtx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Gross Revenue',
+              data: revValues,
+              borderColor: '#b5c4ff',
+              backgroundColor: 'rgba(181,196,255,0.05)',
+              fill: true,
+              tension: 0.4,
+              borderWidth: 2.5
+            },
+            {
+              label: 'Successful Collections',
+              data: colValues,
+              borderColor: '#81c995',
+              backgroundColor: 'transparent',
+              fill: false,
+              tension: 0.4,
+              borderWidth: 2,
+              borderDash: [5, 5]
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: true, labels: { color: '#bbb' } } },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.02)' }, ticks: { color: '#888' } },
+            y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#888', callback: v => '₹' + (v/1000).toFixed(0) + 'k' } }
+          }
+        }
+      });
+
+      // Render Payment Methods doughnut
+      const methodCtx = document.getElementById('chart-payment-methods').getContext('2d');
+      const methodLabels = data.paymentMethods.map(m => m.method);
+      const methodAmounts = data.paymentMethods.map(m => m.amount);
+      const methodColors = ['#d0bcff', '#81c995', '#b5c4ff', '#ffb95f', '#ff897d'];
+
+      if (methodChart) methodChart.destroy();
+      methodChart = new Chart(methodCtx, {
+        type: 'doughnut',
+        data: {
+          labels: methodLabels,
+          datasets: [{
+            data: methodAmounts,
+            backgroundColor: methodColors.slice(0, methodLabels.length),
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          cutout: '75%'
+        }
+      });
+
+      // Render method legend
+      const legendContainer = document.getElementById('method-legend');
+      legendContainer.innerHTML = '';
+      if (data.paymentMethods.length === 0) {
+        legendContainer.innerHTML = `<p class="text-center text-xs text-on-surface-variant">No collections recorded this month</p>`;
+      } else {
+        data.paymentMethods.forEach((m, idx) => {
+          const color = methodColors[idx % methodColors.length];
+          const pct = data.currentMonthRevenue > 0 ? Math.round((m.amount / data.currentMonthRevenue) * 100) : 0;
+          const row = document.createElement('div');
+          row.className = 'flex justify-between items-center border-b border-white/5 pb-1';
+          row.innerHTML = `
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full" style="background-color: ${color}"></span>
+              <span class="text-on-surface">${m.method} (${m.count} tx)</span>
+            </div>
+            <span class="font-bold text-on-background">₹${Number(m.amount).toLocaleString()} (${pct}%)</span>
+          `;
+          legendContainer.appendChild(row);
+        });
+      }
+
+      // Draw Outstanding Dues Trend Chart
+      const duesCtx = document.getElementById('chart-dues-trend').getContext('2d');
+      const duesLabels = data.duesTrend.map(d => d.label);
+      const duesValues = data.duesTrend.map(d => d.dues);
+
+      if (duesChart) duesChart.destroy();
+      duesChart = new Chart(duesCtx, {
+        type: 'bar',
+        data: {
+          labels: duesLabels,
+          datasets: [{
+            label: 'Outstanding Unpaid Dues',
+            data: duesValues,
+            backgroundColor: 'rgba(255, 137, 125, 0.4)',
+            borderColor: '#ff897d',
+            borderWidth: 1.5,
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#888' } },
+            y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#888', callback: v => '₹' + (v/1000).toFixed(0) + 'k' } }
+          }
+        }
+      });
+
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function loadTransactions() {
+    try {
+      const res = await window.api.fetch('/finance/transactions');
+      const txs = await res.json();
+      
+      const tbody = document.getElementById('transactions-table-body');
+      tbody.innerHTML = '';
+
+      if (txs.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-12 text-center text-on-surface-variant">
+              <span class="material-symbols-outlined text-[48px] block mb-2 opacity-50">receipt_long</span>
+              No recent transactions found.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      txs.forEach(t => {
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-white/[0.02] cursor-pointer';
+        row.onclick = () => window.location.href = `/receipt?id=${t.invoice_number}`;
+        row.innerHTML = `
+          <td class="py-3 px-4 font-bold text-on-background">${t.full_name}</td>
+          <td class="py-3 px-4 font-mono text-xs text-on-surface-variant">Ref: ${t.transaction_reference || 'N/A'}</td>
+          <td class="py-3 px-4 text-on-surface-variant">${new Date(t.created_at).toLocaleDateString()}</td>
+          <td class="py-3 px-4 font-mono text-on-surface-variant">${t.method}</td>
+          <td class="py-3 px-4 font-mono font-bold text-secondary">₹${Number(t.amount).toLocaleString()}</td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-0.5 rounded-full text-xs font-label-sm uppercase ${
+              t.status === 'Successful' ? 'bg-[#81c995]/10 text-[#81c995] border border-[#81c995]/20' : 'bg-error/10 text-error border border-error/20'
+            }">${t.status}</span>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // Initial loads
+  loadFinanceData(rangeSelect.value);
+  loadTransactions();
+
+  rangeSelect.addEventListener("change", (e) => {
+    loadFinanceData(e.target.value);
+  });
+});
+</script>
+</body></html>

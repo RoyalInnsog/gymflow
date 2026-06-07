@@ -1,0 +1,380 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Renew Membership</title>
+
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Custom input styling for JSB Fitness */
+        .kinetic-input {
+            background-color: #121212;
+            border-color: rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease-in-out;
+        }
+        .kinetic-input:focus {
+            border-color: #b5c4ff; /* primary */
+            box-shadow: 0 0 0 1px #b5c4ff, 0 0 10px rgba(45, 106, 255, 0.2);
+            outline: none;
+        }
+        
+        /* Ambient Background Effect */
+        .ambient-bg {
+            background: radial-gradient(circle at 50% 0%, rgba(45, 106, 255, 0.05) 0%, rgba(19, 19, 19, 1) 70%);
+        }
+    </style>
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-surface">
+<div id="jsb-header" data-page-title="Renew Membership"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- 
+      Note: Shared Components TopAppBar and BottomNavBar are SUPPRESSED here 
+      because this is a "Linear/Transactional" onboarding wizard flow, per the 
+      "Automatic Suppression" rule in the system prompt.
+    -->
+<!-- Wizard Header -->
+
+<!-- Main Workspace -->
+<main class="flex-grow w-full max-w-container-max mx-auto px-margin py-stack-lg flex flex-col gap-stack-lg">
+<div class="px-4 md:px-8 pt-4"><a href="/members" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>← Members</span></a></div>
+<!-- Progress Stepper -->
+<div class="w-full max-w-3xl mx-auto mb-stack-md">
+<div class="flex items-center justify-between relative">
+<!-- Connecting Line Base -->
+<div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-[2px] bg-surface-container-high -z-10"></div>
+<!-- Connecting Line Active Progress -->
+<div class="absolute left-0 top-1/2 -translate-y-1/2 w-[60%] h-[2px] bg-primary -z-10 transition-all duration-500"></div>
+<!-- Step 1: Done -->
+<div class="flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(45,106,255,0.3)]">
+<span class="material-symbols-outlined text-on-primary text-[16px]">check</span>
+</div>
+<span class="font-label-md text-label-md text-primary hidden md:block">Member</span>
+</div>
+<!-- Step 2: Done -->
+<div class="flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(45,106,255,0.3)]">
+<span class="material-symbols-outlined text-on-primary text-[16px]">check</span>
+</div>
+<span class="font-label-md text-label-md text-primary hidden md:block">Plan</span>
+</div>
+<!-- Step 3: Done -->
+<div class="flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(45,106,255,0.3)]">
+<span class="material-symbols-outlined text-on-primary text-[16px]">check</span>
+</div>
+<span class="font-label-md text-label-md text-primary hidden md:block">Discount</span>
+</div>
+<!-- Step 4: Active -->
+<div class="flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-background border-2 border-primary flex items-center justify-center shadow-[0_0_20px_rgba(45,106,255,0.2)]">
+<div class="w-2.5 h-2.5 rounded-full bg-primary"></div>
+</div>
+<span class="font-label-md text-label-md text-on-surface hidden md:block">Payment</span>
+</div>
+<!-- Step 5: Pending -->
+<div class="flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-surface-container border border-outline-variant flex items-center justify-center">
+<span class="font-body-md text-body-md text-on-surface-variant">5</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant hidden md:block">Receipt</span>
+</div>
+<!-- Step 6: Pending -->
+<div class="flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-surface-container border border-outline-variant flex items-center justify-center">
+<span class="font-body-md text-body-md text-on-surface-variant">6</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant hidden md:block">Confirm</span>
+</div>
+</div>
+</div>
+<!-- Content Area: Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
+<!-- Left Column: Active Step (Payment) -->
+<div class="lg:col-span-8 flex flex-col gap-stack-md">
+<!-- Main Glass Card -->
+<div class="bg-surface-container/70 backdrop-blur-xl border border-white/10 rounded-xl p-6 md:p-8 flex flex-col gap-stack-lg shadow-2xl shadow-black/50">
+<div class="flex flex-col gap-2">
+<h2 class="font-headline-lg text-headline-lg md:text-headline-lg-mobile text-on-surface">Collect Payment</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Select a method to process the final amount.</p>
+</div>
+<!-- Payment Method Selector (Bento style) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-stack-sm">
+<!-- Option 1: Card (Active state example) -->
+<button class="relative flex flex-col items-center justify-center gap-3 p-6 rounded-lg bg-primary/10 border-2 border-primary text-primary transition-all overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent opacity-50"></div>
+<span class="material-symbols-outlined text-[32px] icon-fill">credit_card</span>
+<span class="font-title-lg text-title-lg">Card</span>
+<!-- Active Indicator Dot -->
+<div class="absolute top-3 right-3 w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(45,106,255,0.8)]"></div>
+</button>
+<!-- Option 2: UPI -->
+<button class="flex flex-col items-center justify-center gap-3 p-6 rounded-lg bg-surface-container border border-outline-variant/50 text-on-surface-variant hover:bg-surface-variant/50 hover:border-outline-variant transition-all">
+<span class="material-symbols-outlined text-[32px]">qr_code_scanner</span>
+<span class="font-title-lg text-title-lg">UPI</span>
+</button>
+<!-- Option 3: Cash -->
+<button class="flex flex-col items-center justify-center gap-3 p-6 rounded-lg bg-surface-container border border-outline-variant/50 text-on-surface-variant hover:bg-surface-variant/50 hover:border-outline-variant transition-all" onclick="window.location.href='/finance'">
+<span class="material-symbols-outlined text-[32px]">payments</span>
+<span class="font-title-lg text-title-lg">Cash</span>
+</button>
+</div>
+<!-- Selected Method Details: Card Input -->
+<div class="flex flex-col gap-stack-md pt-stack-sm border-t border-white/5">
+<h3 class="font-title-lg text-title-lg text-on-surface">Card Details</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<!-- Name on Card -->
+<div class="flex flex-col gap-2 md:col-span-2">
+<label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Name on Card</label>
+<input class="kinetic-input w-full h-12 rounded-lg px-4 text-on-surface font-body-lg focus:ring-0" placeholder="e.g. Vikram Malhotra" type="text">
+</div>
+<!-- Card Number -->
+<div class="flex flex-col gap-2 md:col-span-2">
+<label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Card Number</label>
+<div class="relative">
+<input class="kinetic-input w-full h-12 rounded-lg pl-12 pr-4 text-on-surface font-body-lg focus:ring-0 tracking-widest" placeholder="0000 0000 0000 0000" type="text">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">credit_card</span>
+</div>
+</div>
+<!-- Expiry -->
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Expiry Date</label>
+<input class="kinetic-input w-full h-12 rounded-lg px-4 text-on-surface font-body-lg focus:ring-0" placeholder="MM/YY" type="text">
+</div>
+<!-- CVV -->
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">CVV</label>
+<div class="relative">
+<input class="kinetic-input w-full h-12 rounded-lg px-4 text-on-surface font-body-lg focus:ring-0 tracking-widest" placeholder="•••" type="password">
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px] cursor-help" title="3 digits on back of card">info</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Summary Pane -->
+<div class="lg:col-span-4 flex flex-col gap-stack-md">
+<div class="bg-surface-container-low/50 backdrop-blur-md border border-outline-variant/30 rounded-xl p-6 sticky top-24">
+<h3 class="font-title-lg text-title-lg text-on-surface mb-stack-md flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">receipt_long</span>
+                        Renewal Summary
+                    </h3>
+<!-- Member Info -->
+<div class="flex items-center gap-4 py-4 border-b border-white/5">
+<div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center overflow-hidden border border-white/10">
+<span class="material-symbols-outlined text-on-surface-variant">person</span>
+</div>
+<div>
+<div class="font-body-lg text-body-lg text-on-surface font-medium">Rahul Sharma</div>
+<div class="font-body-md text-body-md text-on-surface-variant">ID: KIN-8892</div>
+</div>
+</div>
+<!-- Line Items -->
+<div class="flex flex-col gap-3 py-4 border-b border-white/5">
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant">Plan: Annual Pro Elite</span>
+<span class="font-body-md text-body-md text-on-surface">₹26,000</span>
+</div>
+<div class="flex justify-between items-center text-secondary">
+<span class="font-body-md text-body-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">local_offer</span>
+                                Loyalty Discount
+                            </span>
+<span class="font-body-md text-body-md">-₹2,000</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant">Taxes (18% GST)</span>
+<span class="font-body-md text-body-md text-on-surface">Included</span>
+</div>
+</div>
+<!-- Total -->
+<div class="pt-4 flex flex-col gap-1">
+<div class="flex justify-between items-end">
+<span class="font-title-lg text-title-lg text-on-surface-variant">Total Due</span>
+<span class="font-display-lg text-display-lg break-words min-w-0 text-primary tracking-tight">₹24,000</span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant text-right">Valid until Oct 2025</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Wizard Footer (Sticky Bottom) -->
+<footer class="w-full bg-surface-container/90 backdrop-blur-xl border-t border-white/10 py-4 px-margin sticky bottom-0 z-40 mt-auto">
+<div class="max-w-container-max mx-auto flex items-center justify-between">
+<button class="px-6 py-3 rounded-lg border border-outline-variant/50 text-on-surface-variant font-title-lg text-title-lg hover:bg-surface-variant/30 hover:text-on-surface transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined">arrow_back</span>
+                Back
+            </button>
+<button class="px-8 py-3 rounded-lg bg-primary text-on-primary font-title-lg text-title-lg hover:bg-primary/90 transition-all shadow-[0_0_20px_rgba(45,106,255,0.3)] hover:shadow-[0_0_30px_rgba(45,106,255,0.5)] flex items-center gap-2">
+                Process ₹24,000
+                <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</footer>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const memberId = urlParams.get('id') || 'm1';
+
+  let selectedMethod = 'Card';
+  let selectedPlanId = 'p1';
+  let discount = 2000;
+  let planPrice = 25000;
+  let taxRate = 18.00;
+
+  // 1. Wire cancel button
+  const cancelBtn = document.querySelector('header button');
+  if (cancelBtn) {
+    cancelBtn.onclick = () => window.location.href = `/member-profile?id=${memberId}`;
+  }
+
+  // 2. Wire payment method toggling
+  const methodButtons = document.querySelectorAll('.grid-cols-1.md\\:grid-cols-3 button');
+  const methods = ['Card', 'UPI', 'Cash'];
+  
+  methodButtons.forEach((btn, idx) => {
+    btn.removeAttribute('onclick');
+    
+    btn.onclick = (e) => {
+      e.preventDefault();
+      selectedMethod = methods[idx];
+      
+      methodButtons.forEach((b, i) => {
+        b.className = "flex flex-col items-center justify-center gap-3 p-6 rounded-lg bg-surface-container border border-outline-variant/50 text-on-surface-variant hover:bg-surface-variant/50 hover:border-outline-variant transition-all";
+        const dot = b.querySelector('.absolute.top-3.right-3');
+        if (dot) dot.remove();
+      });
+      
+      btn.className = "relative flex flex-col items-center justify-center gap-3 p-6 rounded-lg bg-primary/10 border-2 border-primary text-primary transition-all overflow-hidden group";
+      const activeDot = document.createElement('div');
+      activeDot.className = "absolute top-3 right-3 w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(45,106,255,0.8)]";
+      btn.appendChild(activeDot);
+    };
+  });
+
+  try {
+    // 3. Load member details
+    const memberRes = await window.api.fetch(`/members/${memberId}`);
+    const memberData = await memberRes.json();
+    if (memberRes.ok) {
+      const { member } = memberData;
+      const nameEl = document.querySelector('.bg-surface-container-low\\/50 .font-body-lg');
+      if (nameEl) nameEl.innerText = member.full_name;
+      const idEl = document.querySelector('.bg-surface-container-low\\/50 .font-body-md');
+      if (idEl) idEl.innerText = `ID: ${member.id}`;
+    }
+
+    // 4. Create and populate plan selector
+    const planSection = document.querySelector('.bg-surface-container-low\\/50 .flex.items-center');
+    if (planSection) {
+      const selectDiv = document.createElement('div');
+      selectDiv.className = "mt-4 flex flex-col gap-1 border-t border-white/5 pt-4";
+      selectDiv.innerHTML = `
+        <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Choose Membership Tier</label>
+        <select class="kinetic-input w-full h-12 rounded-lg px-4 text-on-surface font-body-md bg-surface-container border border-white/10 focus:ring-0">
+        </select>
+      `;
+      planSection.parentNode.insertBefore(selectDiv, planSection.nextSibling);
+
+      const selectEl = selectDiv.querySelector('select');
+
+      const plansRes = await window.api.fetch('/plans');
+      const plans = await plansRes.json();
+      plans.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.innerText = `${p.name} - ₹${p.price.toLocaleString()}`;
+        selectEl.appendChild(opt);
+      });
+
+      function recalculateTotals() {
+        const selectedPlan = plans.find(p => p.id === selectEl.value);
+        if (selectedPlan) {
+          selectedPlanId = selectedPlan.id;
+          planPrice = selectedPlan.price;
+          taxRate = selectedPlan.tax_rate_percent || 18.00;
+
+          const subtotal = planPrice - discount;
+          const taxAmount = subtotal * (taxRate / 100);
+          const totalDue = subtotal + taxAmount;
+
+          const planRow = document.querySelectorAll('.flex.flex-col.gap-3.py-4 > div')[0];
+          if (planRow) {
+            planRow.querySelector('span:first-child').innerText = `Plan: ${selectedPlan.name}`;
+            planRow.querySelector('span:last-child').innerText = `₹${planPrice.toLocaleString()}`;
+          }
+
+          const totalDueCell = document.querySelector('.pt-4 .font-display-lg');
+          if (totalDueCell) totalDueCell.innerText = `₹${totalDue.toLocaleString()}`;
+
+          const processBtn = document.querySelector('footer button.bg-primary');
+          if (processBtn) {
+            processBtn.innerHTML = `Process ₹${totalDue.toLocaleString()} <span class="material-symbols-outlined">arrow_forward</span>`;
+          }
+        }
+      }
+
+      selectEl.addEventListener('change', recalculateTotals);
+      recalculateTotals(); 
+    }
+
+    // 5. Handle submission
+    const processBtn = document.querySelector('footer button.bg-primary');
+    if (processBtn) {
+      processBtn.onclick = async (e) => {
+        e.preventDefault();
+        
+        try {
+          const renewResponse = await window.api.fetch('/memberships/renew', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              member_id: memberId,
+              plan_id: selectedPlanId,
+              discount_amount: discount,
+              payment_method: selectedMethod
+            })
+          });
+
+          const renewData = await renewResponse.json();
+          if (renewResponse.ok) {
+            alert(renewData.message);
+            window.location.href = `/receipt?receipt=${renewData.invoiceNumber}`;
+          } else {
+            alert(renewData.error || 'Failed to process renewal.');
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Renewal gateway offline.');
+        }
+      };
+    }
+
+  } catch (err) {
+    console.error(err);
+  }
+});
+</script>
+
+<div id="jsb-mobile-nav"></div>
+</body></html>

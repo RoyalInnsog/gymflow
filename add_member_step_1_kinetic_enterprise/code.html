@@ -1,0 +1,211 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Add Member</title>
+
+<style>
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        .glass-panel {
+            background-color: rgba(27, 27, 27, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+    </style>
+
+  
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
+<div id="jsb-header" data-page-title="Add Member"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- TopAppBar (From JSON, modified for onboarding intent - keeping shell but minimal) -->
+
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col items-center justify-start pt-stack-lg pb-[120px] px-margin md:px-0 w-full pb-32">
+<div class="px-4 md:px-8 pt-4"><a href="/members" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>← Members</span></a></div>
+<div class="w-full max-w-[800px] flex flex-col gap-stack-lg">
+<!-- Progress Indicator Header -->
+<div class="flex flex-col gap-stack-sm w-full">
+<div class="flex justify-between items-end mb-2">
+<div>
+<p class="font-label-md text-label-md text-primary uppercase tracking-wider mb-1">Step 1 of 6</p>
+<h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Personal Information</h2>
+</div>
+<span class="font-body-md text-body-md text-on-surface-variant hidden sm:block">15% Complete</span>
+</div>
+<!-- Segmented Progress Bar -->
+<div class="w-full flex gap-2 h-2">
+<div class="flex-1 bg-primary rounded-full relative overflow-hidden">
+<div class="absolute inset-0 bg-white/20 animate-pulse"></div>
+</div>
+<div class="flex-1 bg-surface-container-high rounded-full border border-white/5"></div>
+<div class="flex-1 bg-surface-container-high rounded-full border border-white/5"></div>
+<div class="flex-1 bg-surface-container-high rounded-full border border-white/5"></div>
+<div class="flex-1 bg-surface-container-high rounded-full border border-white/5"></div>
+<div class="flex-1 bg-surface-container-high rounded-full border border-white/5"></div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-2">Let's start with the member's basic details to create their profile.</p>
+</div>
+<!-- Form Container -->
+<form class="glass-panel rounded-xl border border-white/10 p-stack-lg flex flex-col gap-stack-lg shadow-[0_10px_40px_rgba(0,0,0,0.3)] relative overflow-hidden">
+<!-- Subtle background glow -->
+<div class="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-[80px] pointer-events-none"></div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Full Name -->
+<div class="flex flex-col gap-stack-sm md:col-span-2">
+<label class="font-label-md text-label-md text-on-surface-variant" for="fullName">Full Name *</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">person</span>
+<input class="w-full bg-[#121212] border border-outline/30 rounded text-on-surface font-body-md text-body-md pl-10 pr-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 focus:shadow-[0_0_15px_rgba(45,106,255,0.15)] transition-all placeholder:text-outline-variant" id="fullName" placeholder="e.g. Vikram Malhotra" required="" type="text">
+</div>
+</div>
+<!-- Phone -->
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface-variant" for="phone">Phone Number *</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">call</span>
+<input class="w-full bg-[#121212] border border-outline/30 rounded text-on-surface font-body-md text-body-md pl-10 pr-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 focus:shadow-[0_0_15px_rgba(45,106,255,0.15)] transition-all placeholder:text-outline-variant" id="phone" placeholder="+91 98765 43210" required="" type="tel">
+</div>
+</div>
+<!-- Email -->
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface-variant" for="email">Email Address</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">mail</span>
+<input class="w-full bg-[#121212] border border-outline/30 rounded text-on-surface font-body-md text-body-md pl-10 pr-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 focus:shadow-[0_0_15px_rgba(45,106,255,0.15)] transition-all placeholder:text-outline-variant" id="email" placeholder="vikram@example.com" type="email">
+</div>
+</div>
+<!-- DOB -->
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface-variant" for="dob">Date of Birth</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">calendar_month</span>
+<input class="w-full bg-[#121212] border border-outline/30 rounded text-on-surface font-body-md text-body-md pl-10 pr-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 focus:shadow-[0_0_15px_rgba(45,106,255,0.15)] transition-all [color-scheme:dark]" id="dob" type="date">
+</div>
+</div>
+<!-- Gender Selection (Custom Radio Group for better UX) -->
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface-variant">Gender</label>
+<div class="grid grid-cols-3 gap-2">
+<label class="cursor-pointer relative">
+<input checked="" class="peer sr-only" name="gender" type="radio" value="male">
+<div class="w-full bg-[#121212] border border-outline/30 rounded py-3 text-center font-body-md text-body-md text-on-surface-variant peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary transition-all">
+                                    Male
+                                </div>
+</label>
+<label class="cursor-pointer relative">
+<input class="peer sr-only" name="gender" type="radio" value="female">
+<div class="w-full bg-[#121212] border border-outline/30 rounded py-3 text-center font-body-md text-body-md text-on-surface-variant peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary transition-all">
+                                    Female
+                                </div>
+</label>
+<label class="cursor-pointer relative">
+<input class="peer sr-only" name="gender" type="radio" value="other">
+<div class="w-full bg-[#121212] border border-outline/30 rounded py-3 text-center font-body-md text-body-md text-on-surface-variant peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary transition-all">
+                                    Other
+                                </div>
+</label>
+</div>
+</div>
+<!-- Divider -->
+<div class="md:col-span-2 border-t border-white/5 my-2"></div>
+<!-- Emergency Contact Name -->
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface-variant" for="emergencyName">Emergency Contact Name</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-secondary-fixed transition-colors">medical_services</span>
+<input class="w-full bg-[#121212] border border-outline/30 rounded text-on-surface font-body-md text-body-md pl-10 pr-4 py-3 focus:outline-none focus:border-secondary-fixed focus:ring-1 focus:ring-secondary-fixed/50 transition-all placeholder:text-outline-variant" id="emergencyName" placeholder="Name" type="text">
+</div>
+</div>
+<!-- Emergency Contact Phone -->
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface-variant" for="emergencyPhone">Emergency Phone</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-secondary-fixed transition-colors">phone_in_talk</span>
+<input class="w-full bg-[#121212] border border-outline/30 rounded text-on-surface font-body-md text-body-md pl-10 pr-4 py-3 focus:outline-none focus:border-secondary-fixed focus:ring-1 focus:ring-secondary-fixed/50 transition-all placeholder:text-outline-variant" id="emergencyPhone" placeholder="Phone Number" type="tel">
+</div>
+</div>
+</div>
+</form>
+</div>
+</main>
+<!-- Bottom Action Bar (Fixed) -->
+<div class="fixed bottom-0 w-full bg-background/90 backdrop-blur-xl border-t border-white/10 p-4 z-40 flex justify-center pb-safe">
+<div class="w-full max-w-[800px] flex justify-between items-center px-4 md:px-0">
+<button class="text-on-surface-variant font-label-md text-label-md hover:text-on-surface px-4 py-2 rounded border border-transparent hover:border-white/10 transition-all" type="button">
+                Cancel
+            </button>
+<button class="bg-primary-container text-on-primary-container font-label-md text-label-md px-6 py-3 rounded flex items-center gap-2 hover:bg-primary transition-colors shadow-[0_0_20px_rgba(45,106,255,0.2)] hover:shadow-[0_0_25px_rgba(45,106,255,0.4)] group" type="button">
+                Next: Upload Photo
+                <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const nextBtn = document.querySelector('button.bg-primary-container');
+  const cancelBtn = document.querySelector('button.text-on-surface-variant');
+  const closeBtn = document.querySelector('header button');
+
+  if (closeBtn) {
+    closeBtn.onclick = () => window.location.href = '/members';
+  }
+  if (cancelBtn) {
+    cancelBtn.onclick = () => window.location.href = '/members';
+  }
+
+  if (nextBtn) {
+    nextBtn.onclick = (e) => {
+      e.preventDefault();
+      
+      const fullName = document.getElementById('fullName').value;
+      const phone = document.getElementById('phone').value;
+      const email = document.getElementById('email').value;
+      const dob = document.getElementById('dob').value;
+      const gender = document.querySelector('input[name="gender"]:checked')?.value || 'male';
+      const emergencyName = document.getElementById('emergencyName').value;
+      const emergencyPhone = document.getElementById('emergencyPhone').value;
+
+      if (!fullName || !phone) {
+        alert('Please fill out Name and Phone Number.');
+        return;
+      }
+
+      const tempMember = {
+        full_name: fullName,
+        phone: phone,
+        email: email,
+        dob: dob,
+        gender: gender,
+        emergency_contact_name: emergencyName,
+        emergency_contact_phone: emergencyPhone
+      };
+
+      sessionStorage.setItem('temp_member_onboarding', JSON.stringify(tempMember));
+      window.location.href = '/add-member';
+    };
+  }
+});
+</script>
+</div>
+
+<div id="jsb-mobile-nav"></div>
+</body></html>

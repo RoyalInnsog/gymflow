@@ -1,0 +1,947 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+  <title>Kinetic SaaS - Marketing Center</title>
+  
+  
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <style>
+    .glass-panel {
+      background-color: rgba(27, 27, 27, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
+  
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
+<div id="jsb-header" data-page-title="Marketing Center"></div>
+<div id="jsb-sidebar"></div>
+
+<script>
+  if (localStorage.getItem('sidebarCollapsed') === 'true') {
+    document.body.classList.add('sidebar-collapsed');
+  }
+</script>
+
+<!-- TopAppBar -->
+
+
+<!-- NavigationDrawer (Desktop) -->
+
+
+<!-- Main Workspace Content -->
+<main class="max-w-[1440px] mx-auto p-margin">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-stack-md">
+    <div>
+      <h2 class="font-display-lg text-display-lg break-words min-w-0 text-on-background mb-2">Marketing &amp; Communications Center</h2>
+      <p class="font-body-lg text-body-lg text-on-surface-variant">Broadcast campaigns, WhatsApp alerts, automated templates, and real-time logs.</p>
+    </div>
+  </div>
+
+  <!-- 6 Section Navigation Tabs -->
+  <div class="flex flex-wrap border-b border-outline-variant/30 mb-lg gap-2 custom-scrollbar overflow-x-auto pb-2">
+    <button id="tab-dashboard-btn" class="px-4 py-2 border-b-2 border-primary text-primary font-bold transition-all focus:outline-none flex items-center gap-1.5" onclick="switchTab('dashboard')">
+      <span class="material-symbols-outlined text-[18px]">dashboard</span> Dashboard
+    </button>
+    <button id="tab-creator-btn" class="px-4 py-2 border-b-2 border-transparent text-on-surface-variant hover:text-primary transition-all focus:outline-none flex items-center gap-1.5" onclick="switchTab('creator')">
+      <span class="material-symbols-outlined text-[18px]">add_circle</span> Campaign Creation
+    </button>
+    <button id="tab-history-btn" class="px-4 py-2 border-b-2 border-transparent text-on-surface-variant hover:text-primary transition-all focus:outline-none flex items-center gap-1.5" onclick="switchTab('history')">
+      <span class="material-symbols-outlined text-[18px]">history</span> Campaign History
+    </button>
+    <button id="tab-analytics-btn" class="px-4 py-2 border-b-2 border-transparent text-on-surface-variant hover:text-primary transition-all focus:outline-none flex items-center gap-1.5" onclick="switchTab('analytics')">
+      <span class="material-symbols-outlined text-[18px]">bar_chart</span> Campaign Analytics
+    </button>
+    <button id="tab-templates-btn" class="px-4 py-2 border-b-2 border-transparent text-on-surface-variant hover:text-primary transition-all focus:outline-none flex items-center gap-1.5" onclick="switchTab('templates')">
+      <span class="material-symbols-outlined text-[18px]">library_books</span> Template Library
+    </button>
+    <button id="tab-outbox-btn" class="px-4 py-2 border-b-2 border-transparent text-on-surface-variant hover:text-primary transition-all focus:outline-none flex items-center gap-1.5" onclick="switchTab('outbox')">
+      <span class="material-symbols-outlined text-[18px]">forum</span> Message History
+    </button>
+  </div>
+
+  <!-- TAB 1: Campaign Dashboard -->
+  <div id="view-dashboard" class="flex flex-col gap-lg">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-gutter">
+      <div class="glass-panel rounded-xl p-6 flex flex-col justify-between hover:border-primary/30 transition-all">
+        <span class="font-body-md text-body-md text-on-surface-variant mb-4">Messages Sent</span>
+        <h3 class="font-headline-lg text-headline-lg text-on-background" id="comm-total-sent">-</h3>
+      </div>
+      <div class="glass-panel rounded-xl p-6 flex flex-col justify-between hover:border-secondary/30 transition-all">
+        <span class="font-body-md text-body-md text-emerald-400 mb-4 font-bold">Active Campaigns</span>
+        <h3 class="font-headline-lg text-headline-lg text-on-background" id="comm-total-campaigns">-</h3>
+      </div>
+      <div class="glass-panel rounded-xl p-6 flex flex-col justify-between hover:border-primary/30 transition-all">
+        <span class="font-body-md text-body-md text-primary mb-4 font-bold">Campaign Reach</span>
+        <h3 class="font-headline-lg text-headline-lg text-on-background" id="comm-delivered">-</h3>
+      </div>
+      <div class="glass-panel rounded-xl p-6 flex flex-col justify-between border-error/30 hover:border-error/50 transition-all">
+        <span class="font-body-md text-body-md text-error mb-4 font-bold">Failed Messages</span>
+        <h3 class="font-headline-lg text-headline-lg text-on-background" id="comm-failed">-</h3>
+      </div>
+    </div>
+
+    <!-- Automated Workflows -->
+    <div class="glass-panel rounded-xl p-6">
+      <div class="flex justify-between items-center mb-6 pb-4 border-b border-white/5">
+        <div>
+          <h3 class="font-title-lg text-title-lg text-on-background">Automated WhatsApp Workflows</h3>
+          <p class="font-body-md text-body-md text-on-surface-variant mt-1">Configure automated event-based WhatsApp notifications.</p>
+        </div>
+        <button onclick="triggerScan()" class="bg-primary/10 border border-primary text-primary px-4 py-2 rounded-lg font-label-md hover:bg-primary/20 transition-all flex items-center gap-2">
+          <span class="material-symbols-outlined text-[16px]">sync</span> Run Automation Scan
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Expiry Alerts -->
+        <div class="bg-surface-container-low border border-white/5 rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-start mb-4">
+              <h4 class="font-title-md text-on-background flex items-center gap-2"><span class="material-symbols-outlined text-secondary">timer</span> Membership Expiry</h4>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked="" class="sr-only peer">
+                <div class="w-11 h-6 bg-surface-container peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+              </label>
+            </div>
+            <p class="text-xs text-on-surface-variant mb-4">Sends automated alerts prior to membership plan expiration.</p>
+            <ul class="text-xs space-y-2 text-on-surface">
+              <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> 7 Days Remaining (Warning)</li>
+              <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> 3 Days Remaining (High)</li>
+              <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> 1 Day Remaining (Critical)</li>
+            </ul>
+          </div>
+          <div class="pt-4 border-t border-white/5 mt-4 text-[10px] text-outline">
+            Total Reminders Sent: <span id="span-total-expiry" class="font-bold text-secondary">-</span>
+          </div>
+        </div>
+
+        <!-- Inactive Alerts -->
+        <div class="bg-surface-container-low border border-white/5 rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-start mb-4">
+              <h4 class="font-title-md text-on-background flex items-center gap-2"><span class="material-symbols-outlined text-tertiary">warning</span> Inactive Members</h4>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked="" class="sr-only peer">
+                <div class="w-11 h-6 bg-surface-container peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-tertiary"></div>
+              </label>
+            </div>
+            <p class="text-xs text-on-surface-variant mb-4">Sends automated alerts to absentees to boost member retention.</p>
+            <ul class="text-xs space-y-2 text-on-surface">
+              <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> 5 Days Absent (Warning)</li>
+              <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> 10 Days Absent (High)</li>
+              <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> 30 Days Absent (Critical)</li>
+            </ul>
+          </div>
+          <div class="pt-4 border-t border-white/5 mt-4 text-[10px] text-outline">
+            Follow-ups Generated: <span id="span-total-inactive" class="font-bold text-tertiary">-</span>
+          </div>
+        </div>
+
+        <!-- Payments Alerts -->
+        <div class="bg-surface-container-low border border-white/5 rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-start mb-4">
+              <h4 class="font-title-md text-on-background flex items-center gap-2"><span class="material-symbols-outlined text-primary">payments</span> Payment Due</h4>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked="" class="sr-only peer">
+                <div class="w-11 h-6 bg-surface-container peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+              </label>
+            </div>
+            <p class="text-xs text-on-surface-variant mb-4">Sends automatic reminders for dues and unpaid invoices.</p>
+            <ul class="text-xs space-y-2 text-on-surface">
+              <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span> Invoice Generated (Today)</li>
+              <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span> Overdue Outstanding Reminders</li>
+            </ul>
+          </div>
+          <div class="pt-4 border-t border-white/5 mt-4 text-[10px] text-outline">
+            Payment Reminders Sent: <span id="span-total-payment" class="font-bold text-primary">-</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: Campaign Creation -->
+  <div id="view-creator" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+    <div class="lg:col-span-8 flex flex-col gap-lg">
+      <div class="glass-panel rounded-xl p-md flex flex-col gap-md">
+        <h3 class="font-headline-md text-headline-md">Draft Broadcast Campaign</h3>
+        
+        <div class="flex flex-col gap-xs">
+          <label class="font-label-caps text-label-caps text-on-surface-variant" for="campaign-name">Campaign Name</label>
+          <input type="text" id="campaign-name" class="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-4 py-3 font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors" placeholder="e.g. Diwali Special Annual Discount Offer">
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="flex flex-col gap-xs">
+            <label class="font-label-caps text-label-caps text-on-surface-variant">Target Audience</label>
+            <select id="campaign-audience" class="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-4 py-3 font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+              <option value="All Members">All Members</option>
+              <option value="Active Only">Active Members Only</option>
+              <option value="Expiring Soon">Expiring Soon (Within 7d)</option>
+              <option value="Inactive Members">Inactive Members (Absent 5d+)</option>
+            </select>
+          </div>
+          
+          <div class="flex flex-col gap-xs">
+            <label class="font-label-caps text-label-caps text-on-surface-variant">Prefill Template</label>
+            <select id="campaign-template-select" class="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-4 py-3 font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+              <option value="">-- Select Template (Optional) --</option>
+              <option value="welcome">Welcome Message</option>
+              <option value="expiry">Membership Expiry</option>
+              <option value="payment">Payment Reminder</option>
+              <option value="inactive">Inactive Member Alert</option>
+              <option value="festival">Festival Offer</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-xs">
+          <label class="font-label-caps text-label-caps text-on-surface-variant" for="campaign-message">Message Body (Use {name} for personalization)</label>
+          <textarea class="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg p-3 font-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:ring-1 focus:ring-primary focus:border-primary" id="campaign-message" placeholder="Hi {name}, we have a special renewal discount for you..." rows="5"></textarea>
+        </div>
+
+        <!-- HD Image Upload & Crop -->
+        <div class="flex flex-col gap-xs">
+          <label class="font-label-caps text-label-caps text-on-surface-variant">Campaign Banners / Posters / Flyers (HD Support)</label>
+          <div class="border-2 border-dashed border-outline-variant/30 rounded-lg p-6 flex flex-col items-center justify-center bg-surface-container-low hover:border-primary/50 transition-colors relative cursor-pointer">
+            <input type="file" id="campaign-file-input" class="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" multiple="">
+            <span class="material-symbols-outlined text-[40px] text-on-surface-variant mb-2">upload_file</span>
+            <p class="font-body-md text-sm text-on-surface-variant text-center">Drag and drop or click to upload HD flyers/offer banners.</p>
+            <p class="text-[10px] text-outline mt-1 text-center">Formats supported: JPG, PNG, WEBP. Cropping will launch automatically.</p>
+          </div>
+          <!-- Upload Previews -->
+          <div id="image-previews-list" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+            <!-- Dynamically populated previews -->
+          </div>
+        </div>
+
+        <!-- Dispatched Action -->
+        <div class="flex justify-end gap-sm mt-4 border-t border-outline-variant/30 pt-md">
+          <button id="launchCampaignBtn" type="button" class="px-md py-sm rounded-lg bg-primary text-on-primary hover:bg-primary/95 transition-all font-label-caps text-label-caps flex items-center gap-xs shadow-[0_0_15px_rgba(181,196,255,0.3)]">
+            <span class="material-symbols-outlined text-sm">send</span>
+            Dispatch WhatsApp Campaign
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="lg:col-span-4 flex flex-col gap-lg">
+      <div class="glass-panel rounded-xl p-md">
+        <h3 class="font-headline-md text-headline-md mb-md text-sm uppercase tracking-wider text-outline">WhatsApp Live Preview</h3>
+        <div class="rounded-xl overflow-hidden border border-white/10 bg-[#0b141a] max-w-sm mx-auto shadow-2xl flex flex-col">
+          <!-- WhatsApp Header -->
+          <div class="bg-[#075e54] p-3 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-white/20 overflow-hidden flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-white text-[18px]">fitness_center</span>
+            </div>
+            <div>
+              <p class="font-bold text-xs text-white">JSB Fitness Official</p>
+              <p class="text-[10px] text-white/80">Active Broadcast</p>
+            </div>
+          </div>
+          <!-- WhatsApp Chat Window -->
+          <div class="flex-1 p-3 space-y-3 bg-[#e5ddd5] min-h-[300px] overflow-y-auto relative" style="background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-repeat: repeat;">
+            <!-- Message Bubble -->
+            <div class="bg-white rounded-lg p-2.5 shadow-sm max-w-[85%] ml-auto text-black relative flex flex-col gap-1 text-[13px]">
+              <!-- Campaign Image Preview -->
+              <img id="whatsapp-preview-img" class="w-full h-32 object-cover rounded mb-1 hidden" src="">
+              <p id="whatsapp-preview-text" class="whitespace-pre-wrap font-sans text-[#111] leading-snug">Hi [Member Name], prepare to unleash your fitness potential...</p>
+              <span class="text-[9px] text-gray-500 self-end mt-0.5">10:42 AM ✔✔</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: Campaign History -->
+  <div id="view-history" class="hidden">
+    <div class="glass-panel rounded-xl p-md">
+      <h2 class="font-headline-md text-headline-md mb-6">Campaign History Logs</h2>
+      <div id="campaign-history-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
+        <!-- Dynamically loaded campaigns -->
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: Campaign Analytics -->
+  <div id="view-analytics" class="hidden flex flex-col gap-lg">
+    <!-- ROI Summary Bento Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-gutter mb-4">
+      <div class="glass-panel rounded-xl p-5 flex flex-col justify-between">
+        <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Total Marketing Spend</span>
+        <h3 class="font-headline-md text-headline-md text-on-background mt-2" id="roi-cost">₹0</h3>
+        <span class="text-[10px] text-on-surface-variant block mt-1">₹0.25 API charge per message</span>
+      </div>
+      <div class="glass-panel rounded-xl p-5 flex flex-col justify-between">
+        <span class="text-xs font-bold text-[#81c995] uppercase tracking-wider">Revenue Generated</span>
+        <h3 class="font-headline-md text-headline-md text-[#81c995] mt-2" id="roi-revenue">₹0</h3>
+        <span class="text-[10px] text-on-surface-variant block mt-1">From post-campaign membership sales</span>
+      </div>
+      <div class="glass-panel rounded-xl p-5 flex flex-col justify-between">
+        <span class="text-xs font-bold text-secondary uppercase tracking-wider">Return on Investment (ROI)</span>
+        <h3 class="font-headline-md text-headline-md text-secondary mt-2" id="roi-pct">0%</h3>
+        <span class="text-[10px] text-on-surface-variant block mt-1">Net campaign efficiency score</span>
+      </div>
+      <div class="glass-panel rounded-xl p-5 flex flex-col justify-between">
+        <span class="text-xs font-bold text-tertiary uppercase tracking-wider">Cost Per Conversion (CPC)</span>
+        <h3 class="font-headline-md text-headline-md text-tertiary mt-2" id="roi-cpc">₹0</h3>
+        <span class="text-[10px] text-on-surface-variant block mt-1">Total spend / closed deals</span>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+      <div class="glass-panel rounded-xl p-6 flex flex-col">
+        <h3 class="font-title-lg text-title-lg mb-4 text-on-surface">Campaign Reach Performance</h3>
+        <div class="h-64 relative">
+          <canvas id="chart-reach-rates"></canvas>
+        </div>
+      </div>
+      <div class="glass-panel rounded-xl p-6 flex flex-col">
+        <h3 class="font-title-lg text-title-lg mb-4 text-on-surface">Conversion Funnel Breakdown</h3>
+        <div class="h-64 relative">
+          <canvas id="chart-effectiveness"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 5: Template Library -->
+  <div id="view-templates" class="hidden">
+    <div class="glass-panel rounded-xl p-md">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h2 class="font-headline-md text-headline-md">Message Template Library</h2>
+          <p class="font-body-sm text-body-sm text-on-surface-variant">Edit preseeded templates used for automated reminders and CRM actions.</p>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="templates-grid">
+        <!-- Loaded via api -->
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 6: Message History (Outbox logs) -->
+  <div id="view-outbox" class="hidden">
+    <div class="glass-panel rounded-xl p-md flex flex-col gap-md">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-md">
+        <div>
+          <h2 class="font-headline-md text-headline-md">Direct Message Log History</h2>
+          <p class="font-body-sm text-body-sm text-on-surface-variant">Verification logs of every broadcast and event-driven notification sent.</p>
+        </div>
+        <input type="text" id="outbox-search" class="bg-surface-container-low border border-outline-variant/50 rounded-lg px-4 py-2 font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-64" placeholder="Search message log...">
+      </div>
+      
+      <div class="overflow-x-auto custom-scrollbar">
+        <table class="w-full text-left border-collapse min-w-[700px]">
+          <thead>
+            <tr class="border-b border-outline-variant/30 font-label-caps text-label-caps text-on-surface-variant text-xs">
+              <th class="py-3 px-4">Recipient Name</th>
+              <th class="py-3 px-4">Phone Number</th>
+              <th class="py-3 px-4">Message Body</th>
+              <th class="py-3 px-4">Date Sent</th>
+              <th class="py-3 px-4">Status</th>
+              <th class="py-3 px-4">Source Category</th>
+            </tr>
+          </thead>
+          <tbody id="outbox-table-body" class="font-body-sm text-body-sm divide-y divide-outline-variant/20">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Image Cropping Modal -->
+<div id="cropper-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+  <div class="bg-[#1c1b1b] border border-white/10 rounded-xl max-w-lg w-full flex flex-col overflow-hidden shadow-2xl">
+    <div class="p-4 border-b border-white/10 flex justify-between items-center">
+      <h4 class="font-title-lg text-on-surface">Crop Promotional Image</h4>
+      <button onclick="closeCropperModal()" class="text-on-surface-variant hover:text-white"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="p-4 max-h-[350px] overflow-hidden flex items-center justify-center bg-black">
+      <img id="cropper-image-canvas" class="max-w-full" src="">
+    </div>
+    <div class="p-4 border-t border-white/10 flex justify-end gap-3">
+      <button onclick="closeCropperModal()" class="px-4 py-2 border border-white/10 rounded-lg text-xs font-bold hover:bg-white/5">Cancel</button>
+      <button onclick="applyImageCrop()" class="px-4 py-2 bg-primary text-on-primary rounded-lg text-xs font-bold hover:bg-primary/90">Crop &amp; Attach</button>
+    </div>
+  </div>
+</div>
+
+<!-- Template Editing Modal -->
+<div id="template-edit-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+  <div class="bg-[#1c1b1b] border border-white/10 rounded-xl max-w-lg w-full flex flex-col overflow-hidden shadow-2xl">
+    <div class="p-4 border-b border-white/10 flex justify-between items-center">
+      <h4 class="font-title-lg text-on-surface" id="edit-tmpl-title">Edit Template</h4>
+      <button onclick="closeTemplateModal()" class="text-on-surface-variant hover:text-white"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="p-4 flex flex-col gap-4">
+      <input type="hidden" id="edit-tmpl-id">
+      <div class="flex flex-col gap-xs">
+        <label class="text-xs font-bold text-on-surface-variant uppercase">Message Content</label>
+        <textarea id="edit-tmpl-message" class="w-full bg-surface-container-low border border-white/10 rounded-lg p-3 font-body-md text-on-surface" rows="6"></textarea>
+        <p class="text-[10px] text-outline mt-1">Use parameters like {name}, {expiry_date}, or {amount} where applicable.</p>
+      </div>
+    </div>
+    <div class="p-4 border-t border-white/10 flex justify-end gap-3">
+      <button onclick="closeTemplateModal()" class="px-4 py-2 border border-white/10 rounded-lg text-xs font-bold hover:bg-white/5">Cancel</button>
+      <button onclick="saveTemplateChanges()" class="px-4 py-2 bg-primary text-on-primary rounded-lg text-xs font-bold hover:bg-primary/90">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let outboxData = [];
+  let attachedImages = []; // stores base64 strings of cropped images
+  let currentFile = null;
+  let cropper = null;
+  
+  // Charts
+  let reachChart = null;
+  let effectivenessChart = null;
+
+  function switchTab(tabId) {
+    const tabs = ['dashboard', 'creator', 'history', 'analytics', 'templates', 'outbox'];
+    tabs.forEach(t => {
+      const btn = document.getElementById(`tab-${t}-btn`);
+      const view = document.getElementById(`view-${t}`);
+      if (btn) {
+        if (t === tabId) {
+          btn.className = "px-4 py-2 border-b-2 border-primary text-primary font-bold transition-all focus:outline-none flex items-center gap-1.5";
+        } else {
+          btn.className = "px-4 py-2 border-b-2 border-transparent text-on-surface-variant hover:text-primary transition-all focus:outline-none flex items-center gap-1.5";
+        }
+      }
+      if (view) {
+        if (t === tabId) {
+          view.classList.remove('hidden');
+        } else {
+          view.classList.add('hidden');
+        }
+      }
+    });
+
+    if (tabId === 'dashboard') {
+      loadMarketingDashboard();
+    } else if (tabId === 'history') {
+      loadCampaignHistory();
+    } else if (tabId === 'analytics') {
+      renderAnalyticsCharts();
+    } else if (tabId === 'templates') {
+      loadTemplates();
+    } else if (tabId === 'outbox') {
+      loadOutboxLogs();
+    }
+  }
+
+  // Dashboard Stats
+  async function loadMarketingDashboard() {
+    try {
+      const res = await window.api.fetch("/marketing/dashboard");
+      const data = await res.json();
+
+      document.getElementById("comm-total-sent").innerText = Number(data.totalSent).toLocaleString();
+      document.getElementById("comm-delivered").innerText = Number(data.delivered).toLocaleString();
+      document.getElementById("comm-failed").innerText = Number(data.failed).toLocaleString();
+      document.getElementById("comm-total-campaigns").innerText = data.activeCampaigns;
+
+      document.getElementById("span-total-expiry").innerText = data.expiryReminders;
+      document.getElementById("span-total-inactive").innerText = data.inactiveReminders;
+      document.getElementById("span-total-payment").innerText = data.paymentReminders;
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // Automation manual scan
+  async function triggerScan() {
+    try {
+      const res = await window.api.fetch("/dashboard/summary");
+      if (res.ok) {
+        alert("Automation scan complete. Alert notifications and tasks generated!");
+        loadMarketingDashboard();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // File Upload & Cropper Logic
+  const fileInput = document.getElementById("campaign-file-input");
+  if (fileInput) {
+    fileInput.addEventListener("change", function(e) {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        currentFile = files[0];
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          const img = document.getElementById("cropper-image-canvas");
+          img.src = evt.target.result;
+          openCropperModal();
+        };
+        reader.readAsDataURL(currentFile);
+      }
+    });
+  }
+
+  function openCropperModal() {
+    document.getElementById("cropper-modal").style.display = "flex";
+    const image = document.getElementById("cropper-image-canvas");
+    if (cropper) {
+      cropper.destroy();
+    }
+    cropper = new Cropper(image, {
+      aspectRatio: 16 / 9,
+      viewMode: 1,
+      background: false
+    });
+  }
+
+  function closeCropperModal() {
+    document.getElementById("cropper-modal").style.display = "none";
+    if (cropper) {
+      cropper.destroy();
+      cropper = null;
+    }
+    if (fileInput) fileInput.value = "";
+  }
+
+  function applyImageCrop() {
+    if (!cropper) return;
+    const canvas = cropper.getCroppedCanvas({
+      width: 800,
+      height: 450
+    });
+    const base64 = canvas.toDataURL("image/jpeg");
+    attachedImages.push(base64);
+    renderPreviews();
+    closeCropperModal();
+
+    // Show inside live preview
+    const previewImg = document.getElementById("whatsapp-preview-img");
+    if (previewImg) {
+      previewImg.src = base64;
+      previewImg.classList.remove("hidden");
+    }
+  }
+
+  function renderPreviews() {
+    const list = document.getElementById("image-previews-list");
+    if (!list) return;
+    list.innerHTML = "";
+    attachedImages.forEach((img, idx) => {
+      const div = document.createElement("div");
+      div.className = "relative rounded border border-white/10 overflow-hidden h-20 group";
+      div.innerHTML = `
+        <img class="w-full h-full object-cover" src="${img}" />
+        <button onclick="removeImage(${idx})" class="absolute top-1 right-1 bg-red-600/80 hover:bg-red-600 rounded-full w-5 h-5 flex items-center justify-center text-[12px] text-white">
+          <span class="material-symbols-outlined text-[12px]">delete</span>
+        </button>
+      `;
+      list.appendChild(div);
+    });
+  }
+
+  window.removeImage = function(idx) {
+    attachedImages.splice(idx, 1);
+    renderPreviews();
+    const previewImg = document.getElementById("whatsapp-preview-img");
+    if (attachedImages.length === 0 && previewImg) {
+      previewImg.classList.add("hidden");
+    } else if (previewImg) {
+      previewImg.src = attachedImages[attachedImages.length - 1];
+    }
+  }
+
+  // Pre-fill Template choice
+  const templateSelect = document.getElementById("campaign-template-select");
+  if (templateSelect) {
+    templateSelect.addEventListener("change", async function(e) {
+      const id = e.target.value;
+      if (!id) return;
+      try {
+        const res = await window.api.fetch("/templates");
+        const templates = await res.json();
+        const tmpl = templates.find(t => t.id === id);
+        if (tmpl) {
+          const textarea = document.getElementById("campaign-message");
+          if (textarea) {
+            textarea.value = tmpl.message_body;
+            // Update live preview
+            document.getElementById("whatsapp-preview-text").innerText = tmpl.message_body;
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
+  // Live text pre-viewing
+  const campaignMsgInput = document.getElementById("campaign-message");
+  if (campaignMsgInput) {
+    campaignMsgInput.addEventListener("input", function(e) {
+      const txt = e.target.value || "Hi [Member Name]...";
+      document.getElementById("whatsapp-preview-text").innerText = txt;
+    });
+  }
+
+  // Dispatched Broadcast Campaign
+  const launchBtn = document.getElementById("launchCampaignBtn");
+  if (launchBtn) {
+    launchBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("campaign-name").value.trim();
+      const message = document.getElementById("campaign-message").value.trim();
+      const audience = document.getElementById("campaign-audience").value;
+
+      if (!name || !message) {
+        alert("Please enter a campaign name and message content.");
+        return;
+      }
+
+      const originalText = launchBtn.innerHTML;
+      launchBtn.disabled = true;
+      launchBtn.innerHTML = `<span class="material-symbols-outlined animate-spin text-sm">sync</span> Dispatched...`;
+
+      try {
+        const res = await window.api.fetch("/campaigns", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            message,
+            audience,
+            channel: "WhatsApp",
+            image_data: attachedImages.length > 0 ? JSON.stringify(attachedImages) : ""
+          })
+        });
+
+        if (res.ok) {
+          alert("Campaign dispatched successfully to target list!");
+          document.getElementById("campaign-name").value = "";
+          document.getElementById("campaign-message").value = "";
+          document.getElementById("campaign-template-select").value = "";
+          attachedImages = [];
+          renderPreviews();
+          const previewImg = document.getElementById("whatsapp-preview-img");
+          if (previewImg) previewImg.classList.add("hidden");
+          switchTab("dashboard");
+        } else {
+          const err = await res.json();
+          alert(err.error || "Failed to dispatch campaign.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Network gateway offline.");
+      } finally {
+        launchBtn.disabled = false;
+        launchBtn.innerHTML = originalText;
+      }
+    });
+  }
+
+  // Outbox Direct Logs
+  async function loadOutboxLogs() {
+    try {
+      const res = await window.api.fetch("/marketing/outbox");
+      outboxData = await res.json();
+      renderOutbox(outboxData);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function renderOutbox(data) {
+    const tbody = document.getElementById("outbox-table-body");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    if (data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-on-surface-variant">No outbox message logs found.</td></tr>`;
+      return;
+    }
+    data.forEach(log => {
+      const tr = document.createElement("tr");
+      tr.className = "border-b border-outline-variant/10 hover:bg-surface-container-high/30 transition-colors";
+      
+      let statusClass = "text-emerald-400";
+      if (log.delivery_status === 'Failed') {
+        statusClass = "text-error";
+      }
+
+      tr.innerHTML = `
+        <td class="py-3 px-4 font-bold">${log.recipient_name || 'Member'}</td>
+        <td class="py-3 px-4 text-on-surface-variant">${log.recipient_phone || 'N/A'}</td>
+        <td class="py-3 px-4 text-on-surface max-w-xs truncate" title="${log.message}">${log.message}</td>
+        <td class="py-3 px-4 text-on-surface-variant">${new Date(log.created_at).toLocaleString()}</td>
+        <td class="py-3 px-4 font-bold ${statusClass}">${log.delivery_status || 'Sent'}</td>
+        <td class="py-3 px-4 font-label-caps text-xs text-primary">${log.campaign_source || 'Direct Message'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  const outboxSearch = document.getElementById("outbox-search");
+  if (outboxSearch) {
+    outboxSearch.addEventListener("input", (e) => {
+      const q = e.target.value.toLowerCase();
+      const filtered = outboxData.filter(log => 
+        (log.recipient_name && log.recipient_name.toLowerCase().includes(q)) ||
+        (log.recipient_phone && log.recipient_phone.toLowerCase().includes(q)) ||
+        (log.message && log.message.toLowerCase().includes(q)) ||
+        (log.campaign_source && log.campaign_source.toLowerCase().includes(q))
+      );
+      renderOutbox(filtered);
+    });
+  }
+
+  // Campaign History
+  async function loadCampaignHistory() {
+    const list = document.getElementById("campaign-history-list");
+    if (!list) return;
+    list.innerHTML = `<p class="col-span-full text-center text-outline py-8">Loading campaigns...</p>`;
+
+    try {
+      const res = await window.api.fetch("/campaigns");
+      const campaigns = await res.json();
+      list.innerHTML = "";
+      if (campaigns.length === 0) {
+        list.innerHTML = `<p class="col-span-full text-center text-outline py-8">No campaigns sent yet.</p>`;
+        return;
+      }
+      campaigns.forEach(c => {
+        let imageTag = "";
+        if (c.image_data) {
+          try {
+            const arr = JSON.parse(c.image_data);
+            if (arr.length > 0) {
+              imageTag = `<img class="w-full h-32 object-cover rounded mb-4 cursor-zoom-in" onclick="openLightbox('${arr[0]}')" src="${arr[0]}" />`;
+            }
+          } catch(e) {}
+        }
+        
+        const card = document.createElement("div");
+        card.className = "glass-panel rounded-xl p-5 hover:border-primary/30 transition-all flex flex-col justify-between";
+        card.innerHTML = `
+          <div>
+            ${imageTag}
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="font-title-lg text-on-surface font-bold leading-tight">${c.name}</h3>
+              <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] uppercase font-bold">${c.status}</span>
+            </div>
+            <p class="text-xs text-outline mb-4">Date Sent: ${new Date(c.created_at).toLocaleDateString()}</p>
+            <p class="text-xs text-on-surface-variant leading-relaxed line-clamp-3 mb-4">${c.message_body}</p>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-center pt-3 border-t border-white/5">
+            <div>
+              <p class="font-bold text-sm text-on-surface">${c.sent_count}</p>
+              <p class="text-[9px] uppercase text-outline">Target</p>
+            </div>
+            <div>
+              <p class="font-bold text-sm text-secondary">${c.open_rate_percent}%</p>
+              <p class="text-[9px] uppercase text-outline">Delivered</p>
+            </div>
+            <div>
+              <p class="font-bold text-sm text-tertiary">${c.conversion_rate_percent}%</p>
+              <p class="text-[9px] uppercase text-outline">Conversions</p>
+            </div>
+          </div>
+        `;
+        list.appendChild(card);
+      });
+    } catch(err) {
+      console.error(err);
+      list.innerHTML = `<p class="col-span-full text-center text-error py-8">Failed to load campaign logs.</p>`;
+    }
+  }
+
+  // Lightbox for image Zoom-in
+  window.openLightbox = function(base64) {
+    const box = document.createElement("div");
+    box.className = "fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-4 cursor-zoom-out";
+    box.onclick = () => box.remove();
+    box.innerHTML = `<img class="max-w-full max-h-full rounded shadow-2xl" src="${base64}" />`;
+    document.body.appendChild(box);
+  }
+
+  // Template Library CRUD
+  async function loadTemplates() {
+    const grid = document.getElementById("templates-grid");
+    if (!grid) return;
+    grid.innerHTML = `<p class="col-span-full text-center text-outline py-8">Loading templates...</p>`;
+
+    try {
+      const res = await window.api.fetch("/templates");
+      const templates = await res.json();
+      grid.innerHTML = "";
+      templates.forEach(t => {
+        const card = document.createElement("div");
+        card.className = "glass-panel rounded-xl p-5 hover:border-primary/20 transition-all flex flex-col justify-between";
+        card.innerHTML = `
+          <div>
+            <h3 class="font-title-lg text-on-surface font-bold mb-1">${t.name}</h3>
+            <span class="inline-block px-2 py-0.5 rounded bg-primary/10 text-primary text-[9px] font-bold uppercase tracking-wider mb-4 border border-primary/20">System Key: ${t.id}</span>
+            <p class="text-xs text-on-surface-variant leading-relaxed italic bg-surface-container/50 p-3 rounded border border-white/5 whitespace-pre-wrap font-sans">${t.message_body}</p>
+          </div>
+          <button onclick="editTemplate('${t.id}', '${t.name.replace(/'/g, "\\'")}')" class="mt-4 w-full bg-white/5 hover:bg-white/10 text-on-surface border border-white/10 rounded-lg py-2 text-xs font-bold transition-all flex items-center justify-center gap-1">
+            <span class="material-symbols-outlined text-[14px]">edit</span> Modify Template
+          </button>
+        `;
+        grid.appendChild(card);
+      });
+    } catch(e) {
+      console.error(e);
+      grid.innerHTML = `<p class="col-span-full text-center text-error py-8">Failed to load templates.</p>`;
+    }
+  }
+
+  // Edit template
+  window.editTemplate = async function(id, name) {
+    try {
+      const res = await window.api.fetch("/templates");
+      const templates = await res.json();
+      const tmpl = templates.find(t => t.id === id);
+      if (tmpl) {
+        document.getElementById("edit-tmpl-id").value = tmpl.id;
+        document.getElementById("edit-tmpl-title").innerText = `Edit: ${name}`;
+        document.getElementById("edit-tmpl-message").value = tmpl.message_body;
+        document.getElementById("template-edit-modal").style.display = "flex";
+      }
+    } catch(e) {}
+  }
+
+  window.closeTemplateModal = function() {
+    document.getElementById("template-edit-modal").style.display = "none";
+  }
+
+  window.saveTemplateChanges = async function() {
+    const id = document.getElementById("edit-tmpl-id").value;
+    const body = document.getElementById("edit-tmpl-message").value.trim();
+    if (!body) return alert("Message body cannot be blank.");
+
+    try {
+      const res = await window.api.fetch(`/templates/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message_body: body })
+      });
+      if (res.ok) {
+        alert("Template saved successfully.");
+        closeTemplateModal();
+        loadTemplates();
+      }
+    } catch(e) {
+      alert("Failed to update template.");
+    }
+  }
+
+  // Render Charts
+  function renderAnalyticsCharts() {
+    const reachCanvas = document.getElementById("chart-reach-rates");
+    const effectivenessCanvas = document.getElementById("chart-effectiveness");
+
+    if (!reachCanvas || !effectivenessCanvas) return;
+
+    if (reachChart) reachChart.destroy();
+    if (effectivenessChart) effectivenessChart.destroy();
+
+    // Fetch marketing ROI analytics
+    window.api.fetch("/analytics/marketing-roi")
+      .then(res => res.json())
+      .then(data => {
+        // Update ROI values
+        document.getElementById('roi-cost').innerText = '₹' + Number(data.cost).toLocaleString();
+        document.getElementById('roi-revenue').innerText = '₹' + Number(data.revenueGenerated).toLocaleString();
+        document.getElementById('roi-pct').innerText = (data.roi >= 0 ? '+' : '') + data.roi + '%';
+        document.getElementById('roi-cpc').innerText = '₹' + Number(data.costPerConversion).toLocaleString();
+
+        // Chart 1: Messages Sent vs Reach
+        reachChart = new Chart(reachCanvas.getContext('2d'), {
+          type: 'doughnut',
+          data: {
+            labels: ['Delivered', 'Failed'],
+            datasets: [{
+              data: [data.delivered, data.failed],
+              backgroundColor: ['#81c995', '#ffb4ab'],
+              borderColor: '#171717',
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { color: '#c3c5d8', font: { family: 'Inter', size: 11 } }
+              }
+            }
+          }
+        });
+
+        // Chart 2: Conversion Funnel Breakdown
+        effectivenessChart = new Chart(effectivenessCanvas.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: ['Sent', 'Delivered', 'Read', 'Clicked', 'Converted'],
+            datasets: [{
+              label: 'Audience Volume',
+              data: [data.totalSent, data.delivered, data.read, data.clicked, data.converted],
+              backgroundColor: ['#d0bcff', '#b5c4ff', '#81c995', '#ffb95f', '#ff897d'],
+              borderRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(255, 255, 255, 0.03)' },
+                ticks: { color: '#8e8e99', font: { family: 'Inter', size: 10 } }
+              },
+              x: {
+                grid: { display: false },
+                ticks: { color: '#8e8e99', font: { family: 'Inter', size: 10 } }
+              }
+            }
+          }
+        });
+      })
+      .catch(err => console.error("Error loading marketing ROI:", err));
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    loadMarketingDashboard();
+  });
+</script>
+
+<div id="jsb-mobile-nav"></div>
+</body></html>

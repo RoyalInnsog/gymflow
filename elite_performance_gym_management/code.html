@@ -1,0 +1,149 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Login</title>
+
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* Subtle mesh gradient background simulation using CSS and theme colors */
+        .bg-mesh {
+            background-color: #131313; /* background */
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(53, 53, 53, 0.4) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(31, 31, 31, 0.5) 0px, transparent 50%);
+        }
+    </style>
+
+</head>
+<body class="bg-mesh min-h-screen flex items-center justify-center p-margin-mobile md:p-margin-desktop text-on-surface font-body-md antialiased selection:bg-primary/30 selection:text-primary md:pl-[280px]">
+
+<!-- Atmospheric background light elements -->
+<div class="absolute top-1/4 left-1/4 w-96 h-96 bg-surface-variant/20 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[150px] pointer-events-none"></div>
+<!-- Login Container -->
+<main class="w-full max-w-[440px] relative z-10 flex flex-col">
+<!-- Glassmorphic Card -->
+<div class="bg-surface-container/60 backdrop-blur-xl border border-outline-variant/30 rounded-xl p-8 md:p-10 shadow-2xl flex flex-col relative overflow-hidden">
+<!-- Subtle inner gradient for depth -->
+<div class="absolute inset-0 bg-gradient-to-br from-surface-bright/10 to-transparent pointer-events-none"></div>
+<div class="relative z-10">
+<!-- Brand / Logo -->
+<div class="flex justify-center mb-xl">
+<div class="h-16 w-16 flex items-center justify-center rounded-lg bg-surface-container-highest border border-outline-variant/50 shadow-inner">
+<span class="material-symbols-outlined text-4xl text-primary" style="font-variation-settings: 'FILL' 1;">hexagon</span>
+</div>
+</div>
+<!-- Headers -->
+<div class="text-center mb-xl">
+<h1 class="font-headline-lg text-headline-lg text-on-surface mb-xs"><span class="dynamic-gym-name uppercase">JSB FITNESS</span></h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">System authentication required</p>
+</div>
+<!-- Form -->
+<form action="#" class="flex flex-col gap-md" method="POST">
+<!-- Email Field -->
+<div class="flex flex-col gap-base">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest pl-1" for="email">Operational ID</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-4 text-on-surface-variant/70 text-[20px] pointer-events-none">person</span>
+<input class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg py-3 pl-12 pr-4 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/30 focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all outline-none shadow-inner" id="email" name="email" placeholder="admin@jsbfitness.in" required="" type="email">
+</div>
+</div>
+<!-- Password Field -->
+<div class="flex flex-col gap-base">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest pl-1" for="password">Access Key</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-4 text-on-surface-variant/70 text-[20px] pointer-events-none">lock</span>
+<input class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg py-3 pl-12 pr-12 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/30 focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all outline-none shadow-inner" id="password" name="password" placeholder="••••••••" required="" type="password">
+<button class="absolute right-4 text-on-surface-variant/70 hover:text-on-surface transition-colors focus:outline-none flex items-center justify-center" onclick="window.location.href='/bi'" type="button">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+</div>
+<!-- Secondary Actions Row -->
+<div class="flex items-center justify-between mt-xs mb-sm">
+<label class="flex items-center gap-2 cursor-pointer group">
+<div class="relative flex items-center justify-center w-4 h-4">
+<input class="peer appearance-none w-4 h-4 border border-outline-variant rounded bg-surface-container-lowest checked:bg-primary checked:border-primary transition-all focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer" type="checkbox">
+<span class="material-symbols-outlined absolute text-on-primary text-[14px] opacity-0 peer-checked:opacity-100 pointer-events-none">check</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant group-hover:text-on-surface transition-colors">Remember device</span>
+</label>
+<a class="font-body-sm text-body-sm text-primary hover:text-primary-fixed-dim transition-colors hover:underline underline-offset-4" href="#">Reset Key</a>
+</div>
+<!-- Primary Action -->
+<button class="w-full bg-primary text-on-primary py-4 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-primary-fixed-dim hover:scale-[0.98] active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/10 border border-primary-fixed/20 mt-2" type="submit">
+<span>AUTHORIZE SESSION</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</form>
+<!-- Divider -->
+<div class="flex items-center gap-4 my-xl">
+<div class="h-px bg-outline-variant/30 flex-1"></div>
+<span class="font-label-caps text-label-caps text-on-surface-variant/60 tracking-widest">OR</span>
+<div class="h-px bg-outline-variant/30 flex-1"></div>
+</div>
+<!-- Biometric Alternative -->
+<button class="w-full bg-surface-container-low border border-outline-variant/40 text-on-surface py-3.5 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-surface-container hover:border-outline-variant transition-all flex items-center justify-center gap-3" onclick="window.location.href='/bi'" type="button">
+<span class="material-symbols-outlined text-[20px] text-primary">fingerprint</span>
+<span>BIOMETRIC LOGIN</span>
+</button>
+</div>
+</div>
+<!-- Footer Info -->
+<div class="text-center mt-8 font-body-sm text-body-sm text-on-surface-variant/50">
+<p>JSB Fitness OS v4.2.1</p>
+<p class="mt-1">Authorized personnel only</p>
+</div>
+<script>
+document.querySelector('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  
+  try {
+    const response = await window.api.fetch('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    
+    const data = await response.json();
+    if (response.ok) {
+      window.location.href = '/dashboard';
+    } else {
+      alert(data.error || 'Authorization failed.');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('System authentication offline.');
+  }
+});
+</script>
+</main>
+
+</body></html>

@@ -1,0 +1,349 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Add Member</title>
+
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for dark theme */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #131313; }
+        ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #353535; }
+        
+        /* Ensure dark mode for date pickers */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            opacity: 0.6;
+        }
+    </style>
+
+  
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background antialiased">
+<div id="jsb-header" data-page-title="Add Member"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- Task-Focused Header (Suppresses Global Nav Shell) -->
+
+<main class="max-w-2xl mx-auto px-margin-mobile mt-lg flex flex-col gap-lg pb-32">
+<div class="px-4 md:px-8 pt-4"><a href="/members" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>← Members</span></a></div>
+<!-- Photo Upload Zone -->
+<section class="flex flex-col items-center justify-center">
+<div class="relative w-32 h-32 rounded-full border-2 border-dashed border-outline-variant bg-surface-container-low flex flex-col items-center justify-center text-on-surface-variant hover:border-primary hover:text-primary transition-colors cursor-pointer overflow-hidden group">
+<span class="material-symbols-outlined text-[32px] mb-1 group-hover:scale-110 transition-transform duration-300">add_a_photo</span>
+<span class="font-label-sm text-label-sm">Upload</span>
+<input accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" type="file">
+</div>
+</section>
+<!-- Personal Information Section -->
+<section class="bg-surface-container-low border border-surface-container-high rounded-xl p-md shadow-sm">
+<h2 class="font-label-caps text-label-caps uppercase text-primary tracking-widest mb-md">Personal Information</h2>
+<div class="flex flex-col gap-sm">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/70 pointer-events-none">person</span>
+<input class="w-full bg-surface-container border border-outline-variant/30 rounded-lg py-3 pl-12 pr-4 text-on-background placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md transition-all" placeholder="Full Name" type="text">
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/70 pointer-events-none">smartphone</span>
+<input class="w-full bg-surface-container border border-outline-variant/30 rounded-lg py-3 pl-12 pr-4 text-on-background placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md transition-all" placeholder="Mobile Number" type="tel">
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/70 pointer-events-none">mail</span>
+<input class="w-full bg-surface-container border border-outline-variant/30 rounded-lg py-3 pl-12 pr-4 text-on-background placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md transition-all" placeholder="Email Address" type="email">
+</div>
+</div>
+</section>
+<!-- Fitness Info Section -->
+<section class="bg-surface-container-low border border-surface-container-high rounded-xl p-md shadow-sm">
+<h2 class="font-label-caps text-label-caps uppercase text-primary tracking-widest mb-md">Fitness Metrics</h2>
+<div class="grid grid-cols-3 gap-sm">
+<div class="flex flex-col gap-2">
+<label class="font-label-sm text-label-sm text-on-surface-variant">Height (cm)</label>
+<input class="w-full bg-surface-container border border-outline-variant/30 rounded-lg py-3 px-4 text-on-background text-center focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md transition-all" placeholder="0" type="number">
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-sm text-label-sm text-on-surface-variant">Weight (kg)</label>
+<input class="w-full bg-surface-container border border-outline-variant/30 rounded-lg py-3 px-4 text-on-background text-center focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md transition-all" placeholder="0.0" step="0.1" type="number">
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-sm text-label-sm text-on-surface-variant">BMI</label>
+<input class="w-full bg-surface-container-highest border border-surface-container-high rounded-lg py-3 px-4 text-on-surface-variant text-center font-body-md cursor-not-allowed opacity-70" placeholder="--" readonly="" type="text">
+</div>
+</div>
+</section>
+<!-- Membership Section -->
+<section class="bg-surface-container-low border border-surface-container-high rounded-xl p-md shadow-sm">
+<h2 class="font-label-caps text-label-caps uppercase text-primary tracking-widest mb-md">Membership Details</h2>
+<div class="flex flex-col gap-md">
+<div class="flex flex-col gap-2">
+<label class="font-label-sm text-label-sm text-on-surface-variant">Select Plan</label>
+<div class="relative">
+<select id="planSelect" class="w-full appearance-none bg-surface-container border border-outline-variant/30 rounded-lg py-3 pl-4 pr-12 text-on-background focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md transition-all">
+<option disabled selected value="">Loading plans...</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+<p id="planLoadError" class="hidden font-body-sm text-body-sm text-error mt-1">Could not load plans. <button type="button" id="retryPlansBtn" class="underline text-primary hover:opacity-80">Retry</button></p>
+<p id="planEmptyMsg" class="hidden font-body-sm text-body-sm text-on-surface-variant mt-1">No membership plans configured. Add plans in Settings first.</p>
+</div>
+<div class="grid grid-cols-2 gap-sm">
+<div class="flex flex-col gap-2">
+<label class="font-label-sm text-label-sm text-on-surface-variant">Start Date</label>
+<input class="w-full bg-surface-container border border-outline-variant/30 rounded-lg py-3 px-4 text-on-background focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md transition-all [color-scheme:dark]" type="date">
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-sm text-label-sm text-on-surface-variant">End Date</label>
+<input class="w-full bg-surface-container border border-outline-variant/30 rounded-lg py-3 px-4 text-on-background focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md transition-all [color-scheme:dark]" type="date">
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Save Button Zone -->
+<div class="fixed bottom-0 left-0 w-full px-margin-mobile pb-margin-mobile pt-12 bg-gradient-to-t from-background via-background/90 to-transparent pointer-events-none z-50 flex justify-center">
+<button class="pointer-events-auto w-full max-w-2xl bg-primary text-on-primary font-body-md font-semibold py-4 rounded-xl shadow-[0_4px_24px_rgba(198,198,198,0.15)] hover:bg-surface-tint active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+            Save Member Profile
+        </button>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const backBtn = document.querySelector('header button');
+  if (backBtn) {
+    backBtn.onclick = () => window.location.href = '/add-member-step-1';
+  }
+
+  // Retrieve temporary info from step 1
+  const savedDataStr = sessionStorage.getItem('temp_member_onboarding');
+  let savedData = {};
+  if (savedDataStr) {
+    savedData = JSON.parse(savedDataStr);
+  }
+
+  // Pre-fill fields
+  const inputs = document.querySelectorAll('input[type="text"], input[type="tel"], input[type="email"]');
+  if (inputs.length >= 3) {
+    inputs[0].value = savedData.full_name || '';
+    inputs[1].value = savedData.phone || '';
+    inputs[2].value = savedData.email || '';
+  }
+
+  // Calculate BMI dynamically
+  const heightInput = document.querySelector('input[placeholder="0"]');
+  const weightInput = document.querySelector('input[placeholder="0.0"]');
+  const bmiInput = document.querySelector('input[placeholder="--"]');
+
+  function updateBMI() {
+    const hCm = parseFloat(heightInput.value);
+    const wKg = parseFloat(weightInput.value);
+    if (hCm > 0 && wKg > 0) {
+      const hM = hCm / 100;
+      const bmi = wKg / (hM * hM);
+      bmiInput.value = bmi.toFixed(1);
+    } else {
+      bmiInput.value = '--';
+    }
+  }
+
+  if (heightInput && weightInput) {
+    heightInput.addEventListener('input', updateBMI);
+    weightInput.addEventListener('input', updateBMI);
+  }
+
+  // ─── Dynamic plan loader ────────────────────────────────────────────────────
+  const planSelect   = document.getElementById('planSelect');
+  const planError    = document.getElementById('planLoadError');
+  const planEmpty    = document.getElementById('planEmptyMsg');
+  const retryBtn     = document.getElementById('retryPlansBtn');
+
+  /**
+   * Build a human-readable duration label from a plan record.
+   * e.g. "12 Months", "90 Days", "1 Month"
+   */
+  function durationLabel(plan) {
+    if (plan.duration_months && plan.duration_months > 0) {
+      return plan.duration_months === 1
+        ? '1 Month'
+        : `${plan.duration_months} Months`;
+    }
+    if (plan.duration_days && plan.duration_days > 0) {
+      return plan.duration_days === 1
+        ? '1 Day'
+        : `${plan.duration_days} Days`;
+    }
+    return 'Custom';
+  }
+
+  /**
+   * Format a price with the currency symbol.
+   * Uses window.APP_CONFIG.currency if available, falls back to ₹.
+   */
+  function formatPrice(price) {
+    const currency = window.APP_CONFIG?.currency || '₹';
+    return `${currency}${Number(price).toLocaleString()}`;
+  }
+
+  async function loadPlans() {
+    // Show loading state
+    planSelect.disabled = true;
+    planSelect.innerHTML = '<option disabled selected value="">Loading plans...</option>';
+    planError.classList.add('hidden');
+    planEmpty.classList.add('hidden');
+
+    try {
+      const response = await window.api.fetch('/plans');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const plans = await response.json();
+
+      planSelect.innerHTML = ''; // clear loading option
+
+      if (!plans || plans.length === 0) {
+        // Empty state — no plans configured yet
+        planSelect.innerHTML = '<option disabled selected value="">No plans available</option>';
+        planEmpty.classList.remove('hidden');
+        planSelect.disabled = true;
+        return;
+      }
+
+      // Default placeholder
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.disabled = true;
+      placeholder.selected = true;
+      placeholder.textContent = 'Choose a membership tier...';
+      planSelect.appendChild(placeholder);
+
+      // Populate options — value is the real DB plan id
+      plans.forEach(plan => {
+        const opt = document.createElement('option');
+        opt.value = plan.id;
+        // Label: "Annual Pro Elite Plan (12 Months) — ₹12,000"
+        opt.textContent = `${plan.name} (${durationLabel(plan)}) — ${formatPrice(plan.price)}`;
+        // Store full plan data on the element for later use
+        opt.dataset.durationMonths = plan.duration_months || 0;
+        opt.dataset.durationDays   = plan.duration_days   || 0;
+        opt.dataset.price          = plan.price || 0;
+        planSelect.appendChild(opt);
+      });
+
+      planSelect.disabled = false;
+
+    } catch (err) {
+      console.error('Failed to load membership plans:', err);
+      planSelect.innerHTML = '<option disabled selected value="">Failed to load plans</option>';
+      planError.classList.remove('hidden');
+      planSelect.disabled = true;
+    }
+  }
+
+  // Retry button
+  if (retryBtn) {
+    retryBtn.addEventListener('click', loadPlans);
+  }
+
+  // Initial load
+  loadPlans();
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // Handle Save
+  const saveBtn = document.querySelector('.pointer-events-auto');
+  if (saveBtn) {
+    saveBtn.onclick = async (e) => {
+      e.preventDefault();
+
+      const name  = inputs[0].value.trim();
+      const phone = inputs[1].value.trim();
+      const email = inputs[2].value.trim();
+
+      if (!name || !phone) {
+        alert('Name and Phone are required.');
+        return;
+      }
+
+      const height = parseFloat(heightInput.value) || 0;
+      const weight = parseFloat(weightInput.value) || 0;
+      const bmi    = parseFloat(bmiInput.value)    || 0;
+
+      // planId is now the real DB id directly from the select value
+      const planId = planSelect.value || null;
+
+      const dateInputs = document.querySelectorAll('input[type="date"]');
+      const start = dateInputs[0]?.value || '';
+      const end   = dateInputs[1]?.value || '';
+
+      // Client-side date validation — only run when a plan is selected
+      if (planId) {
+        if (start && end) {
+          const startTs = new Date(start).getTime();
+          const endTs   = new Date(end).getTime();
+          if (isNaN(startTs) || isNaN(endTs)) {
+            alert('One or both dates are invalid. Please use the date picker to select valid dates.');
+            return;
+          }
+          if (startTs >= endTs) {
+            alert('Start Date must be before End Date. Please correct the membership dates.');
+            return;
+          }
+        } else if (!start && end) {
+          alert('A Start Date is required when an End Date is specified.');
+          return;
+        }
+        // start only, or both empty → server applies safe defaults
+      }
+
+      const body = {
+        full_name: name,
+        phone:     phone,
+        email:     email,
+        dob:                     savedData.dob                    || '',
+        gender:                  savedData.gender                 || 'male',
+        emergency_contact_name:  savedData.emergency_contact_name || '',
+        emergency_contact_phone: savedData.emergency_contact_phone|| '',
+        height_cm:  height,
+        weight_kg:  weight,
+        bmi:        bmi,
+        plan_id:    planId,
+        start_date: start || '',
+        end_date:   end   || ''
+      };
+
+      try {
+        const response = await window.api.fetch('/members', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        const resData = await response.json();
+        if (response.ok) {
+          sessionStorage.removeItem('temp_member_onboarding');
+          window.location.href = '/members';
+        } else {
+          alert(resData.error || 'Failed to save member profile.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Onboarding database offline.');
+      }
+    };
+  }
+});
+</script>
+
+<div id="jsb-mobile-nav"></div>
+</body></html>

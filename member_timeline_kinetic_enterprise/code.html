@@ -1,0 +1,297 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Member Timeline</title>
+
+<style>
+        /* Glassmorphism utility */
+        .glass-panel {
+            background-color: rgba(27, 27, 27, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Smooth scroll */
+        html { scroll-behavior: smooth; }
+        
+        /* Timeline specific */
+        .timeline-line {
+            position: absolute;
+            left: 28px;
+            top: 24px;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, theme('colors.primary') 0%, theme('colors.surface-variant') 10%, theme('colors.surface-variant') 100%);
+            z-index: 0;
+        }
+    </style>
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-surface">
+<div id="jsb-header" data-page-title="Member Timeline"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- Web Navigation Drawer (Hidden on Mobile) -->
+
+<!-- Mobile Top App Bar -->
+<!-- TopAppBar -->
+
+<!-- NavigationDrawer (Desktop) -->
+
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full pt-16 md:pt-0 pb-20 md:pb-0">
+<div class="px-4 md:px-8 pt-4"><a href="/member-profile" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>← Member Profile</span></a></div>
+<!-- Member Header Section (Sticky) -->
+<div class="sticky top-16 md:top-0 z-40 bg-background/90 backdrop-blur-lg border-b border-white/5 py-stack-md px-margin">
+<div class="max-w-container-max mx-auto flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div class="flex items-center gap-stack-md">
+<button id="timeline-back-btn" class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="w-16 h-16 rounded-full overflow-hidden border-2 border-primary/20 shrink-0 relative flex items-center justify-center bg-surface-container font-bold text-primary">
+<img id="member-photo" alt="Member Photo" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6bRe81AT_98E-ANxjowS7nyVl0wfUDHeIATPXG_2Ch-uQiSWWCGOuMFJWLtqjsQ0b-Wz4_-zTTAGMTKnjs5S8rdKpC7WWL4NN4GYx4nMcjuvKwGlI5ZsZCe2zqtJTuXqcINHCNkpiS14rdW2y7ZfSro5xFCgm6zPtjccvmlF-fGHo2OOgsSl4SR64Pvzjl8-Sx8TWqqy8hoJ1GvRhBZcZtHqB_fn6vznNDNYx24_VHLnSc69TEZz0ysYaLsA_p6CoXM8_GW4BBE1q" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+<span id="member-photo-fallback" class="hidden w-full h-full items-center justify-center text-body-lg font-bold bg-primary/10 text-primary">JSB</span>
+<div class="absolute bottom-0 right-0 w-4 h-4 bg-secondary rounded-full border-2 border-background" id="member-status-indicator"></div>
+</div>
+<div>
+<h2 class="font-display-lg text-display-lg break-words min-w-0 text-on-surface tracking-tight leading-none mb-1" id="member-name">-</h2>
+<div class="flex items-center gap-2 font-label-md text-label-md text-on-surface-variant">
+<span class="bg-surface-variant px-2 py-0.5 rounded-full text-secondary border border-secondary/20" id="member-status-badge">-</span>
+<span>•</span>
+<span id="member-id-display">ID: -</span>
+</div>
+</div>
+</div>
+<div class="flex gap-3">
+<button id="timeline-message-btn" class="px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-on-surface font-label-md text-label-md hover:bg-white/10 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="chat">chat</span> Message
+                    </button>
+<button id="timeline-renew-btn" class="px-4 py-2 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(45,106,255,0.3)]">
+                        Renew Plan
+                    </button>
+</div>
+</div>
+</div>
+<div class="p-margin max-w-container-max mx-auto grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Timeline Canvas (Left/Main Column) -->
+<div class="lg:col-span-8 relative">
+<div class="timeline-line hidden sm:block"></div>
+<div class="flex flex-col gap-stack-lg" id="timeline-list">
+<!-- Dynamically populated -->
+</div>
+</div>
+<!-- Right Sidebar Analytics / Summary -->
+<div class="lg:col-span-4 mt-8 lg:mt-0 flex flex-col gap-stack-lg">
+<!-- Quick Stats Bento -->
+<div class="glass-panel rounded-xl p-6">
+<h4 class="font-title-lg text-title-lg text-on-surface mb-4 pb-2 border-b border-white/10">Member Insights</h4>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container rounded-lg p-4 border border-white/5 col-span-2">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary text-[16px]" data-icon="calendar_month">calendar_month</span>
+<span class="font-label-md text-label-md text-outline uppercase text-[10px]">Active Membership Plan</span>
+</div>
+<div class="font-headline-md text-headline-md text-on-surface text-base" id="sidebar-membership-plan">No active membership</div>
+<div class="font-body-md text-body-md text-[11px] text-on-surface-variant mt-1" id="sidebar-membership-dates">-</div>
+</div>
+<div class="bg-surface-container rounded-lg p-4 border border-white/5 col-span-2">
+<div class="flex justify-between items-center mb-2">
+<span class="font-label-md text-label-md text-outline uppercase text-[10px]">Lifetime Revenue</span>
+</div>
+<div class="font-headline-md text-headline-md text-tertiary" id="sidebar-ltv">₹0</div>
+</div>
+</div>
+</div>
+<!-- Recent Communications -->
+<div class="glass-panel rounded-xl p-6">
+<h4 class="font-title-lg text-title-lg text-on-surface mb-4 pb-2 border-b border-white/10">Direct Message Outbox</h4>
+<div class="flex flex-col gap-4" id="sidebar-comms-list">
+  <!-- Dynamically loaded direct alerts -->
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Mobile Bottom Navigation (Hidden on md+) -->
+
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const memberId = urlParams.get('id') || 'm7';
+      
+      const backBtn = document.getElementById('timeline-back-btn');
+      if (backBtn) {
+        backBtn.onclick = (e) => {
+          e.preventDefault();
+          window.location.href = `/member-profile?id=${memberId}`;
+        };
+      }
+
+      const renewBtn = document.getElementById('timeline-renew-btn');
+      if (renewBtn) {
+        renewBtn.onclick = () => {
+          window.location.href = `/renew?id=${memberId}`;
+        };
+      }
+
+      const messageBtn = document.getElementById('timeline-message-btn');
+      if (messageBtn) {
+        messageBtn.onclick = () => {
+          window.location.href = `/marketing`;
+        };
+      }
+      
+      try {
+        const response = await window.api.fetch(`/members/${memberId}`);
+        const data = await response.json();
+        if (!response.ok) return;
+
+        const { member, timeline, membership, communications } = data;
+        
+        document.title = `Member Timeline - ${member.full_name}`;
+        
+        // Update header details
+        document.getElementById('member-name').innerText = member.full_name;
+        document.getElementById('member-id-display').innerText = `ID: ${member.id}`;
+        document.getElementById('member-status-badge').innerText = member.status;
+        const initials = member.full_name ? member.full_name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : 'GYM';
+        const fallbackSpan = document.getElementById('member-photo-fallback');
+        if (fallbackSpan) {
+          fallbackSpan.innerText = initials;
+        }
+        if (member.photo_url) {
+          document.getElementById('member-photo').src = member.photo_url;
+        }
+
+        const indicator = document.getElementById('member-status-indicator');
+        if (indicator) {
+          if (member.status === 'Active') {
+            indicator.className = "absolute bottom-0 right-0 w-4 h-4 bg-secondary rounded-full border-2 border-background";
+          } else {
+            indicator.className = "absolute bottom-0 right-0 w-4 h-4 bg-error rounded-full border-2 border-background";
+          }
+        }
+
+        // Update sidebar plan details
+        if (membership) {
+          document.getElementById('sidebar-membership-plan').innerText = membership.plan_name;
+          document.getElementById('sidebar-membership-dates').innerText = `Valid: ${membership.start_date} to ${membership.end_date}`;
+        }
+
+        // Calculate lifetime value
+        let ltv = 0;
+        timeline.forEach(event => {
+          if (event.type === 'Payment' && event.title === 'Payment Received') {
+            const numVal = parseInt(event.details.replace(/[^\d]/g, ''), 10);
+            if (!isNaN(numVal)) {
+              ltv += numVal;
+            }
+          }
+        });
+        document.getElementById('sidebar-ltv').innerText = '₹' + Number(ltv).toLocaleString();
+
+        // Update Direct message alerts outbox
+        const commsListContainer = document.getElementById('sidebar-comms-list');
+        if (commsListContainer && communications) {
+          commsListContainer.innerHTML = '';
+          const directComms = communications.slice(0, 4);
+          if (directComms.length === 0) {
+            commsListContainer.innerHTML = '<p class="text-xs text-on-surface-variant italic">No message alerts sent.</p>';
+          } else {
+            directComms.forEach(c => {
+              const div = document.createElement('div');
+              div.className = 'flex gap-3 text-xs border-b border-white/5 pb-2 last:border-b-0';
+              div.innerHTML = `
+                <div class="w-6 h-6 rounded-full bg-[#25D366]/20 flex items-center justify-center shrink-0">
+                  <span class="material-symbols-outlined text-[#25D366] text-[12px]">forum</span>
+                </div>
+                <div>
+                  <p class="font-body-md text-on-surface line-clamp-1">${c.title}</p>
+                  <p class="text-on-surface-variant line-clamp-2 mt-0.5 font-light">${c.message}</p>
+                  <p class="text-[10px] text-outline mt-0.5">${new Date(c.created_at).toLocaleDateString()}</p>
+                </div>
+              `;
+              commsListContainer.appendChild(div);
+            });
+          }
+        }
+        
+        // Update Timeline list
+        const timelineList = document.getElementById('timeline-list');
+        if (timelineList && timeline.length > 0) {
+          timelineList.innerHTML = '';
+          timeline.forEach(event => {
+            let icon = 'info';
+            let color = 'text-primary';
+            let bg = 'bg-primary/10';
+            
+            if (event.type === 'System') {
+              icon = 'flag';
+              color = 'text-outline';
+              bg = 'bg-surface-container';
+            } else if (event.type === 'Attendance') {
+              icon = 'fitness_center';
+              color = 'text-secondary';
+              bg = 'bg-secondary/10';
+            } else if (event.type === 'Membership') {
+              icon = 'autorenew';
+              color = 'text-primary';
+              bg = 'bg-primary/10';
+            } else if (event.type === 'Payment') {
+              icon = 'payments';
+              color = 'text-tertiary';
+              bg = 'bg-tertiary/10';
+            } else if (event.type === 'Retention') {
+              icon = 'warning';
+              color = 'text-error';
+              bg = 'bg-error/10';
+            } else if (event.type === 'Communication') {
+              icon = 'forum';
+              color = 'text-[#25D366]';
+              bg = 'bg-[#25D366]/10';
+            }
+
+            const card = document.createElement('div');
+            card.className = 'relative z-10 pl-0 sm:pl-16 group';
+            card.innerHTML = `
+              <div class="absolute left-0 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full ${bg} border border-white/10 flex items-center justify-center hidden sm:flex z-20 group-hover:scale-110 transition-transform">
+                <span class="material-symbols-outlined ${color}">${icon}</span>
+              </div>
+              <div class="glass-panel rounded-xl p-6 transition-all duration-300 hover:border-white/20">
+                <div class="flex justify-between items-start mb-2">
+                  <div class="flex items-center gap-2">
+                    <span class="px-2 py-1 rounded ${bg} ${color} font-label-md text-label-md text-[10px] uppercase tracking-wider border border-white/5">${event.type}</span>
+                    <span class="font-body-md text-body-md text-on-surface-variant text-sm">${event.date}</span>
+                  </div>
+                </div>
+                <h3 class="font-title-lg text-title-lg text-on-surface mb-1">${event.title}</h3>
+                <p class="font-body-md text-body-md text-on-surface-variant">${event.details}</p>
+              </div>
+            `;
+            timelineList.appendChild(card);
+          });
+        } else {
+          timelineList.innerHTML = '<p class="text-center text-on-surface-variant py-8">No timeline events found for this member.</p>';
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+    </script>
+    
+
+    
+
+<div id="jsb-mobile-nav"></div>
+</body></html>

@@ -1,0 +1,911 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Member Profile</title>
+
+<style>
+    .glass-card {
+        background: rgba(27, 27, 27, 0.7);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+    }
+    .progress-ring__circle {
+        transition: stroke-dashoffset 0.35s;
+        transform: rotate(-90deg);
+        transform-origin: 50% 50%;
+    }
+</style>
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
+<div id="jsb-header" data-page-title="Member Profile"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- Main Canvas -->
+<main class="px-margin-mobile md:px-margin-desktop max-w-7xl mx-auto py-lg flex flex-col gap-gutter">
+  
+  <div class="pt-4">
+    <a href="/members" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group">
+      <span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+      <span>← Back to Members</span>
+    </a>
+  </div>
+
+  <!-- Profile Header Card -->
+  <div class="glass-card rounded-xl p-6 flex flex-col md:flex-row items-center md:items-start gap-gutter">
+    <div class="relative">
+      <div class="w-32 h-32 rounded-full overflow-hidden border-4 border-surface-container-high shrink-0 bg-surface-container flex items-center justify-center text-primary font-bold">
+        <img id="memberProfileImage" alt="Member Photo" class="w-full h-full object-cover" src="" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <span id="memberProfileInitials" class="hidden w-full h-full items-center justify-center text-display-lg font-bold bg-primary/10 text-primary">JSB</span>
+      </div>
+      <div id="member-status-badge" class="absolute -bottom-2 -right-2 bg-surface-container-high text-on-surface-variant font-label-caps text-label-caps px-2 py-1 rounded-full border border-white/10 flex items-center gap-1">
+        <div class="w-4 h-4 rounded bg-white/10 animate-pulse"></div>
+      </div>
+    </div>
+    <div class="flex-grow text-center md:text-left space-y-2">
+      <div class="flex flex-col md:flex-row items-center gap-xs">
+        <h2 class="font-headline-lg text-headline-lg text-on-surface bg-white/10 rounded animate-pulse w-48 h-8" id="member-name-heading"></h2>
+        <span id="member-plan-badge" class="bg-[#2A2A2A] text-[#c6c6c6] px-2 py-1 rounded border border-[#4c4546] font-label-caps text-label-caps flex items-center gap-1 min-w-[80px] h-6 animate-pulse"></span>
+      </div>
+      <p class="font-body-md text-body-md text-on-surface-variant flex items-center justify-center md:justify-start gap-2">
+        <span class="material-symbols-outlined text-[18px]">location_on</span> <span id="member-branch">Branch Loading...</span>
+      </p>
+      <div class="flex flex-wrap justify-center md:justify-start gap-sm mt-4">
+        <button id="callProfileBtn" class="bg-[#1E1E1E] hover:bg-[#2A2A2A] text-on-surface px-4 py-2 rounded-lg border border-[#2A2A2A] flex items-center gap-2 font-body-sm text-body-sm transition-colors">
+          <span class="material-symbols-outlined text-[18px]">call</span> Call
+        </button>
+        <button id="whatsappProfileBtn" class="bg-[#1E1E1E] hover:bg-[#2A2A2A] text-on-surface px-4 py-2 rounded-lg border border-[#2A2A2A] flex items-center gap-2 font-body-sm text-body-sm transition-colors">
+          <span class="material-symbols-outlined text-[18px]">chat</span> WhatsApp Message
+        </button>
+        <button id="editProfileBtn" class="bg-primary text-on-primary px-4 py-2 rounded-lg flex items-center gap-2 font-body-sm text-body-sm font-semibold hover:opacity-90 transition-opacity">
+          <span class="material-symbols-outlined text-[18px]">edit</span> Edit Profile
+        </button>
+        <button id="deleteProfileBtn" class="bg-error/10 hover:bg-error/20 text-error px-4 py-2 rounded-lg border border-error/30 flex items-center gap-2 font-body-sm text-body-sm transition-colors">
+          <span class="material-symbols-outlined text-[18px]">delete</span> Delete Profile
+        </button>
+      </div>
+    </div>
+    <div class="bg-surface-container-high rounded-lg p-4 border border-outline-variant/30 flex flex-col items-center justify-center min-w-[150px]">
+      <div class="relative w-20 h-20">
+        <svg class="w-full h-full" viewBox="0 0 100 100">
+          <circle class="text-surface-variant stroke-current" cx="50" cy="50" fill="transparent" r="40" stroke-width="8"></circle>
+          <circle class="text-primary stroke-current progress-ring__circle" cx="50" cy="50" fill="transparent" r="40" stroke-dasharray="251.2" stroke-dashoffset="240" stroke-linecap="round" stroke-width="8"></circle>
+        </svg>
+        <div class="absolute inset-0 flex flex-col items-center justify-center">
+          <span class="font-headline-md text-headline-md font-bold text-on-surface" id="days-left-count">-</span>
+        </div>
+      </div>
+      <span class="font-label-caps text-label-caps text-on-surface-variant mt-2 text-center">Days Remaining</span>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs (Mini CRM Tabs) -->
+  <div class="border-b border-[#2A2A2A] flex gap-lg mb-lg overflow-x-auto no-scrollbar" id="profile-tabs">
+    <button class="font-body-md text-body-md font-medium text-primary border-b-2 border-primary pb-2 whitespace-nowrap profile-tab-btn" data-tab="tab-overview">Overview</button>
+    <button class="font-body-md text-body-md text-on-surface-variant hover:text-on-surface pb-2 whitespace-nowrap transition-colors profile-tab-btn" data-tab="tab-payments">Payments</button>
+    <button class="font-body-md text-body-md text-on-surface-variant hover:text-on-surface pb-2 whitespace-nowrap transition-colors profile-tab-btn" data-tab="tab-membership">Membership</button>
+    <button class="font-body-md text-body-md text-on-surface-variant hover:text-on-surface pb-2 whitespace-nowrap transition-colors profile-tab-btn" data-tab="tab-measurements">Measurements</button>
+    <button class="font-body-md text-body-md text-on-surface-variant hover:text-on-surface pb-2 whitespace-nowrap transition-colors profile-tab-btn" data-tab="tab-communication">Communication Log</button>
+    <button class="font-body-md text-body-md text-on-surface-variant hover:text-on-surface pb-2 whitespace-nowrap transition-colors profile-tab-btn" data-tab="tab-notes">Trainer/Manager Notes</button>
+  </div>
+
+  <!-- Tab Contents -->
+  <div id="tab-contents">
+    
+    <!-- Tab 1: Overview -->
+    <div id="tab-overview" class="profile-tab-content grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+      <!-- Personal Info -->
+      <div class="glass-card rounded-xl p-6">
+        <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold mb-4 flex items-center gap-2 border-b border-[#2A2A2A] pb-2">
+          <span class="material-symbols-outlined text-on-surface-variant">person</span> Personal Info
+        </h3>
+        <div class="space-y-4">
+          <div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Phone</p>
+            <p class="font-body-md text-body-md text-on-surface font-mono" id="overview-phone">-</p>
+          </div>
+          <div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Email</p>
+            <p class="font-body-md text-body-md text-on-surface" id="overview-email">-</p>
+          </div>
+          <div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Date of Birth</p>
+            <p class="font-body-md text-body-md text-on-surface" id="overview-dob">-</p>
+          </div>
+          <div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Gender</p>
+            <p class="font-body-md text-body-md text-on-surface" id="overview-gender">-</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Emergency Contact -->
+      <div class="glass-card rounded-xl p-6">
+        <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold mb-4 flex items-center gap-2 border-b border-[#2A2A2A] pb-2">
+          <span class="material-symbols-outlined text-on-surface-variant">contact_emergency</span> Emergency Contact
+        </h3>
+        <div class="space-y-4">
+          <div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Contact Name</p>
+            <p class="font-body-md text-body-md text-on-surface" id="overview-emergency-name">-</p>
+          </div>
+          <div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Contact Phone</p>
+            <p class="font-body-md text-body-md text-on-surface font-mono" id="overview-emergency-phone">-</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Status -->
+      <div class="glass-card rounded-xl p-6">
+        <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold mb-4 flex items-center gap-2 border-b border-[#2A2A2A] pb-2">
+          <span class="material-symbols-outlined text-on-surface-variant">insights</span> Quick Status
+        </h3>
+        <div class="space-y-4">
+          <div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Member Since</p>
+            <p class="font-body-md text-body-md text-on-surface" id="overview-created-at">-</p>
+          </div>
+          <div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Current Membership</p>
+            <p class="font-body-md text-body-md text-secondary" id="overview-plan-name">-</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Payments -->
+    <div id="tab-payments" class="profile-tab-content hidden flex flex-col gap-gutter">
+      <div class="glass-card rounded-xl p-6">
+        <h3 class="font-title-lg text-title-lg text-on-surface mb-4">Payment History</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="border-b border-white/10 text-on-surface-variant font-medium">
+                <th class="py-3 px-4">Date</th>
+                <th class="py-3 px-4">Amount</th>
+                <th class="py-3 px-4">Method</th>
+                <th class="py-3 px-4">Reference</th>
+                <th class="py-3 px-4">Invoice #</th>
+                <th class="py-3 px-4">Status</th>
+              </tr>
+            </thead>
+            <tbody id="tab-payments-body" class="divide-y divide-white/5 text-on-surface">
+              <!-- Dynamically populated payments list -->
+              <tr>
+                <td colspan="6" class="py-4 text-center text-on-surface-variant">No transaction records.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Membership -->
+    <div id="tab-membership" class="profile-tab-content hidden flex flex-col gap-gutter">
+      <div class="glass-card rounded-xl p-6">
+        <h3 class="font-title-lg text-title-lg text-on-surface mb-4">Membership Lifecycle</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="border-b border-white/10 text-on-surface-variant font-medium">
+                <th class="py-3 px-4">Plan</th>
+                <th class="py-3 px-4">Start Date</th>
+                <th class="py-3 px-4">Expiry Date</th>
+                <th class="py-3 px-4">Price</th>
+                <th class="py-3 px-4">Renewals</th>
+              </tr>
+            </thead>
+            <tbody id="tab-memberships-body" class="divide-y divide-white/5 text-on-surface">
+              <!-- Dynamically populated memberships list -->
+              <tr>
+                <td colspan="5" class="py-4 text-center text-on-surface-variant">No membership records.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Measurements -->
+    <div id="tab-measurements" class="profile-tab-content hidden grid grid-cols-1 md:grid-cols-2 gap-gutter">
+      <!-- Body Stats -->
+      <div class="glass-card rounded-xl p-6">
+        <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold mb-4 flex items-center gap-2 border-b border-[#2A2A2A] pb-2">
+          <span class="material-symbols-outlined text-on-surface-variant">monitor_weight</span> Body Composition
+        </h3>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant/20">
+            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Weight</p>
+            <p class="font-headline-md text-headline-md text-on-surface font-bold"><span id="measure-weight">-</span> <span class="text-body-sm font-normal text-on-surface-variant">kg</span></p>
+          </div>
+          <div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant/20">
+            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Height</p>
+            <p class="font-headline-md text-headline-md text-on-surface font-bold"><span id="measure-height">-</span> <span class="text-body-sm font-normal text-on-surface-variant">cm</span></p>
+          </div>
+          <div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant/20">
+            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">BMI</p>
+            <p class="font-headline-md text-headline-md text-on-surface font-bold" id="measure-bmi">-</p>
+          </div>
+          <div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant/20">
+            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Body Fat % (Est.)</p>
+            <p class="font-headline-md text-headline-md text-secondary font-bold" id="measure-body-fat">-%</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Anthropometric Stats -->
+      <div class="glass-card rounded-xl p-6">
+        <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold mb-4 flex items-center gap-2 border-b border-[#2A2A2A] pb-2">
+          <span class="material-symbols-outlined text-on-surface-variant">straighten</span> Anthropometric Measurements
+        </h3>
+        <div class="grid grid-cols-3 gap-4">
+          <div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant/20">
+            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Waist (Est.)</p>
+            <p class="font-headline-sm text-headline-sm text-on-surface font-bold" id="measure-waist">-</p>
+          </div>
+          <div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant/20">
+            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Chest (Est.)</p>
+            <p class="font-headline-sm text-headline-sm text-on-surface font-bold" id="measure-chest">-</p>
+          </div>
+          <div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant/20">
+            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Arms (Est.)</p>
+            <p class="font-headline-sm text-headline-sm text-on-surface font-bold" id="measure-arms">-</p>
+          </div>
+        </div>
+        <p class="text-xs text-on-surface-variant mt-4 italic">Note: Anthropometric measurements are calculated estimations derived from the member's body mass index, height, and gender profiles.</p>
+      </div>
+    </div>
+
+    <!-- Tab 5: Communication Log -->
+    <div id="tab-communication" class="profile-tab-content hidden flex flex-col gap-gutter">
+      <div class="glass-card rounded-xl p-6">
+        <h3 class="font-title-lg text-title-lg text-on-surface mb-4">Communications Outbox</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="border-b border-white/10 text-on-surface-variant font-medium">
+                <th class="py-3 px-4">Date</th>
+                <th class="py-3 px-4">Title</th>
+                <th class="py-3 px-4">Message Body Preview</th>
+              </tr>
+            </thead>
+            <tbody id="tab-communication-body" class="divide-y divide-white/5 text-on-surface">
+              <!-- Dynamically populated communications list -->
+              <tr>
+                <td colspan="3" class="py-4 text-center text-on-surface-variant">No communications sent.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 6: Trainer/Manager Notes -->
+    <div id="tab-notes" class="profile-tab-content hidden grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+      
+      <!-- Notes Logging Form -->
+      <div class="lg:col-span-4 glass-card rounded-xl p-6 h-fit">
+        <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold mb-4 border-b border-[#2A2A2A] pb-2">Log Note</h3>
+        <form id="note-log-form" class="space-y-4">
+          <div>
+            <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider block mb-1">Risk Level</label>
+            <select id="note-risk-level" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-0 bg-surface-container">
+              <option value="Low">Low Risk (Stable)</option>
+              <option value="Medium" selected>Medium Risk</option>
+              <option value="High">High Risk (At Churn Risk)</option>
+            </select>
+          </div>
+          <div>
+            <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider block mb-1">Contact Channel</label>
+            <select id="note-channel" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-0 bg-surface-container">
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Phone Call">Phone Call</option>
+              <option value="In Gym">In Gym Consult</option>
+              <option value="Email">Email</option>
+            </select>
+          </div>
+          <div>
+            <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider block mb-1">Notes Details</label>
+            <textarea id="note-details" required class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-0 h-28" placeholder="Trainer or manager notes here..."></textarea>
+          </div>
+          <button type="submit" class="bg-primary text-on-primary w-full py-2.5 rounded-lg font-title-lg text-title-lg hover:opacity-90 active:scale-95 transition-all">Save Note</button>
+        </form>
+      </div>
+
+      <!-- Notes Timeline -->
+      <div class="lg:col-span-8 glass-card rounded-xl p-6">
+        <h3 class="font-title-lg text-title-lg text-on-surface mb-4">Logged Notes History</h3>
+        <div id="notes-timeline-container" class="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+          <!-- Dynamically populated notes list -->
+          <p class="text-center text-on-surface-variant py-8">No logged notes for this member.</p>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</main>
+
+<!-- Modals (Edit, WhatsApp) preserved and fully functional -->
+<!-- Modal for Edit Member -->
+<div id="editMemberModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 hidden" style="background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px);">
+  <div class="glass-card w-full max-w-lg rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] border border-white/20">
+    <div class="p-6 border-b border-white/10 flex justify-between items-center">
+      <h3 class="font-headline-md text-headline-md text-on-surface">Edit Member Profile</h3>
+      <button id="closeEditModal" type="button" class="text-on-surface-variant hover:text-on-surface p-1 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <form id="editMemberForm" class="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="flex flex-col gap-1 md:col-span-2">
+          <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Full Name</label>
+          <input type="text" id="editFullName" name="full_name" required="" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Phone</label>
+          <input type="text" id="editPhone" name="phone" required="" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Email</label>
+          <input type="email" id="editEmail" name="email" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">DOB</label>
+          <input type="date" id="editDob" name="dob" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none [color-scheme:dark]">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Gender</label>
+          <select id="editGender" name="gender" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-surface-container">
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Height (cm)</label>
+          <input type="number" id="editHeight" name="height_cm" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Weight (kg)</label>
+          <input type="number" step="0.1" id="editWeight" name="weight_kg" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Status</label>
+          <select id="editStatus" name="status" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-surface-container">
+            <option value="Active">Active</option>
+            <option value="Expired">Expired</option>
+            <option value="Pending">Pending</option>
+          </select>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Emergency Contact Name</label>
+          <input type="text" id="editEmergencyName" name="emergency_contact_name" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+        </div>
+        <div class="flex flex-col gap-1 md:col-span-2">
+          <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Emergency Phone</label>
+          <input type="text" id="editEmergencyPhone" name="emergency_contact_phone" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+        </div>
+      </div>
+      <button type="submit" class="bg-primary text-on-primary w-full py-3 rounded-lg font-title-lg text-title-lg flex items-center justify-center gap-2 mt-4 hover:bg-primary/90 transition-colors active:scale-95">
+        Save Changes
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Modal for Send WhatsApp -->
+<div id="sendWhatsappModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 hidden" style="background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px);">
+  <div class="glass-card w-full max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] border border-white/20">
+    <div class="p-6 border-b border-white/10 flex justify-between items-center">
+      <h3 class="font-headline-md text-headline-md text-on-surface">Send WhatsApp Message</h3>
+      <button id="closeWhatsappModal" type="button" class="text-on-surface-variant hover:text-on-surface p-1 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <form id="whatsappForm" class="p-6 flex flex-col gap-4">
+      <div class="flex flex-col gap-1">
+        <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Select Template</label>
+        <select id="whatsappTemplate" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-surface-container">
+          <option value="welcome">Welcome Message</option>
+          <option value="expiry">Membership Expiry Reminder</option>
+          <option value="payment">Payment Due Reminder</option>
+          <option value="inactive">Inactive Member Follow-Up</option>
+          <option value="festival">Festival Promotion</option>
+        </select>
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Message Preview</label>
+        <textarea id="whatsappMessagePreview" required="" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none h-32"></textarea>
+      </div>
+      <button type="submit" class="bg-primary text-on-primary w-full py-3 rounded-lg font-title-lg text-title-lg flex items-center justify-center gap-2 mt-2 hover:bg-primary/90 transition-colors active:scale-95">
+        <span class="material-symbols-outlined text-[18px]">chat</span> Open in WhatsApp
+      </button>
+    </form>
+  </div>
+</div>
+
+<div id="jsb-mobile-nav"></div>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const memberId = urlParams.get('id') || 'm1';
+  
+  let loadedMember = null;
+  let loadedMembership = null;
+
+  // Edit profile actions
+  const editModal = document.getElementById("editMemberModal");
+  const openEditBtn = document.getElementById("editProfileBtn");
+  const closeEditBtn = document.getElementById("closeEditModal");
+  const editForm = document.getElementById("editMemberForm");
+  
+  if (openEditBtn) openEditBtn.addEventListener("click", openEditModal);
+  if (closeEditBtn) closeEditBtn.addEventListener("click", () => editModal.classList.add("hidden"));
+  
+  // Tab Switching Logic
+  const tabButtons = document.querySelectorAll(".profile-tab-btn");
+  const tabContents = document.querySelectorAll(".profile-tab-content");
+
+  tabButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      // Deactivate all
+      tabButtons.forEach(b => {
+        b.className = "font-body-md text-body-md text-on-surface-variant hover:text-on-surface pb-2 whitespace-nowrap transition-colors profile-tab-btn";
+      });
+      tabContents.forEach(c => c.classList.add("hidden"));
+
+      // Activate clicked
+      btn.className = "font-body-md text-body-md font-medium text-primary border-b-2 border-primary pb-2 whitespace-nowrap profile-tab-btn";
+      const targetId = btn.getAttribute("data-tab");
+      document.getElementById(targetId).classList.remove("hidden");
+    });
+  });
+
+  async function openEditModal() {
+    try {
+      const res = await window.api.fetch(`/members/${memberId}`);
+      const data = await res.json();
+      if (!res.ok) return alert(data.error || "Failed to load member details");
+
+      const { member } = data;
+      document.getElementById("editFullName").value = member.full_name || "";
+      document.getElementById("editPhone").value = member.phone || "";
+      document.getElementById("editEmail").value = member.email || "";
+      document.getElementById("editDob").value = member.dob || "";
+      document.getElementById("editGender").value = member.gender || "Male";
+      document.getElementById("editHeight").value = member.height_cm || 0;
+      document.getElementById("editWeight").value = member.weight_kg || 0;
+      document.getElementById("editStatus").value = member.status || "Active";
+      document.getElementById("editEmergencyName").value = member.emergency_contact_name || "";
+      document.getElementById("editEmergencyPhone").value = member.emergency_contact_phone || "";
+
+      editModal.classList.remove("hidden");
+    } catch (err) {
+      console.error(err);
+      alert("Network error.");
+    }
+  }
+
+  if (editForm) {
+    editForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = {
+        full_name: document.getElementById("editFullName").value,
+        phone: document.getElementById("editPhone").value,
+        email: document.getElementById("editEmail").value,
+        dob: document.getElementById("editDob").value,
+        gender: document.getElementById("editGender").value,
+        height_cm: parseFloat(document.getElementById("editHeight").value) || 0,
+        weight_kg: parseFloat(document.getElementById("editWeight").value) || 0,
+        status: document.getElementById("editStatus").value,
+        emergency_contact_name: document.getElementById("editEmergencyName").value,
+        emergency_contact_phone: document.getElementById("editEmergencyPhone").value
+      };
+
+      if (payload.height_cm > 0 && payload.weight_kg > 0) {
+        const heightM = payload.height_cm / 100;
+        payload.bmi = Math.round((payload.weight_kg / (heightM * heightM)) * 10) / 10;
+      } else {
+        payload.bmi = 0;
+      }
+
+      try {
+        const res = await window.api.fetch(`/members/${memberId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          editModal.classList.add("hidden");
+          loadProfile();
+        } else {
+          const err = await res.json();
+          alert(err.error || "Failed to update profile");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Network failure.");
+      }
+    });
+  }
+
+  // Log Note Submission
+  const noteForm = document.getElementById('note-log-form');
+  if (noteForm) {
+    noteForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        member_id: memberId,
+        risk_level: document.getElementById('note-risk-level').value,
+        channel: document.getElementById('note-channel').value,
+        notes: document.getElementById('note-details').value
+      };
+
+      try {
+        const res = await window.api.fetch('/retention/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          document.getElementById('note-details').value = '';
+          alert('Note logged successfully.');
+          loadProfile(); // reload lists
+        } else {
+          alert('Failed to save note.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error communicating with server.');
+      }
+    });
+  }
+
+  // Load Member Data
+  async function loadProfile() {
+    try {
+      const response = await window.api.fetch(`/members/${memberId}`);
+      const data = await response.json();
+      if (!response.ok) return console.error(data.error);
+
+      const { member, membership, timeline, communications } = data;
+      loadedMember = member;
+      loadedMembership = membership;
+
+      // Update Header
+      document.title = `Member Profile - ${member.full_name}`;
+      document.getElementById('member-name-heading').innerText = member.full_name;
+      
+      const planBadge = document.getElementById('member-plan-badge');
+      if (membership) {
+        planBadge.innerHTML = `<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span> ${membership.plan_name}`;
+      } else {
+        planBadge.innerHTML = `<span class="material-symbols-outlined text-[14px]">star</span> No Plan`;
+      }
+
+      // Status Badge
+      const statusBadge = document.getElementById('member-status-badge');
+      if (member.status === 'Active') {
+        statusBadge.className = "absolute -bottom-2 -right-2 bg-green-500/20 text-green-400 font-label-caps text-label-caps px-2 py-1 rounded-full border border-green-500/50 flex items-center gap-1";
+        statusBadge.innerHTML = '<div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div> Active';
+      } else {
+        statusBadge.className = "absolute -bottom-2 -right-2 bg-red-500/20 text-red-400 font-label-caps text-label-caps px-2 py-1 rounded-full border border-red-500/50 flex items-center gap-1";
+        statusBadge.innerHTML = '<div class="w-2 h-2 rounded-full bg-red-400"></div> Expired';
+      }
+
+      // Photo
+      const photo = member.photo_url || '';
+      const memberImg = document.getElementById('memberProfileImage');
+      const initialsSpan = document.getElementById('memberProfileInitials');
+      if (photo) {
+        memberImg.src = photo;
+        memberImg.style.display = 'block';
+        initialsSpan.style.display = 'none';
+      } else {
+        memberImg.style.display = 'none';
+        initialsSpan.style.display = 'flex';
+        const initials = member.full_name ? member.full_name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : 'GYM';
+        initialsSpan.innerText = initials;
+      }
+
+      // Days Remaining Ring
+      let daysLeft = 0;
+      if (membership && member.status === 'Active') {
+        const diff = new Date(membership.end_date) - new Date();
+        daysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+      }
+      document.getElementById('days-left-count').innerText = daysLeft;
+      const circle = document.querySelector('.progress-ring__circle');
+      if (circle) {
+        const radius = circle.r.baseVal.value;
+        const circumference = radius * 2 * Math.PI;
+        const percent = Math.min(Math.round((daysLeft / 365) * 100), 100);
+        const offset = circumference - (percent / 100) * circumference;
+        circle.style.strokeDasharray = `${circumference} ${circumference}`;
+        circle.style.strokeDashoffset = offset;
+      }
+
+      // Tab 1: Overview Populate
+      document.getElementById('overview-phone').innerText = member.phone || 'N/A';
+      document.getElementById('overview-email').innerText = member.email || 'N/A';
+      document.getElementById('overview-dob').innerText = member.dob || 'N/A';
+      document.getElementById('overview-gender').innerText = member.gender || 'N/A';
+      document.getElementById('overview-emergency-name').innerText = member.emergency_contact_name || 'N/A';
+      document.getElementById('overview-emergency-phone').innerText = member.emergency_contact_phone || 'N/A';
+      document.getElementById('overview-created-at').innerText = member.created_at ? new Date(member.created_at).toLocaleDateString() : 'N/A';
+      document.getElementById('overview-plan-name').innerText = membership ? `${membership.plan_name} (Expires ${membership.end_date})` : 'No active membership plan';
+
+      // Tab 2: Payments Tab
+      const paymentsTable = document.getElementById('tab-payments-body');
+      paymentsTable.innerHTML = '';
+      const payTimeline = timeline.filter(t => t.type === 'Payment');
+      if (payTimeline.length === 0) {
+        paymentsTable.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-on-surface-variant">No transaction records.</td></tr>`;
+      } else {
+        payTimeline.forEach(p => {
+          // Parse values out of details description
+          const matchAmount = p.details.match(/Amount:\s*₹([\d,]+)/);
+          const amt = matchAmount ? '₹' + matchAmount[1] : '₹0';
+          const matchMethod = p.details.match(/via\s*(\w+)/);
+          const method = matchMethod ? matchMethod[1] : 'N/A';
+          const matchRef = p.details.match(/Txn:\s*([^\)]+)/);
+          const ref = matchRef ? matchRef[1] : 'N/A';
+          const matchInv = p.details.match(/Invoice\s*#(\w+)/);
+          const invNum = matchInv ? matchInv[1] : 'N/A';
+
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="py-3 px-4 text-on-surface font-mono">${p.date}</td>
+            <td class="py-3 px-4 font-mono font-bold text-secondary">${amt}</td>
+            <td class="py-3 px-4 text-on-surface-variant">${method}</td>
+            <td class="py-3 px-4 text-on-surface-variant font-mono text-xs">${ref}</td>
+            <td class="py-3 px-4 text-primary font-mono text-xs cursor-pointer hover:underline" onclick="window.location.href='/receipt?id=${invNum}'">${invNum}</td>
+            <td class="py-3 px-4"><span class="px-2 py-0.5 rounded-full text-xs font-label-sm uppercase bg-[#81c995]/10 text-[#81c995] border border-[#81c995]/20">Successful</span></td>
+          `;
+          paymentsTable.appendChild(row);
+        });
+      }
+
+      // Tab 3: Membership Tab
+      const membershipsTable = document.getElementById('tab-memberships-body');
+      membershipsTable.innerHTML = '';
+      const msTimeline = timeline.filter(t => t.type === 'Membership');
+      if (msTimeline.length === 0) {
+        membershipsTable.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-on-surface-variant">No membership records.</td></tr>`;
+      } else {
+        msTimeline.forEach(m => {
+          const matchPlan = m.details.match(/Plan:\s*([^.]+)/);
+          const plan = matchPlan ? matchPlan[1] : 'N/A';
+          const matchDuration = m.details.match(/Duration:\s*([\d-]+)\s*to\s*([\d-]+)/);
+          const start = matchDuration ? matchDuration[1] : 'N/A';
+          const end = matchDuration ? matchDuration[2] : 'N/A';
+          
+          const isRenew = m.title.includes('Renewed');
+
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="py-3 px-4 text-on-surface font-bold">${plan}</td>
+            <td class="py-3 px-4 font-mono text-on-surface-variant">${start}</td>
+            <td class="py-3 px-4 font-mono text-on-surface-variant">${end}</td>
+            <td class="py-3 px-4 font-mono text-secondary">₹${membership ? membership.price : '1,500'}</td>
+            <td class="py-3 px-4"><span class="px-2.5 py-0.5 rounded text-xs font-label-sm uppercase ${
+              isRenew ? 'bg-tertiary/10 text-tertiary border border-tertiary/20' : 'bg-primary/10 text-primary border border-primary/20'
+            }">${isRenew ? 'Renewal' : 'Initial'}</span></td>
+          `;
+          membershipsTable.appendChild(row);
+        });
+      }
+
+      // Tab 4: Measurements Tab
+      const bmiVal = member.bmi || 0;
+      document.getElementById('measure-weight').innerText = member.weight_kg || '0';
+      document.getElementById('measure-height').innerText = member.height_cm || '0';
+      document.getElementById('measure-bmi').innerText = bmiVal || '0.0';
+
+      // Estimate body measurements
+      const gender = member.gender || 'Male';
+      const weight = member.weight_kg || 75;
+      
+      // Dynamic estimation algorithms based on weight & gender
+      const bodyFat = bmiVal > 0 ? Math.round((1.20 * bmiVal + 0.23 * 25 - (gender === 'Male' ? 16.2 : 5.4)) * 10) / 10 : 0;
+      const waist = Math.round(weight * 0.4);
+      const chest = Math.round(weight * 0.5);
+      const arms = Math.round(weight * 0.17 * 10) / 10;
+
+      document.getElementById('measure-body-fat').innerText = bodyFat > 0 ? bodyFat + '%' : 'N/A';
+      document.getElementById('measure-waist').innerText = waist > 0 ? waist + ' inches' : 'N/A';
+      document.getElementById('measure-chest').innerText = chest > 0 ? chest + ' inches' : 'N/A';
+      document.getElementById('measure-arms').innerText = arms > 0 ? arms + ' inches' : 'N/A';
+
+      // Tab 5: Communication Log Tab
+      const communicationTable = document.getElementById('tab-communication-body');
+      communicationTable.innerHTML = '';
+      if (communications.length === 0) {
+        communicationTable.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-on-surface-variant">No communications sent.</td></tr>`;
+      } else {
+        communications.forEach(c => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="py-3 px-4 font-mono text-on-surface-variant text-xs">${new Date(c.created_at).toLocaleDateString()}</td>
+            <td class="py-3 px-4 font-bold text-on-surface">${c.title}</td>
+            <td class="py-3 px-4 text-on-surface-variant max-w-md truncate" title="${c.message}">${c.message}</td>
+          `;
+          communicationTable.appendChild(row);
+        });
+      }
+
+      // Tab 6: Trainer/Manager Notes
+      const notesTimeline = document.getElementById('notes-timeline-container');
+      notesTimeline.innerHTML = '';
+      const notesEvents = timeline.filter(t => t.type === 'Retention');
+      if (notesEvents.length === 0) {
+        notesTimeline.innerHTML = `<p class="text-center text-on-surface-variant py-8">No logged notes for this member.</p>`;
+      } else {
+        notesEvents.forEach(n => {
+          const card = document.createElement('div');
+          card.className = 'bg-surface-container-low border border-white/5 rounded-xl p-4 flex flex-col gap-2 relative';
+          
+          // Parse values out of retention details
+          const matchRisk = n.details.match(/Risk Level:\s*(\w+)/);
+          const risk = matchRisk ? matchRisk[1] : 'Medium';
+          const matchChannel = n.details.match(/Channel:\s*([^.]+)/);
+          const channel = matchChannel ? matchChannel[1] : 'WhatsApp';
+          const matchNotes = n.details.match(/Notes:\s*([\s\S]+)/);
+          const detailsText = matchNotes ? matchNotes[1] : n.details;
+
+          let badgeColor = "bg-[#81c995]/10 text-[#81c995]";
+          if (risk === 'High') badgeColor = "bg-error/10 text-error";
+          else if (risk === 'Medium') badgeColor = "bg-tertiary/10 text-tertiary";
+
+          card.innerHTML = `
+            <div class="flex justify-between items-center mb-1">
+              <span class="px-2 py-0.5 rounded text-xs font-label-sm font-bold uppercase ${badgeColor}">${risk} Risk</span>
+              <span class="text-xs text-on-surface-variant font-mono">${n.date}</span>
+            </div>
+            <p class="text-sm text-on-surface whitespace-pre-wrap">"${detailsText}"</p>
+            <div class="text-xs text-on-surface-variant border-t border-white/5 pt-2 mt-1 flex justify-between">
+              <span>Logged via: <strong>${channel}</strong></span>
+            </div>
+          `;
+          notesTimeline.appendChild(card);
+        });
+      }
+
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // Initial load profile
+  loadProfile();
+
+  // Delete Action
+  const deleteBtn = document.getElementById("deleteProfileBtn");
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      if (!confirm("Are you sure you want to permanently delete this member? All associated memberships, invoices, and attendance logs will be removed.")) {
+        return;
+      }
+      try {
+        const res = await window.api.fetch(`/members/${memberId}`, {
+          method: "DELETE"
+        });
+        if (res.ok) {
+          alert("Member profile successfully deleted.");
+          window.location.href = "/members";
+        } else {
+          const err = await res.json();
+          alert(err.error || "Failed to delete profile");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Network error.");
+      }
+    });
+  }
+
+  // Call Button
+  const callBtn = document.getElementById("callProfileBtn");
+  if (callBtn) {
+    callBtn.onclick = () => {
+      if (loadedMember && loadedMember.phone) {
+        window.location.href = `tel:${loadedMember.phone}`;
+      } else {
+        alert("Phone number not available.");
+      }
+    };
+  }
+
+  // WhatsApp Message prepare
+  const whatsappBtn = document.getElementById("whatsappProfileBtn");
+  const whatsappModal = document.getElementById("sendWhatsappModal");
+  const closeWhatsappBtn = document.getElementById("closeWhatsappModal");
+  const whatsappForm = document.getElementById("whatsappForm");
+  const whatsappTemplateSelect = document.getElementById("whatsappTemplate");
+  const whatsappPreviewTextarea = document.getElementById("whatsappMessagePreview");
+
+  if (whatsappBtn && whatsappModal) {
+    whatsappBtn.onclick = () => {
+      if (!loadedMember) return alert("Member details not loaded.");
+      updateWhatsappPreview();
+      whatsappModal.classList.remove("hidden");
+    };
+  }
+  if (closeWhatsappBtn && whatsappModal) {
+    closeWhatsappBtn.onclick = () => whatsappModal.classList.add("hidden");
+  }
+
+  if (whatsappTemplateSelect) {
+    whatsappTemplateSelect.onchange = () => {
+      updateWhatsappPreview();
+    };
+  }
+
+  function updateWhatsappPreview() {
+    if (!loadedMember) return;
+    const templateId = whatsappTemplateSelect.value;
+    const gymName = window.APP_CONFIG?.brand?.name || 'Kinetic SaaS';
+    let msg = '';
+    if (templateId === 'welcome') {
+      msg = `Hello *${loadedMember.full_name}*, welcome to *${gymName}*! Your profile is set up. Let's crush those fitness goals! 💪`;
+    } else if (templateId === 'expiry') {
+      const endDate = loadedMembership ? loadedMembership.end_date : 'N/A';
+      msg = `Hi *${loadedMember.full_name}*, this is a friendly reminder from *${gymName}*. Your membership is expiring on *${endDate}*. Renew today to keep training! 🏋️‍♂️`;
+    } else if (templateId === 'payment') {
+      const amount = loadedMembership ? loadedMembership.price : '1,500';
+      msg = `Hi *${loadedMember.full_name}*, you have a pending payment of *₹${amount}* at *${gymName}*. Please clear it at your earliest convenience. Thank you!`;
+    } else if (templateId === 'inactive') {
+      msg = `Hello *${loadedMember.full_name}*, we missed you at *${gymName}*! You haven't checked in for some days. Is everything okay? Let us know if you need help getting back on track! 🤝`;
+    } else if (templateId === 'festival') {
+      msg = `Dear *${loadedMember.full_name}*, warm greetings from *${gymName}*! Celebrate this festival season with a healthy lifestyle. Special 20% discount on annual renewals this week! 🌟`;
+    }
+    if (whatsappPreviewTextarea) whatsappPreviewTextarea.value = msg;
+  }
+
+  if (whatsappForm) {
+    whatsappForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const templateId = whatsappTemplateSelect.value;
+      const customMsg = whatsappPreviewTextarea.value;
+      try {
+        const res = await window.api.fetch('/whatsapp/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            member_id: memberId,
+            template_id: templateId,
+            custom_message: customMsg,
+            type: templateId === 'expiry' ? 'Membership' : templateId === 'payment' ? 'Payments' : templateId === 'inactive' ? 'Attendance' : 'Marketing'
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          whatsappModal.classList.add("hidden");
+          window.open(data.whatsappUrl, '_blank');
+        } else {
+          alert(data.error || 'Failed to prepare WhatsApp message.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Network error.');
+      }
+    };
+  }
+});
+</script>
+</body></html>

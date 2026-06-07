@@ -1,0 +1,185 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Member QR Card</title>
+<!-- Fonts & Icons -->
+
+<!-- Tailwind CSS -->
+
+<!-- Tailwind Configuration -->
+
+<style>
+        /* Card specifics */
+        .glass-card {
+            background: linear-gradient(135deg, rgba(32, 31, 31, 0.8) 0%, rgba(28, 27, 27, 0.9) 100%);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        .glow-accent {
+            background: radial-gradient(circle at top right, rgba(45, 106, 255, 0.25) 0%, transparent 60%);
+        }
+    </style>
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
+<div id="jsb-header" data-page-title="Member QR Card"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- TopAppBar (Strict JSON Implementation) -->
+
+<!-- Main Content Canvas -->
+<main class="flex-grow pt-24 pb-safe px-margin md:px-gutter max-w-container-max mx-auto w-full">
+<div class="px-4 md:px-8 pt-4"><a href="/member-profile" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>← Member Profile</span></a></div>
+<!-- Contextual Back Link (Detail View Suppression of Main Nav implies a way back) -->
+<a class="inline-flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md mb-stack-lg group" href="/members">
+<span class="material-symbols-outlined text-[16px] group-hover:-translate-x-1 transition-transform">arrow_back</span>
+            Back to Members
+        </a>
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:justify-between md:items-end gap-stack-md mb-stack-lg">
+<div>
+<h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-background">Member Dossier</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Detailed view and digital credential for Mohit Yadav.</p>
+</div>
+<div class="flex gap-stack-sm">
+<button class="bg-surface-container border border-white/10 text-on-background px-4 py-2 rounded-lg font-label-md text-label-md hover:bg-surface-variant transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">share</span> Share
+                </button>
+<button class="bg-primary-container text-on-primary-container px-4 py-2 rounded-lg font-label-md text-label-md hover:bg-inverse-primary transition-colors flex items-center gap-2 shadow-[0_0_15px_rgba(45,106,255,0.4)]">
+<span class="material-symbols-outlined text-[18px]">nfc</span> Write to NFC
+                </button>
+</div>
+</div>
+<!-- Premium Digital Card Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter relative">
+<!-- Atmospheric Glow Background -->
+<div class="absolute top-1/2 left-1/4 -translate-y-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-primary-container rounded-full blur-[120px] opacity-20 pointer-events-none z-0"></div>
+<!-- Card Section (Left/Top) -->
+<div class="col-span-1 lg:col-span-7 flex justify-center lg:justify-start relative z-10">
+<!-- The Digital Card -->
+<div class="glass-card backdrop-blur-2xl rounded-[24px] border border-white/10 w-full max-w-[540px] aspect-[1.58/1] relative overflow-hidden flex flex-col justify-between p-8 group hover:border-primary/50 transition-colors duration-500">
+<!-- Internal Card Glow -->
+<div class="absolute inset-0 glow-accent pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-60"></div>
+<!-- Top Row -->
+<div class="flex justify-between items-start z-10 relative">
+<div class="flex flex-col">
+<span class="font-display-lg text-[20px] leading-tight font-bold tracking-tight text-on-background flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">fitness_center</span>
+                                <span class="dynamic-gym-name uppercase">JSB FITNESS</span>
+                            </span>
+<span class="font-label-md text-label-md text-primary mt-1 tracking-widest uppercase opacity-80">Platinum Tier</span>
+</div>
+<div class="bg-secondary-container/10 border border-secondary/30 text-secondary px-3 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
+<div class="w-2 h-2 rounded-full bg-secondary animate-pulse shadow-[0_0_8px_rgba(78,222,163,0.8)]"></div>
+<span class="font-label-md text-label-md font-semibold">ACTIVE</span>
+</div>
+</div>
+<!-- Middle Row (Identity) -->
+<div class="flex items-center gap-6 z-10 relative">
+<div class="w-20 h-20 rounded-xl overflow-hidden border-2 border-white/10 shadow-lg relative bg-surface-container-high">
+<img alt="Profile" class="w-full h-full object-cover" data-alt="A cinematic, high-contrast portrait of an athletic Indian man in his early 30s. He is looking directly at the camera with a confident, intense expression. The lighting is moody, with a strong rim light defining his jawline against a pure dark background. The aesthetic matches a high-end, premium fitness brand utilizing a dark minimalist style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZjfHCIfFEDr4rahUKlHy9fnZmI51MTX0gJCTGkv8ZIWwA5B3MYqW8Qd5p454xunY5dYd8PtgxHgRaVRCjSXfqi7uSrDMKmKtqHSu2lzf9RNwDFevPF_8XADoVkM0LhHSaQfZ54SB89GllI-sI9ZxHdTjhBl6op3uNItoEbwM2vUPWMgPP_IKqnzRy8kxynB9Rq-ePQF58aNxiPeA3iJK5y7tu8GWKO05noW3V_AX5gdN-9_It82Hk0X1mleDMk6T0SZh0PYaZvzLY">
+<div class="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-xl"></div>
+</div>
+<div class="flex flex-col">
+<h3 class="font-title-lg text-title-lg text-on-background font-bold tracking-tight">Mohit Yadav</h3>
+<div class="flex items-center gap-2 mt-1">
+<span class="font-label-md text-label-md text-on-surface-variant font-mono">ID: KIN-8492-X</span>
+<button class="text-primary hover:text-primary-container transition-colors" title="Copy ID">
+<span class="material-symbols-outlined text-[14px]">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Bottom Row (Data & QR) -->
+<div class="flex justify-between items-end z-10 relative">
+<div class="flex gap-8">
+<div class="flex flex-col">
+<span class="font-label-md text-[10px] uppercase tracking-wider text-on-surface-variant mb-1">Joined</span>
+<span class="font-body-md text-body-md text-on-background font-medium">Oct 2023</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-[10px] uppercase tracking-wider text-on-surface-variant mb-1">Expires</span>
+<span class="font-body-md text-body-md text-on-background font-medium">Oct 2024</span>
+</div>
+</div>
+<!-- Mini QR Code -->
+<div class="w-14 h-14 bg-white p-1 rounded-md shadow-md opacity-90 mix-blend-screen group-hover:opacity-100 transition-opacity">
+<img alt="QR Code" class="w-full h-full object-contain" data-alt="A clean, crisp QR code graphic generated in stark black and white. It is perfectly square and highly legible, intended to be scanned by a digital reader. The image contains no background elements, just the high-contrast data pattern typical of modern digital ticketing or membership access systems." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUUJliMvdIhV7JpXq-IDEKCXP4fJqKFga35ZzyTv89_de4qTzKekn9i7vY5ItlL-HZAyudnpOpBB7aZEVFATuxBjW8A1zaSblb7r0o6cP7Kdtp7SGyB-oeHeC4a8hqiaPoaKR7ALKPjj-Wa31g1WavPsopsn3z9CSDEAw44SW8RJltwv-6nkLQgJwx-LPPU5I-cvSofTRQa5ripVzNQ9Hs6wDNSvT8aGoHyoAhPg6BYGQzANB3EA3tvx2jVQftxuostX5lnkH2Lp2S">
+</div>
+</div>
+</div>
+</div>
+<!-- Bento Grid Stats (Right/Bottom) -->
+<div class="col-span-1 lg:col-span-5 grid grid-cols-2 gap-4 relative z-10">
+<div class="col-span-2 bg-surface-container/40 backdrop-blur-md border border-white/5 rounded-xl p-6 flex items-center justify-between">
+<div>
+<h4 class="font-label-md text-label-md text-on-surface-variant mb-1">Current Plan Value</h4>
+<p class="font-title-lg text-title-lg text-primary">₹85,000 <span class="text-sm text-on-surface-variant font-normal">/yr</span></p>
+</div>
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[24px]">payments</span>
+</div>
+</div>
+<div class="col-span-1 bg-surface-container/40 backdrop-blur-md border border-white/5 rounded-xl p-5 flex flex-col justify-between aspect-square">
+<span class="material-symbols-outlined text-tertiary text-[28px]">local_fire_department</span>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface-variant mb-1">Visits This Month</h4>
+<p class="font-title-lg text-title-lg text-on-background text-2xl font-bold">18</p>
+</div>
+</div>
+<div class="col-span-1 bg-surface-container/40 backdrop-blur-md border border-white/5 rounded-xl p-5 flex flex-col justify-between aspect-square">
+<span class="material-symbols-outlined text-secondary text-[28px]">health_metrics</span>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface-variant mb-1">Avg Duration</h4>
+<p class="font-title-lg text-title-lg text-on-background text-2xl font-bold">85<span class="text-sm font-normal text-on-surface-variant ml-1">min</span></p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const memberId = urlParams.get('id') || 'm5';
+      
+      const backBtn = document.querySelector('a[href*="members"]');
+      if (backBtn) {
+        backBtn.onclick = (e) => {
+          e.preventDefault();
+          window.location.href = '/members';
+        };
+      }
+      
+      try {
+        const response = await window.api.fetch(`/members/${memberId}`);
+        const data = await response.json();
+        if (!response.ok) return;
+
+        const { member, membership } = data;
+        
+        document.title = `Digital Membership Card - ${member.full_name}`;
+        
+        document.querySelector('h3.font-headline-md').innerText = member.full_name;
+        document.querySelector('span.font-label-caps:has-text("ID:")').innerText = `ID: ${member.id}`;
+        
+        if (membership) {
+          document.querySelector('p.font-label-caps:has-text("Tier")').innerText = membership.plan_name;
+        }
+        
+      } catch (err) {
+        console.error(err);
+      }
+    });
+    </script>
+
+<div id="jsb-mobile-nav"></div>
+</body></html>

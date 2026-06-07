@@ -1,0 +1,422 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/utils.js"></script>
+<title>Kinetic SaaS - Staff Management</title>
+
+<style>
+        .glass-card {
+            background-color: rgba(27, 27, 27, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow-input:focus-within {
+            box-shadow: 0 0 10px rgba(181, 196, 255, 0.2);
+            border-color: theme('colors.primary');
+        }
+    </style>
+
+</head>
+<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
+<div id="jsb-header" data-page-title="Staff Management"></div>
+<div id="jsb-sidebar"></div>
+
+<!-- TopAppBar (Web) -->
+
+<!-- NavigationDrawer (Web) -->
+<aside class="hidden md:flex flex-col h-full py-stack-lg w-[280px] fixed left-0 top-0 z-[60] bg-surface-container-low shadow-2xl border-r border-white/10">
+<div class="px-6 pb-6 border-b border-white/10 mb-4">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-white/10 shrink-0 bg-surface-container flex items-center justify-center font-bold text-primary">
+<img alt="Gym Admin" class="w-full h-full object-cover" data-alt="A professional headshot of Vikram Singh, a gym admin at JSB Fitness Mumbai. He looks focused and approachable, set against a dark, premium background. The lighting is dramatic but flattering, emphasizing a technical and high-performance atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWWfzqJdxoSaVrWBJkVAl7e8wR6qd7RszfyWKr2fu3E9L02MFJt9jVO6xsnvkJFkqoXWlWIi3acfzQiXI-0eCOVptyLJnZY1dqquoBtqiyxAgy8D5vTUVKUtIwegk0XCsSkHtudMuTIeFWBSnAbtUrpTUHMWB9Fp5NmkMyGWBj859Wcq0OZjPal25jEgQTnJxbehhpVtPHCYZOLIFGKuP7oK4WtwQU8n3QqU2sQ8iVh3vsjuRfubflN0GIJbEZoNzdrCE22JqD9pE1" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+<span class="hidden w-full h-full items-center justify-center text-body-lg font-bold bg-primary/10 text-primary">VS</span>
+</div>
+<div>
+<h2 class="font-title-lg text-title-lg text-primary">Vikram Singh</h2>
+<p class="font-body-md text-body-md text-on-surface-variant"><span class="dynamic-gym-name">JSB Fitness Mumbai</span></p>
+<span class="inline-block mt-1 px-2 py-0.5 bg-primary/10 text-primary font-label-md text-label-md rounded border border-primary/20">Admin</span>
+</div>
+</div>
+</div>
+
+</aside>
+<!-- Main Content Canvas -->
+<main class="md:ml-[280px] pt-8 md:pt-28 pb-24 px-4 md:px-margin max-w-container-max mx-auto flex flex-col gap-stack-lg">
+<div class="px-4 md:px-8 pt-4"><a href="/settings" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>← Settings</span></a></div>
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-stack-md">
+<div>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Staff Directory</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-2">Manage trainers, admins, and monitor daily performance.</p>
+</div>
+<div class="flex gap-stack-sm">
+<div class="relative w-full md:w-64 glow-input group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full bg-surface-dim border border-white/10 rounded-lg pl-10 pr-4 py-2 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none transition-all" placeholder="Search staff..." type="text">
+</div>
+<button class="bg-primary-container text-on-primary-container hover:bg-inverse-primary transition-colors px-4 py-2 rounded-lg font-body-md text-body-md flex items-center gap-2 font-medium" onclick="window.location.href='/staff'">
+<span class="material-symbols-outlined">add</span>
+<span class="hidden sm:inline">Add Staff</span>
+</button>
+</div>
+</div>
+<!-- Performance Tracking Bento -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<!-- Top Trainer Card -->
+<div class="glass-card rounded-xl p-6 flex flex-col justify-between relative overflow-hidden md:col-span-2">
+<div class="absolute top-0 right-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+<div class="relative z-10 flex justify-between items-start mb-6">
+<div>
+<div class="flex items-center gap-2 text-secondary mb-1">
+<span class="material-symbols-outlined text-sm">stars</span>
+<span class="font-label-md text-label-md uppercase tracking-wider">Top Performer (This Month)</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Aarav Patel</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Senior Elite Trainer</p>
+</div>
+<div class="w-16 h-16 rounded-full overflow-hidden border-2 border-secondary p-0.5 shrink-0 bg-surface-container flex items-center justify-center font-bold text-primary">
+<img alt="Aarav Patel" class="w-full h-full rounded-full object-cover" data-alt="A portrait of Aarav Patel, a highly fit Indian personal trainer, standing in a gym. He is wearing a dark fitted athletic shirt. The lighting highlights his muscular build, set against a dark, technical gym environment with subtle blue and green accent lights." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZNuUNG_nKUy9-1C2TQ_YUj1ycQND9Gv58S-kW2bn9BZdkVzaozZnvUZtp6oL7vUgwtT_Nng09yq1SGktwH3MtrwBSneHAB_hc3lnUuU8J0MbdZ2_BqicuaZTnmow5DiGExrGKvCP-mzVxtCZb8gIdYJkYFCKjXiV0x8Ub0MiN1VujNA8-WZrRSmsdORmEGPC6N33Uxt3DvV3-57ULwGsDsIdsSOFLdg-Rx3o4GGJCi5pcZ4xI1AdyKAIFcwGKWiNLcfjd_0rPhR4R" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+<span class="hidden w-full h-full items-center justify-center text-title-lg font-bold bg-primary/10 text-primary">AP</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4 relative z-10">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Sessions</p>
+<p class="font-title-lg text-title-lg text-on-surface">142</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Client Retention</p>
+<p class="font-title-lg text-title-lg text-secondary">98%</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Bonus</p>
+<p class="font-title-lg text-title-lg text-on-surface">₹15,000</p>
+</div>
+</div>
+</div>
+<!-- Quick Stats -->
+<div class="glass-card rounded-xl p-6 flex flex-col justify-center gap-6">
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="font-body-md text-body-md text-on-surface-variant">Total Staff Present</span>
+<span class="font-label-md text-label-md text-secondary bg-secondary/10 px-2 py-0.5 rounded border border-secondary/20">Today</span>
+</div>
+<p class="font-display-lg text-display-lg break-words min-w-0 text-on-surface">24<span class="font-title-lg text-title-lg text-on-surface-variant">/28</span></p>
+</div>
+<div class="w-full h-px bg-white/10"></div>
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="font-body-md text-body-md text-on-surface-variant">Active Trainers</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">fitness_center</span>
+<span class="font-title-lg text-title-lg text-on-surface">18</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Staff List (Glass Table/Cards) -->
+<section class="glass-card rounded-xl overflow-hidden">
+<div class="p-4 border-b border-white/10 bg-white/5 flex justify-between items-center">
+<h3 class="font-title-lg text-title-lg text-on-surface">Directory</h3>
+<div class="flex gap-2">
+<button class="px-3 py-1 bg-surface-variant border border-white/10 rounded font-body-md text-body-md text-on-surface hover:bg-surface-bright transition-colors">All</button>
+<button class="px-3 py-1 border border-white/10 rounded font-body-md text-body-md text-on-surface-variant hover:bg-surface-variant transition-colors" onclick="window.location.href='/staff'">Trainers</button>
+<button class="px-3 py-1 border border-white/10 rounded font-body-md text-body-md text-on-surface-variant hover:bg-surface-variant transition-colors">Admin</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-white/5 text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">
+<th class="px-6 py-4 font-medium">Staff Member</th>
+<th class="px-6 py-4 font-medium">Role</th>
+<th class="px-6 py-4 font-medium">Attendance</th>
+<th class="px-6 py-4 font-medium text-right">Assigned Members</th>
+<th class="px-6 py-4 font-medium text-right">Salary Status</th>
+<th class="px-6 py-4 font-medium text-center">Actions</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md">
+<!-- Row 1 -->
+<tr class="border-b border-white/5 hover:bg-white/5 transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-white/10 shrink-0 bg-surface-container flex items-center justify-center font-bold text-primary">
+<img alt="Aarav Patel" class="w-full h-full object-cover" data-alt="Small thumbnail portrait of Aarav Patel, fitness trainer, looking athletic and professional in a dark studio setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD35M_iZ8rjqqHKILh2VCsEsmDfvTiE2Rk9tGLe17vVXU2OMPC4Qm0RE0RwAkZwB1jR55Nr2Y2Ui0vcOQ0suAa3SvAs1OVHxjlNyPloQtRpwH1NGZBTd-4oEYtyoNUtNdV81vOPXSLU0AlZDY9og12UHrg0KjNfbELN_TXKQmVXuQGPD9FHXDuoUtIB3dfaO_cksfK7PTEtp5lDXCFUyc8wjkxgFBN5Cix0ZdMIG4ygiG4WjU8xFjYc-N-h9PAvlIOKAYTqWFzlBLxr" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+<span class="hidden w-full h-full items-center justify-center text-body-md font-bold bg-primary/10 text-primary">AP</span>
+</div>
+<div>
+<div class="font-medium text-on-surface group-hover:text-primary transition-colors">Aarav Patel</div>
+<div class="text-on-surface-variant text-xs">ID: TR-001</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface-variant">Elite Trainer</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-secondary/20 bg-secondary/10 text-secondary text-xs font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                                    Checked In
+                                </span>
+</td>
+<td class="px-6 py-4 text-right text-on-surface">45</td>
+<td class="px-6 py-4 text-right">
+<div class="text-on-surface">₹85,000</div>
+<div class="text-secondary text-xs">Paid</div>
+</td>
+<td class="px-6 py-4 text-center">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="border-b border-white/5 hover:bg-white/5 transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-white/10 flex items-center justify-center bg-surface-variant text-on-surface-variant font-title-lg">
+                                        P
+                                    </div>
+<div>
+<div class="font-medium text-on-surface group-hover:text-primary transition-colors">Priya Sharma</div>
+<div class="text-on-surface-variant text-xs">ID: TR-012</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface-variant">Yoga Instructor</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-outline/20 bg-surface-variant text-on-surface-variant text-xs font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+                                    Shift at 16:00
+                                </span>
+</td>
+<td class="px-6 py-4 text-right text-on-surface">28</td>
+<td class="px-6 py-4 text-right">
+<div class="text-on-surface">₹45,000</div>
+<div class="text-secondary text-xs">Paid</div>
+</td>
+<td class="px-6 py-4 text-center">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="border-b border-white/5 hover:bg-white/5 transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-white/10 shrink-0 bg-surface-container flex items-center justify-center font-bold text-primary">
+<img alt="Rohan Desai" class="w-full h-full object-cover" data-alt="Small thumbnail portrait of Rohan Desai, a young Indian front desk manager, smiling slightly in a professional dark setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCycMdzegHDQVGbq6Mwih0RRAomw7b7tJwc8rBbTPngF44_JTiXI1uvHkrImReWHWqJcbig_mEqjNHIeR8HPKOdcTHRt5_WHGxLNYRCHGbCgmVsiAUB_8fkIa0OHS2l_fozAFKqR0OMcMuSHdkTLYif5YFtOuXavS-HQ3RdO6-HTJkEkJ8wywK1_TAnYGs86xoZ0ghor6L30CcZd7NxPZFAWQDbKySstxyGzT2LJb4UwB4IhT6MtRZY_CXKNUAf_x2GYQYQ_PrffYLi" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+<span class="hidden w-full h-full items-center justify-center text-body-md font-bold bg-primary/10 text-primary">RD</span>
+</div>
+<div>
+<div class="font-medium text-on-surface group-hover:text-primary transition-colors">Rohan Desai</div>
+<div class="text-on-surface-variant text-xs">ID: AD-004</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface-variant">Front Desk Admin</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-secondary/20 bg-secondary/10 text-secondary text-xs font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                                    Checked In
+                                </span>
+</td>
+<td class="px-6 py-4 text-right text-on-surface-variant">-</td>
+<td class="px-6 py-4 text-right">
+<div class="text-on-surface">₹32,000</div>
+<div class="text-tertiary text-xs">Processing</div>
+</td>
+<td class="px-6 py-4 text-center">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</main>
+<!-- Modal for Add Staff -->
+<div id="addStaffModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 hidden" style="background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px);">
+  <div class="glass-card w-full max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] border border-white/20">
+      <div class="p-6 border-b border-white/10 flex justify-between items-center">
+          <h3 class="font-headline-md text-headline-md text-on-surface">Add Staff Member</h3>
+          <button id="closeStaffModal" type="button" class="text-on-surface-variant hover:text-on-surface p-1 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center">
+              <span class="material-symbols-outlined">close</span>
+          </button>
+      </div>
+      <form id="addStaffForm" class="p-6 flex flex-col gap-4">
+          <div class="flex flex-col gap-1">
+              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Full Name</label>
+              <input type="text" name="name" required="" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" placeholder="e.g. Aaron Patel">
+          </div>
+          <div class="flex flex-col gap-1">
+              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Role</label>
+              <select name="role" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-surface-container">
+                  <option value="Elite Trainer">Elite Trainer</option>
+                  <option value="Yoga Instructor">Yoga Instructor</option>
+                  <option value="Front Desk Admin">Front Desk Admin</option>
+                  <option value="Admin">Admin</option>
+              </select>
+          </div>
+          <div class="flex flex-col gap-1">
+              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Email Address</label>
+              <input type="email" name="email" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" placeholder="e.g. trainer@jsbfitness.in">
+          </div>
+          <div class="flex flex-col gap-1">
+              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Phone Number</label>
+              <input type="text" name="phone" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" placeholder="e.g. +91 98765 00000">
+          </div>
+          <div class="flex flex-col gap-1">
+              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Base Monthly Salary (₹)</label>
+              <input type="number" name="salary" required="" class="w-full bg-surface-container-low border border-white/10 rounded-lg py-2 px-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" placeholder="e.g. 45000">
+          </div>
+          <button type="submit" class="bg-primary text-on-primary w-full py-3 rounded-lg font-title-lg text-title-lg flex items-center justify-center gap-2 mt-2 hover:bg-primary/90 transition-colors active:scale-95">
+              Add Member
+          </button>
+      </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const modal = document.getElementById("addStaffModal");
+    const openBtn = document.querySelector("main button.bg-primary-container");
+    const closeBtn = document.getElementById("closeStaffModal");
+    const form = document.getElementById("addStaffForm");
+    const tableBody = document.querySelector("table tbody");
+
+    // Open/Close modal
+    if (openBtn) {
+        openBtn.removeAttribute("onclick");
+        openBtn.addEventListener("click", () => modal.classList.remove("hidden"));
+    }
+    if (closeBtn) {
+        closeBtn.addEventListener("click", () => modal.classList.add("hidden"));
+    }
+    window.addEventListener("click", (e) => {
+        if (e.target === modal) modal.classList.add("hidden");
+    });
+
+    // Submit Staff
+    if (form) {
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const payload = {
+                name: formData.get("name"),
+                role: formData.get("role"),
+                email: formData.get("email"),
+                phone: formData.get("phone"),
+                salary: formData.get("salary")
+            };
+            try {
+                const res = await window.api.fetch("/staff", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    modal.classList.add("hidden");
+                    form.reset();
+                    loadStaff();
+                } else {
+                    const err = await res.json();
+                    alert(err.error || "Failed to add staff");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Network failure");
+            }
+        });
+    }
+
+    async function loadStaff() {
+        try {
+            const res = await window.api.fetch("/staff");
+            const staff = await res.json();
+
+            // Update Total Present Staff & active stats dynamically
+            const activeTrainers = staff.filter(s => s.role.includes("Trainer") || s.role.includes("Instructor"));
+            const checkedInStaff = staff.filter(s => s.status === "Checked In");
+
+            const countEl = document.querySelector(".glass-card.rounded-xl.p-6 p.font-display-lg");
+            if (countEl) {
+                countEl.innerHTML = `${checkedInStaff.length}<span class="font-title-lg text-title-lg text-on-surface-variant">/${staff.length}</span>`;
+            }
+
+            const trainersCountEl = document.querySelector(".glass-card.rounded-xl.p-6 .flex.items-center.gap-2 span.font-title-lg");
+            if (trainersCountEl) {
+                trainersCountEl.innerText = activeTrainers.length;
+            }
+
+            if (tableBody) {
+                tableBody.innerHTML = "";
+                staff.forEach(s => {
+                    const tr = document.createElement("tr");
+                    tr.className = "border-b border-white/5 hover:bg-white/5 transition-colors group";
+                    
+                    let statusClass = "border-outline/20 bg-surface-variant text-on-surface-variant";
+                    let statusDot = "bg-outline";
+                    if (s.status === "Checked In") {
+                        statusClass = "border-secondary/20 bg-secondary/10 text-secondary";
+                        statusDot = "bg-secondary";
+                    }
+
+                    const initials = s.name.split(" ").map(n => n[0]).join("").toUpperCase();
+
+                    tr.innerHTML = `
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full overflow-hidden border border-white/10 flex items-center justify-center bg-surface-variant text-on-surface font-title-lg">
+                                    ${initials}
+                                </div>
+                                <div>
+                                    <div class="font-medium text-on-surface group-hover:text-primary transition-colors">${s.name}</div>
+                                    <div class="text-on-surface-variant text-xs">ID: ${s.id}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-on-surface-variant">${s.role}</td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${statusClass} text-xs font-medium">
+                                <span class="w-1.5 h-1.5 rounded-full ${statusDot}"></span>
+                                ${s.status || 'Shift Pending'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right text-on-surface">${s.role.includes("Trainer") ? "28" : "-"}</td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="text-on-surface">₹${Number(s.base_salary).toLocaleString()}</div>
+                            <div class="text-secondary text-xs">Paid</div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <button class="text-on-surface-variant hover:text-primary transition-colors">
+                                <span class="material-symbols-outlined text-lg">more_vert</span>
+                            </button>
+                        </td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    loadStaff();
+});
+</script>
+
+<div id="jsb-mobile-nav"></div>
+</body></html>

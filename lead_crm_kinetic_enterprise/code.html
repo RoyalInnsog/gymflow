@@ -12,7 +12,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>Kinetic SaaS - Lead CRM</title>
+<title>Gym Flow - Lead CRM</title>
 
 <style>
     .hide-scrollbar::-webkit-scrollbar {
@@ -446,18 +446,18 @@ document.addEventListener("DOMContentLoaded", function() {
           <div class="absolute top-0 left-0 w-1 h-full ${borderClass} rounded-l-xl"></div>
           <div class="flex justify-between items-start mb-2">
             <div>
-              <h4 class="font-title-lg text-title-lg text-on-surface mb-0.5">${lead.full_name}</h4>
+              <h4 class="font-title-lg text-title-lg text-on-surface mb-0.5">${esc(lead.full_name)}</h4>
               <span class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1">
-                <span class="material-symbols-outlined text-[14px]">phone_iphone</span> ${lead.phone || 'N/A'}
+                <span class="material-symbols-outlined text-[14px]">phone_iphone</span> ${esc(lead.phone || 'N/A')}
               </span>
             </div>
             <span class="${badgeColor} border px-2 py-0.5 rounded-md font-label-md text-label-md flex items-center gap-1">
-              ${lead.acquisition_channel}
+              ${esc(lead.acquisition_channel)}
             </span>
           </div>
           ${lead.note ? `
           <div class="bg-surface-container-low rounded-lg p-3 mb-2 border border-white/5">
-            <p class="font-body-md text-body-md text-on-surface-variant italic line-clamp-2">"${lead.note}"</p>
+            <p class="font-body-md text-body-md text-on-surface-variant italic line-clamp-2">"${esc(lead.note)}"</p>
           </div>` : ''}
           <div class="flex justify-between items-center mt-auto pt-3 border-t border-white/10 gap-2">
             <div class="flex items-center gap-1 text-on-surface-variant text-xs">

@@ -11,7 +11,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>Kinetic SaaS - Staff Management</title>
+<title>Gym Flow - Staff Management</title>
 
 <style>
         .glass-card {
@@ -37,12 +37,12 @@
 <div class="px-6 pb-6 border-b border-white/10 mb-4">
 <div class="flex items-center gap-4">
 <div class="w-12 h-12 rounded-full overflow-hidden border border-white/10 shrink-0 bg-surface-container flex items-center justify-center font-bold text-primary">
-<img alt="Gym Admin" class="w-full h-full object-cover" data-alt="A professional headshot of Vikram Singh, a gym admin at JSB Fitness Mumbai. He looks focused and approachable, set against a dark, premium background. The lighting is dramatic but flattering, emphasizing a technical and high-performance atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWWfzqJdxoSaVrWBJkVAl7e8wR6qd7RszfyWKr2fu3E9L02MFJt9jVO6xsnvkJFkqoXWlWIi3acfzQiXI-0eCOVptyLJnZY1dqquoBtqiyxAgy8D5vTUVKUtIwegk0XCsSkHtudMuTIeFWBSnAbtUrpTUHMWB9Fp5NmkMyGWBj859Wcq0OZjPal25jEgQTnJxbehhpVtPHCYZOLIFGKuP7oK4WtwQU8n3QqU2sQ8iVh3vsjuRfubflN0GIJbEZoNzdrCE22JqD9pE1" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+<img alt="Gym Admin" class="w-full h-full object-cover" data-alt="A professional headshot of Vikram Singh, a gym admin at <span class="dynamic-gym-name"></span>. He looks focused and approachable, set against a dark, premium background. The lighting is dramatic but flattering, emphasizing a technical and high-performance atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWWfzqJdxoSaVrWBJkVAl7e8wR6qd7RszfyWKr2fu3E9L02MFJt9jVO6xsnvkJFkqoXWlWIi3acfzQiXI-0eCOVptyLJnZY1dqquoBtqiyxAgy8D5vTUVKUtIwegk0XCsSkHtudMuTIeFWBSnAbtUrpTUHMWB9Fp5NmkMyGWBj859Wcq0OZjPal25jEgQTnJxbehhpVtPHCYZOLIFGKuP7oK4WtwQU8n3QqU2sQ8iVh3vsjuRfubflN0GIJbEZoNzdrCE22JqD9pE1" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
 <span class="hidden w-full h-full items-center justify-center text-body-lg font-bold bg-primary/10 text-primary">VS</span>
 </div>
 <div>
 <h2 class="font-title-lg text-title-lg text-primary">Vikram Singh</h2>
-<p class="font-body-md text-body-md text-on-surface-variant"><span class="dynamic-gym-name">JSB Fitness Mumbai</span></p>
+<p class="font-body-md text-body-md text-on-surface-variant"><span class="dynamic-gym-name"></span></p>
 <span class="inline-block mt-1 px-2 py-0.5 bg-primary/10 text-primary font-label-md text-label-md rounded border border-primary/20">Admin</span>
 </div>
 </div>
@@ -383,7 +383,7 @@ document.addEventListener("DOMContentLoaded", function() {
                                     ${initials}
                                 </div>
                                 <div>
-                                    <div class="font-medium text-on-surface group-hover:text-primary transition-colors">${s.name}</div>
+                                    <div class="font-medium text-on-surface group-hover:text-primary transition-colors">${esc(s.name)}</div>
                                     <div class="text-on-surface-variant text-xs">ID: ${s.id}</div>
                                 </div>
                             </div>

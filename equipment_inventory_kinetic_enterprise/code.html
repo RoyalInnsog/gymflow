@@ -11,7 +11,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>Kinetic SaaS - Equipment</title>
+<title>Gym Flow - Equipment</title>
 
 <style>
         .active-indicator {
@@ -69,73 +69,8 @@
 <th class="py-3 px-4 text-right">Actions</th>
 </tr>
 </thead>
-<tbody class="font-body-md text-body-md">
-<!-- Item 1 -->
-<tr class="border-b border-white/5 hover:bg-white/5 transition-colors group">
-<td class="py-4 px-4 flex items-center gap-3">
-<div class="w-10 h-10 rounded bg-surface-variant flex items-center justify-center text-on-surface-variant">
-<span class="material-symbols-outlined">directions_run</span>
-</div>
-<div>
-<div class="font-title-lg text-title-lg text-on-background">Treadmill X5 Pro</div>
-<div class="text-on-surface-variant text-xs">ID: TRD-001</div>
-</div>
-</td>
-<td class="py-4 px-4 text-on-surface-variant">Cardio Floor</td>
-<td class="py-4 px-4">
-<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-secondary/30 bg-secondary/10 text-secondary font-label-md text-label-md">
-<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Healthy
-                                    </span>
-</td>
-<td class="py-4 px-4 text-on-surface-variant">12 Oct 2023</td>
-<td class="py-4 px-4 text-right">
-<button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">more_vert</span></button>
-</td>
-</tr>
-<!-- Item 2 -->
-<tr class="border-b border-white/5 hover:bg-white/5 transition-colors group">
-<td class="py-4 px-4 flex items-center gap-3">
-<div class="w-10 h-10 rounded bg-surface-variant flex items-center justify-center text-on-surface-variant">
-<span class="material-symbols-outlined">fitness_center</span>
-</div>
-<div>
-<div class="font-title-lg text-title-lg text-on-background">Power Rack Elite</div>
-<div class="text-on-surface-variant text-xs">ID: PWR-042</div>
-</div>
-</td>
-<td class="py-4 px-4 text-on-surface-variant">Strength Zone</td>
-<td class="py-4 px-4">
-<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-tertiary/30 bg-tertiary/10 text-tertiary font-label-md text-label-md">
-<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Due Soon
-                                    </span>
-</td>
-<td class="py-4 px-4 text-on-surface-variant">05 Aug 2023</td>
-<td class="py-4 px-4 text-right">
-<button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">more_vert</span></button>
-</td>
-</tr>
-<!-- Item 3 -->
-<tr class="border-b border-white/5 hover:bg-white/5 transition-colors group">
-<td class="py-4 px-4 flex items-center gap-3">
-<div class="w-10 h-10 rounded bg-surface-variant flex items-center justify-center text-on-surface-variant">
-<span class="material-symbols-outlined">pedal_bike</span>
-</div>
-<div>
-<div class="font-title-lg text-title-lg text-on-background">Spin Bike V2</div>
-<div class="text-on-surface-variant text-xs">ID: SPN-011</div>
-</div>
-</td>
-<td class="py-4 px-4 text-on-surface-variant">Studio A</td>
-<td class="py-4 px-4">
-<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-error/30 bg-error/10 text-error font-label-md text-label-md">
-<span class="w-1.5 h-1.5 rounded-full bg-error"></span> Repairing
-                                    </span>
-</td>
-<td class="py-4 px-4 text-on-surface-variant">22 Nov 2023</td>
-<td class="py-4 px-4 text-right">
-<button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">more_vert</span></button>
-</td>
-</tr>
+<tbody id="equipment-tbody" class="font-body-md text-body-md">
+<tr><td colspan="5" class="py-8 text-center text-on-surface-variant">Loading equipment…</td></tr>
 </tbody>
 </table>
 </div>
@@ -207,4 +142,39 @@
 <!-- BottomNavBar (Mobile) -->
 
 <div id="jsb-mobile-nav"></div>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmtDate = (v) => { const d = v ? new Date(v) : null; return (d && !isNaN(d)) ? d.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' }) : '--'; };
+  const tbody = document.getElementById('equipment-tbody');
+  try {
+    const res = await window.api.fetch('/equipment');
+    const items = res.ok ? await res.json() : [];
+    if (!Array.isArray(items) || items.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-on-surface-variant">No equipment registered yet. Add your first asset to get started.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = items.map(e => {
+      const status = e.health_status || 'Healthy';
+      const cls = /repair|broken|out/i.test(status) ? 'border-error/30 bg-error/10 text-error'
+        : /due|soon|maintenance/i.test(status) ? 'border-tertiary/30 bg-tertiary/10 text-tertiary'
+        : 'border-secondary/30 bg-secondary/10 text-secondary';
+      const dotCls = /repair|broken|out/i.test(status) ? 'bg-error' : /due|soon|maintenance/i.test(status) ? 'bg-tertiary' : 'bg-secondary';
+      return `<tr class="border-b border-white/5 hover:bg-white/5 transition-colors group">
+        <td class="py-4 px-4 flex items-center gap-3">
+          <div class="w-10 h-10 rounded bg-surface-variant flex items-center justify-center text-on-surface-variant"><span class="material-symbols-outlined">fitness_center</span></div>
+          <div><div class="font-title-lg text-title-lg text-on-background">${esc(e.name)}</div><div class="text-on-surface-variant text-xs">ID: ${esc(e.asset_id || e.id)}</div></div>
+        </td>
+        <td class="py-4 px-4 text-on-surface-variant">${esc(e.zone || '--')}</td>
+        <td class="py-4 px-4"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${cls} font-label-md text-label-md"><span class="w-1.5 h-1.5 rounded-full ${dotCls}"></span> ${esc(status)}</span></td>
+        <td class="py-4 px-4 text-on-surface-variant">${fmtDate(e.last_serviced_at)}</td>
+        <td class="py-4 px-4 text-right"><button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">more_vert</span></button></td>
+      </tr>`;
+    }).join('');
+  } catch (err) {
+    console.error('Failed to load equipment', err);
+    tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-on-surface-variant">Could not load equipment.</td></tr>`;
+  }
+});
+</script>
 </body></html>

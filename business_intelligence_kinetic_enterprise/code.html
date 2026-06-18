@@ -12,7 +12,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>Kinetic SaaS - Business Intelligence</title>
+<title>Gym Flow - Business Intelligence</title>
 
 <style>
     .glass-panel {
@@ -276,15 +276,19 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       // Fetch core BI analytics
       const resBi = await window.api.fetch(`/analytics/bi?range=${range}`);
-      const data = await resBi.json();
+      const data = resBi.ok ? await resBi.json() : {};
+
+      // Defensive helpers — never render NaN / undefined.
+      const num = (v) => Number(v) || 0;
 
       // Update Key Metrics
-      document.getElementById('metric-active').innerText = Number(data.totalActive).toLocaleString();
-      
+      document.getElementById('metric-active').innerText = num(data.totalActive).toLocaleString('en-IN');
+
+      const growthRate = num(data.growthRate);
       const growthEl = document.getElementById('metric-growth');
-      growthEl.innerText = (data.growthRate >= 0 ? '+' : '') + data.growthRate;
+      growthEl.innerText = (growthRate >= 0 ? '+' : '') + growthRate;
       const growthContainer = document.getElementById('metric-growth-container');
-      if (data.growthRate >= 0) {
+      if (growthRate >= 0) {
         growthContainer.className = 'text-secondary font-label-md text-label-md flex items-center';
         growthContainer.querySelector('span').innerText = 'arrow_upward';
       } else {
@@ -292,27 +296,29 @@ document.addEventListener("DOMContentLoaded", () => {
         growthContainer.querySelector('span').innerText = 'arrow_downward';
       }
 
-      document.getElementById('metric-retention').innerText = data.retentionRate + '%';
-      document.getElementById('metric-retention-bar').style.width = data.retentionRate + '%';
-      document.getElementById('metric-rev-per-member').innerText = '₹' + Number(data.revenuePerMember).toLocaleString();
-      document.getElementById('metric-lost').innerText = Number(data.lostMembers).toLocaleString();
+      document.getElementById('metric-retention').innerText = num(data.retentionRate) + '%';
+      document.getElementById('metric-retention-bar').style.width = num(data.retentionRate) + '%';
+      document.getElementById('metric-rev-per-member').innerText = '₹' + num(data.revenuePerMember).toLocaleString('en-IN');
+      document.getElementById('metric-lost').innerText = num(data.lostMembers).toLocaleString('en-IN');
 
-      // Update Renewal Metrics
-      const maxTotal = Math.max(1, data.totalActive);
-      const renewWeekPercent = Math.min(100, Math.round((data.renewalAnalytics.renewingWeek / maxTotal) * 100));
-      const renewMonthPercent = Math.min(100, Math.round((data.renewalAnalytics.renewingMonth / maxTotal) * 100));
-      const overduePercent = Math.min(100, Math.round((data.renewalAnalytics.overdueRenewals / maxTotal) * 100));
+      // Update Renewal Metrics (guard the object)
+      const ren = data.renewalAnalytics || { renewingWeek: 0, renewingMonth: 0, overdueRenewals: 0 };
+      const maxTotal = Math.max(1, num(data.totalActive));
+      const renewWeekPercent = Math.min(100, Math.round((num(ren.renewingWeek) / maxTotal) * 100));
+      const renewMonthPercent = Math.min(100, Math.round((num(ren.renewingMonth) / maxTotal) * 100));
+      const overduePercent = Math.min(100, Math.round((num(ren.overdueRenewals) / maxTotal) * 100));
 
-      document.getElementById('renewal-week-val').innerText = `${data.renewalAnalytics.renewingWeek} members (${renewWeekPercent}%)`;
+      document.getElementById('renewal-week-val').innerText = `${num(ren.renewingWeek)} members (${renewWeekPercent}%)`;
       document.getElementById('renewal-week-bar').style.width = `${renewWeekPercent}%`;
-      document.getElementById('renewal-month-val').innerText = `${data.renewalAnalytics.renewingMonth} members (${renewMonthPercent}%)`;
+      document.getElementById('renewal-month-val').innerText = `${num(ren.renewingMonth)} members (${renewMonthPercent}%)`;
       document.getElementById('renewal-month-bar').style.width = `${renewMonthPercent}%`;
-      document.getElementById('renewal-overdue-val').innerText = `${data.renewalAnalytics.overdueRenewals} members (${overduePercent}%)`;
+      document.getElementById('renewal-overdue-val').innerText = `${num(ren.overdueRenewals)} members (${overduePercent}%)`;
       document.getElementById('renewal-overdue-bar').style.width = `${overduePercent}%`;
 
-      // Draw Revenue Trend Chart
-      const revLabels = Object.keys(data.forecast);
-      const revValues = Object.values(data.forecast);
+      // Draw Revenue Trend Chart (guard the object)
+      const forecastObj = (data.forecast && typeof data.forecast === 'object') ? data.forecast : {};
+      const revLabels = Object.keys(forecastObj);
+      const revValues = Object.values(forecastObj).map(num);
       const revCtx = document.getElementById('chart-revenue-trend').getContext('2d');
       
       if (revenueChart) revenueChart.destroy();
@@ -344,9 +350,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const resSegments = await window.api.fetch('/analytics/member-segments');
       const segmentsData = await resSegments.json();
       
-      const segLabels = segmentsData.segments.map(s => s.label);
-      const segValues = segmentsData.segments.map(s => s.count);
-      const segColors = segmentsData.segments.map(s => s.color);
+      const segArr = Array.isArray(segmentsData.segments) ? segmentsData.segments : [];
+      const segLabels = segArr.map(s => s.label);
+      const segValues = segArr.map(s => Number(s.count) || 0);
+      const segColors = segArr.map(s => s.color);
       const segCtx = document.getElementById('chart-segments').getContext('2d');
 
       if (segmentChart) segmentChart.destroy();
@@ -378,7 +385,7 @@ document.addEventListener("DOMContentLoaded", () => {
         row.innerHTML = `
           <div class="flex items-center gap-2">
             <span class="w-3 h-3 rounded-full" style="background-color: ${seg.color}"></span>
-            <span class="text-on-surface">${seg.label}</span>
+            <span class="text-on-surface">${esc(seg.label)}</span>
           </div>
           <span class="font-bold text-on-background">${seg.count}</span>
         `;
@@ -387,18 +394,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Load VIP table data
       const resVips = await window.api.fetch('/analytics/high-value-members');
-      const vipsData = await resVips.json();
+      const vipsData = resVips.ok ? await resVips.json() : {};
+      const vipMembers = Array.isArray(vipsData.members) ? vipsData.members : [];
       const vipTableBody = document.getElementById('vip-table-body');
       vipTableBody.innerHTML = '';
 
-      if (vipsData.members.length === 0) {
+      if (vipMembers.length === 0) {
         vipTableBody.innerHTML = `
           <tr>
             <td colspan="5" class="py-4 text-center text-on-surface-variant">No VIP member data found.</td>
           </tr>
         `;
       } else {
-        vipsData.members.forEach(member => {
+        vipMembers.forEach(member => {
           const row = document.createElement('tr');
           row.className = 'hover:bg-white/[0.02] cursor-pointer';
           row.onclick = () => window.location.href = `/member-profile?id=${member.id}`;
@@ -406,13 +414,13 @@ document.addEventListener("DOMContentLoaded", () => {
             <td class="py-3 px-4 flex items-center gap-3">
               <img class="w-8 h-8 rounded-full border border-white/10 object-cover" src="${member.photo || '/assets/img/default-avatar.png'}" onerror="this.src='https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=100&auto=format&fit=crop'">
               <div>
-                <span class="font-bold text-on-background block">${member.name}</span>
+                <span class="font-bold text-on-background block">${esc(member.name)}</span>
                 <span class="text-xs text-on-surface-variant font-mono">ID: ${member.id}</span>
               </div>
             </td>
-            <td class="py-3 px-4 font-mono font-bold text-secondary">₹${Number(member.lifetimeValue).toLocaleString()}</td>
-            <td class="py-3 px-4 text-on-surface-variant font-mono">${member.totalPayments} transactions</td>
-            <td class="py-3 px-4 text-on-surface-variant">${member.renewals} renewals</td>
+            <td class="py-3 px-4 font-mono font-bold text-secondary">₹${(Number(member.lifetimeValue) || 0).toLocaleString('en-IN')}</td>
+            <td class="py-3 px-4 text-on-surface-variant font-mono">${member.totalPayments || 0} transactions</td>
+            <td class="py-3 px-4 text-on-surface-variant">${member.renewals || 0} renewals</td>
             <td class="py-3 px-4">
               <span class="px-2 py-0.5 rounded-full text-xs font-label-sm uppercase ${
                 member.status === 'Active' ? 'bg-[#81c995]/10 text-[#81c995] border border-[#81c995]/20' : 'bg-error/10 text-error border border-error/20'

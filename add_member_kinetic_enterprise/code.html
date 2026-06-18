@@ -11,7 +11,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>Kinetic SaaS - Add Member</title>
+<title>Gym Flow - Add Member</title>
 
 <style>
         .material-symbols-outlined {
@@ -43,10 +43,11 @@
 <div class="px-4 md:px-8 pt-4"><a href="/members" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>← Members</span></a></div>
 <!-- Photo Upload Zone -->
 <section class="flex flex-col items-center justify-center">
-<div class="relative w-32 h-32 rounded-full border-2 border-dashed border-outline-variant bg-surface-container-low flex flex-col items-center justify-center text-on-surface-variant hover:border-primary hover:text-primary transition-colors cursor-pointer overflow-hidden group">
-<span class="material-symbols-outlined text-[32px] mb-1 group-hover:scale-110 transition-transform duration-300">add_a_photo</span>
-<span class="font-label-sm text-label-sm">Upload</span>
-<input accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" type="file">
+<div id="photoZone" class="relative w-32 h-32 rounded-full border-2 border-dashed border-outline-variant bg-surface-container-low flex flex-col items-center justify-center text-on-surface-variant hover:border-primary hover:text-primary transition-colors cursor-pointer overflow-hidden group">
+<img id="photoPreview" class="hidden absolute inset-0 w-full h-full object-cover rounded-full" alt="Member photo preview">
+<span id="photoIcon" class="material-symbols-outlined text-[32px] mb-1 group-hover:scale-110 transition-transform duration-300">add_a_photo</span>
+<span id="photoLabel" class="font-label-sm text-label-sm">Upload</span>
+<input id="photoInput" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" type="file">
 </div>
 </section>
 <!-- Personal Information Section -->
@@ -103,18 +104,18 @@
 <div class="grid grid-cols-2 gap-sm">
 <div class="flex flex-col gap-2">
 <label class="font-label-sm text-label-sm text-on-surface-variant">Start Date</label>
-<input class="w-full bg-surface-container border border-outline-variant/30 rounded-lg py-3 px-4 text-on-background focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md transition-all [color-scheme:dark]" type="date">
+<input id="startDate" class="w-full bg-surface-container border border-outline-variant/30 rounded-lg py-3 px-4 text-on-background focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md transition-all [color-scheme:dark]" type="date">
 </div>
 <div class="flex flex-col gap-2">
-<label class="font-label-sm text-label-sm text-on-surface-variant">End Date</label>
-<input class="w-full bg-surface-container border border-outline-variant/30 rounded-lg py-3 px-4 text-on-background focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md transition-all [color-scheme:dark]" type="date">
+<label class="font-label-sm text-label-sm text-on-surface-variant">End Date <span class="text-on-surface-variant/50">(auto)</span></label>
+<input id="endDate" class="w-full bg-surface-container border border-outline-variant/30 rounded-lg py-3 px-4 text-on-background focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md transition-all [color-scheme:dark]" type="date">
 </div>
 </div>
 </div>
 </section>
 </main>
 <!-- Floating Save Button Zone -->
-<div class="fixed bottom-0 left-0 w-full px-margin-mobile pb-margin-mobile pt-12 bg-gradient-to-t from-background via-background/90 to-transparent pointer-events-none z-50 flex justify-center">
+<div class="jsb-action-bar fixed bottom-0 left-0 w-full px-margin-mobile pb-margin-mobile pt-12 bg-gradient-to-t from-background via-background/90 to-transparent pointer-events-none z-50 flex justify-center">
 <button class="pointer-events-auto w-full max-w-2xl bg-primary text-on-primary font-body-md font-semibold py-4 rounded-xl shadow-[0_4px_24px_rgba(198,198,198,0.15)] hover:bg-surface-tint active:scale-[0.98] transition-all flex items-center justify-center gap-2">
 <span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">check_circle</span>
             Save Member Profile
@@ -193,8 +194,11 @@ document.addEventListener("DOMContentLoaded", () => {
    * Uses window.APP_CONFIG.currency if available, falls back to ₹.
    */
   function formatPrice(price) {
-    const currency = window.APP_CONFIG?.currency || '₹';
-    return `${currency}${Number(price).toLocaleString()}`;
+    // APP_CONFIG.currency is an object ({ symbol, code, ... }); fall back gracefully
+    // if a plain string or nothing is provided.
+    const c = window.APP_CONFIG?.currency;
+    const symbol = (c && typeof c === 'object') ? (c.symbol || '₹') : (c || '₹');
+    return `${symbol}${Number(price).toLocaleString()}`;
   }
 
   async function loadPlans() {
@@ -260,6 +264,64 @@ document.addEventListener("DOMContentLoaded", () => {
   loadPlans();
   // ─────────────────────────────────────────────────────────────────────────────
 
+  // ─── Photo upload (preview + capture as data URL) ───────────────────────────
+  let uploadedPhoto = null; // base64 data URL, sent to server as photo_url
+  const photoInput   = document.getElementById('photoInput');
+  const photoPreview = document.getElementById('photoPreview');
+  const photoIcon    = document.getElementById('photoIcon');
+  const photoLabel   = document.getElementById('photoLabel');
+
+  if (photoInput) {
+    photoInput.addEventListener('change', () => {
+      const file = photoInput.files && photoInput.files[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        alert('Please choose an image file.');
+        photoInput.value = '';
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Image is too large. Please choose a file under 2 MB.');
+        photoInput.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        uploadedPhoto = e.target.result;
+        photoPreview.src = uploadedPhoto;
+        photoPreview.classList.remove('hidden');
+        photoIcon.classList.add('hidden');
+        photoLabel.textContent = 'Change';
+        photoLabel.classList.add('relative', 'z-10', 'bg-black/50', 'px-2', 'rounded');
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ─── Auto-calculate End Date from plan duration + start date ─────────────────
+  const startDateEl = document.getElementById('startDate');
+  const endDateEl   = document.getElementById('endDate');
+
+  function recalcEndDate() {
+    if (!startDateEl || !endDateEl) return;
+    const opt = planSelect.options[planSelect.selectedIndex];
+    const start = startDateEl.value;
+    if (!start || !opt || !opt.value) return;
+    const months = parseInt(opt.dataset.durationMonths || '0', 10);
+    const days   = parseInt(opt.dataset.durationDays   || '0', 10);
+    if (!months && !days) return;
+    const [y, m, d] = start.split('-').map(Number);
+    const end = new Date(y, m - 1, d);
+    if (months) end.setMonth(end.getMonth() + months);
+    if (days)   end.setDate(end.getDate() + days);
+    const pad = n => String(n).padStart(2, '0');
+    endDateEl.value = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`;
+  }
+
+  if (planSelect)   planSelect.addEventListener('change', recalcEndDate);
+  if (startDateEl)  startDateEl.addEventListener('change', recalcEndDate);
+  // ─────────────────────────────────────────────────────────────────────────────
+
   // Handle Save
   const saveBtn = document.querySelector('.pointer-events-auto');
   if (saveBtn) {
@@ -282,29 +344,32 @@ document.addEventListener("DOMContentLoaded", () => {
       // planId is now the real DB id directly from the select value
       const planId = planSelect.value || null;
 
+      if (!planId) {
+        alert('Membership plan selection is required.');
+        return;
+      }
+
       const dateInputs = document.querySelectorAll('input[type="date"]');
       const start = dateInputs[0]?.value || '';
       const end   = dateInputs[1]?.value || '';
 
-      // Client-side date validation — only run when a plan is selected
-      if (planId) {
-        if (start && end) {
-          const startTs = new Date(start).getTime();
-          const endTs   = new Date(end).getTime();
-          if (isNaN(startTs) || isNaN(endTs)) {
-            alert('One or both dates are invalid. Please use the date picker to select valid dates.');
-            return;
-          }
-          if (startTs >= endTs) {
-            alert('Start Date must be before End Date. Please correct the membership dates.');
-            return;
-          }
-        } else if (!start && end) {
-          alert('A Start Date is required when an End Date is specified.');
+      // Client-side date validation
+      if (start && end) {
+        const startTs = new Date(start).getTime();
+        const endTs   = new Date(end).getTime();
+        if (isNaN(startTs) || isNaN(endTs)) {
+          alert('One or both dates are invalid. Please use the date picker to select valid dates.');
           return;
         }
-        // start only, or both empty → server applies safe defaults
+        if (startTs >= endTs) {
+          alert('Start Date must be before End Date. Please correct the membership dates.');
+          return;
+        }
+      } else if (!start && end) {
+        alert('A Start Date is required when an End Date is specified.');
+        return;
       }
+      // start only, or both empty → server applies safe defaults
 
       const body = {
         full_name: name,
@@ -319,7 +384,8 @@ document.addEventListener("DOMContentLoaded", () => {
         bmi:        bmi,
         plan_id:    planId,
         start_date: start || '',
-        end_date:   end   || ''
+        end_date:   end   || '',
+        photo_url:  uploadedPhoto || ''
       };
 
       try {
@@ -329,21 +395,28 @@ document.addEventListener("DOMContentLoaded", () => {
           body: JSON.stringify(body)
         });
 
-        const resData = await response.json();
+        // Parse defensively: error responses (e.g. 413 Payload Too Large) may be
+        // HTML, not JSON, so response.json() would throw and mask the real cause.
+        let resData = {};
+        try { resData = await response.json(); } catch (_) { resData = {}; }
+
         if (response.ok) {
           sessionStorage.removeItem('temp_member_onboarding');
-          window.location.href = '/members';
+          const newMemberId = resData.memberId || resData.member_id || '';
+          window.location.href = `/payment-center?member_id=${newMemberId}`;
+        } else if (response.status === 413) {
+          alert('The photo is too large to upload. Please choose a smaller image (under 2 MB).');
         } else {
-          alert(resData.error || 'Failed to save member profile.');
+          alert(resData.error || `Failed to save member profile (error ${response.status}).`);
         }
       } catch (err) {
         console.error(err);
-        alert('Onboarding database offline.');
+        alert('Could not reach the server. Please check your connection and try again.');
       }
     };
   }
 });
 </script>
 
-<div id="jsb-mobile-nav"></div>
+<!-- Focused flow: global bottom nav intentionally suppressed (back link used instead) -->
 </body></html>

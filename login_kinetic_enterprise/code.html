@@ -11,7 +11,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>Kinetic SaaS - Login</title>
+<title>Gym Flow - Login</title>
 
 <style>
         .material-symbols-outlined {
@@ -60,7 +60,7 @@
 </div>
 <!-- Headers -->
 <div class="text-center mb-xl">
-<h1 class="font-headline-lg text-headline-lg text-on-surface mb-xs"><span class="dynamic-gym-name uppercase">JSB FITNESS</span></h1>
+<h1 class="font-headline-lg text-headline-lg text-on-surface mb-xs"><span class="dynamic-gym-name uppercase"></span></h1>
 <p class="font-body-sm text-body-sm text-on-surface-variant">System authentication required</p>
 </div>
 <!-- Form -->
@@ -96,7 +96,7 @@
 <a class="font-body-sm text-body-sm text-primary hover:text-primary-fixed-dim transition-colors hover:underline underline-offset-4" href="/forgot-password">Forgot Password?</a>
 </div>
 <!-- Primary Action -->
-<button class="w-full bg-primary text-on-primary py-4 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-primary-fixed-dim hover:scale-[0.98] active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/10 border border-primary-fixed/20 mt-2" type="submit">
+<button class="w-full bg-primary text-on-primary py-4 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-primary-fixed-dim hover:shadow-primary/20 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/10 border border-primary-fixed/20 mt-2" type="submit">
 <span>SIGN IN</span>
 <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
 </button>
@@ -107,6 +107,11 @@
 <span class="font-label-caps text-label-caps text-on-surface-variant/60 tracking-widest">OR</span>
 <div class="h-px bg-outline-variant/30 flex-1"></div>
 </div>
+<!-- Google Sign-In (shown only when configured server-side) -->
+<a id="google-signin" href="/api/v1/auth/google" class="hidden w-full bg-white text-[#1f1f1f] py-3.5 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-gray-100 transition-all items-center justify-center gap-3 mb-4 border border-outline-variant/40">
+<svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+<span>CONTINUE WITH GOOGLE</span>
+</a>
 <!-- Signup Alternative -->
 <button class="w-full bg-surface-container-low border border-outline-variant/40 text-on-surface py-3.5 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-surface-container hover:border-outline-variant transition-all flex items-center justify-center gap-3" onclick="window.location.href='/signup'" type="button">
 <span class="material-symbols-outlined text-[20px] text-primary">person_add</span>
@@ -116,24 +121,41 @@
 </div>
 <!-- Footer Info -->
 <div class="text-center mt-8 font-body-sm text-body-sm text-on-surface-variant/50">
-<p>JSB Fitness OS v4.2.1</p>
+<p><span class="dynamic-gym-name"></span> OS v4.2.1</p>
 <p class="mt-1">Authorized personnel only</p>
 </div>
 <script>
+// Reveal the Google button only if the server has OAuth credentials configured.
+(async () => {
+  try {
+    const cfg = await (await fetch('/api/v1/auth/config')).json();
+    if (cfg && cfg.google) {
+      const btn = document.getElementById('google-signin');
+      if (btn) { btn.classList.remove('hidden'); btn.classList.add('flex'); }
+    }
+  } catch (e) { /* leave Google button hidden */ }
+  // Surface OAuth redirect errors (e.g. ?error=google_token).
+  const err = new URLSearchParams(location.search).get('error');
+  if (err) {
+    const map = { google_state: 'Google sign-in expired, please try again.', google_token: 'Google sign-in failed, please try again.', google_email: 'Your Google account email is not verified.', suspended: 'This account has been suspended.', google: 'Google sign-in failed, please try again.' };
+    alert(map[err] || 'Sign-in error. Please try again.');
+  }
+})();
+
 document.querySelector('form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
-  
+
     const remember = document.getElementById('remember').checked;
-  
+
   try {
     const response = await window.api.fetch('/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, remember })
     });
-    
+
     const data = await response.json();
     if (response.ok) {
       window.location.href = '/dashboard';

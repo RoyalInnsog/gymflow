@@ -11,7 +11,8 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>Kinetic SaaS - Payment Center</title>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<title>Gym Flow - Payment Center</title>
 
 <style>
         .glass-panel {
@@ -80,97 +81,9 @@
 </div>
 <!-- Pending Payments Section -->
 <h3 class="font-title-lg text-title-lg text-on-surface mb-stack-md border-b border-white/10 pb-2">Pending Payments</h3>
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-stack-md md:gap-gutter">
-<!-- Member Card: Ananya Singh -->
-<div class="glass-panel rounded-xl p-stack-md flex flex-col">
-<div class="flex items-center justify-between mb-stack-md">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-full bg-surface-container-high border border-white/10 overflow-hidden">
-<img alt="Ananya Singh" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0roygR7EGYmQSYrQkHmY8SZ7kUVfpmtM8EtVKlOWOFZXYgcFgb2XCfpjmIvudWC1MZFczfku9H_l8QVUuvJVWNgKzqBn2Z8Ji-nducwPVNRwXOUDp_hBejRCLxYfrrph1Zq0fnD1qKI2IfXHaVBk4fK5lcilpWyIhKh2ZlEngyoAITJ7yc-YgMB9Hg12axPqiao-vNiQ3NoVY34zBsztJ8WqhGp0Oc0DQMLGS9iGVHmWF21FLPh4sI6O6s9ffvT1_zvQnoKOZJJJS">
-</div>
-<div>
-<h4 class="font-title-lg text-title-lg text-on-surface leading-tight">Ananya Singh</h4>
-<p class="font-label-md text-label-md text-on-surface-variant">ID: KIN-8892</p>
-</div>
-</div>
-<div class="bg-tertiary/10 border border-tertiary/30 px-2 py-1 rounded text-tertiary font-label-md text-label-md flex items-center gap-1">
-<span class="material-symbols-outlined text-[14px]" data-icon="schedule" style="font-variation-settings: 'FILL' 1;">schedule</span>
-                        Due in 2 days
-                    </div>
-</div>
-<div class="border-t border-white/10 py-stack-sm my-stack-sm">
-<div class="flex justify-between items-end">
-<span class="font-body-md text-body-md text-on-surface-variant">Amount Due</span>
-<span class="font-headline-md text-headline-md text-on-surface">₹4,500</span>
-</div>
-<p class="font-label-md text-label-md text-on-surface-variant text-right">Quarterly Membership</p>
-</div>
-<button class="mt-auto w-full bg-transparent border border-primary text-primary hover:bg-primary/10 transition-colors font-body-md text-body-md font-medium py-2 rounded-lg flex items-center justify-center gap-2" onclick="window.location.href='/payment-center'">
-<span class="material-symbols-outlined" data-icon="payment" style="font-variation-settings: 'FILL' 0;">payment</span>
-                    Collect Payment
-                </button>
-</div>
-<!-- Member Card: Rohan Mehta (Active State for Modal Demo) -->
-<div class="glass-panel rounded-xl p-stack-md flex flex-col relative">
-<!-- Active Indicator -->
-<div class="absolute left-0 top-0 bottom-0 w-[2px] bg-primary rounded-l-xl"></div>
-<div class="absolute inset-0 bg-primary/5 pointer-events-none rounded-xl"></div>
-<div class="flex items-center justify-between mb-stack-md relative z-10">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-full bg-surface-container-high border border-white/10 overflow-hidden">
-<img alt="Rohan Mehta" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEyQBjHGUXjSxyX-_c08KxIA-f8v3eg6Xt2e7k7lpNFiIx2sbZOqMM4CWes4HJ0Lqsc7pCu0KHlUpTEgZubfY3liNxfuUwcVzLfJwk6oKhv_nME7V2QmMKTd-IuzKxiWGNLfeGHNwM8Pa9iWa2wU2kJns0yINobnLlaNmSD6ee9Jjk5JXka3Ni0TnvWyt9d3FTKrL_z8TfR7x2-vm9z4VU_t0rdAbtGveHd2xuLOuQAGWAzRJ2dJDZytXMnbHUlv3yDtVkEX8lew7L">
-</div>
-<div>
-<h4 class="font-title-lg text-title-lg text-on-surface leading-tight">Rohan Mehta</h4>
-<p class="font-label-md text-label-md text-on-surface-variant">ID: KIN-9014</p>
-</div>
-</div>
-<div class="bg-error/10 border border-error/30 px-2 py-1 rounded text-error font-label-md text-label-md flex items-center gap-1">
-<span class="material-symbols-outlined text-[14px]" data-icon="error" style="font-variation-settings: 'FILL' 1;">error</span>
-                        Overdue
-                    </div>
-</div>
-<div class="border-t border-white/10 py-stack-sm my-stack-sm relative z-10">
-<div class="flex justify-between items-end">
-<span class="font-body-md text-body-md text-on-surface-variant">Amount Due</span>
-<span class="font-headline-md text-headline-md text-error">₹2,200</span>
-</div>
-<p class="font-label-md text-label-md text-on-surface-variant text-right">Personal Training x2</p>
-</div>
-<button class="mt-auto w-full bg-primary text-on-primary hover:bg-primary-fixed transition-colors font-body-md text-body-md font-medium py-2 rounded-lg flex items-center justify-center gap-2 relative z-10 shadow-[0_0_15px_rgba(45,106,255,0.3)]" onclick="window.location.href='/payment-center'">
-<span class="material-symbols-outlined" data-icon="payment" style="font-variation-settings: 'FILL' 0;">payment</span>
-                    Collect Payment
-                </button>
-</div>
-<!-- Member Card: Vikram Sharma -->
-<div class="glass-panel rounded-xl p-stack-md flex flex-col opacity-75">
-<div class="flex items-center justify-between mb-stack-md">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-full bg-surface-container-high border border-white/10 overflow-hidden">
-<img alt="Vikram Sharma" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDH4KLlQDvCKfYR5oKEtt742YzD71CL-6u9a7IE04gaCSVcfAAuEGZW2_yWnka3_GuwQEzPbxre1yZvaMy5VzDEqglu5u9LFIk17ke7S27fZb7w36OYNqUcxpC53ScSEt-yRs-UNEenaeE3bGJWipCemmKbPXeJfyV7SpTZFNVzJm-MTa_lGzjI2s4VR0s1Nz-ARaQcFfVmCG-Uh1xYwhfRslqAskL5NHb17JR9op1S_ERlMP9Y6LyHP_BVy19ccJ2wWLeNl_KKIKEZ">
-</div>
-<div>
-<h4 class="font-title-lg text-title-lg text-on-surface leading-tight">Vikram Sharma</h4>
-<p class="font-label-md text-label-md text-on-surface-variant">ID: KIN-7731</p>
-</div>
-</div>
-<div class="bg-tertiary/10 border border-tertiary/30 px-2 py-1 rounded text-tertiary font-label-md text-label-md flex items-center gap-1">
-<span class="material-symbols-outlined text-[14px]" data-icon="schedule" style="font-variation-settings: 'FILL' 1;">schedule</span>
-                        Due Today
-                    </div>
-</div>
-<div class="border-t border-white/10 py-stack-sm my-stack-sm">
-<div class="flex justify-between items-end">
-<span class="font-body-md text-body-md text-on-surface-variant">Amount Due</span>
-<span class="font-headline-md text-headline-md text-on-surface">₹12,000</span>
-</div>
-<p class="font-label-md text-label-md text-on-surface-variant text-right">Annual Renewal</p>
-</div>
-<button class="mt-auto w-full bg-transparent border border-outline text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-colors font-body-md text-body-md font-medium py-2 rounded-lg flex items-center justify-center gap-2" onclick="window.location.href='/payment-center'">
-<span class="material-symbols-outlined" data-icon="payment" style="font-variation-settings: 'FILL' 0;">payment</span>
-                    Collect Payment
-                </button>
-</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-stack-md md:gap-gutter" id="pending-payments-grid">
+  <!-- Dynamic cards will be populated here -->
+  <p class="text-on-surface-variant italic col-span-full">Loading pending payments...</p>
 </div>
 </main>
 <!-- BottomNavBar (Mobile Only) -->
@@ -189,6 +102,7 @@
 <span class="material-symbols-outlined" data-icon="close" style="font-variation-settings: 'FILL' 0;">close</span>
 </button>
 </div>
+<div id="payment-options">
 <div class="p-stack-lg flex flex-col gap-stack-md">
 <p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-2">Select Payment Method</p>
 <!-- Action: Collect Cash -->
@@ -224,6 +138,18 @@
                 </button>
 </div>
 </div>
+<div id="qr-container" class="hidden p-stack-lg border-t border-white/5 flex flex-col items-center text-center">
+  <p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-4">Scan QR to Pay <span id="qr-amount" class="text-on-surface font-bold text-lg"></span></p>
+  <div class="bg-white p-2 rounded-xl mb-6 shadow-lg inline-block mx-auto">
+    <img id="qr-image" src="" class="w-48 h-48 object-contain" alt="UPI QR Code">
+  </div>
+  <button id="btn-verify-payment" class="w-full bg-primary text-on-primary hover:bg-primary-fixed transition-colors font-body-md text-body-md font-medium py-3 rounded-lg flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(45,106,255,0.3)]">
+    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">verified</span>
+    Confirm Payment Received
+  </button>
+  <button id="btn-cancel-qr" class="w-full mt-2 bg-transparent text-on-surface-variant hover:text-on-surface transition-colors font-label-md py-2 rounded-lg">Cancel</button>
+</div>
+</div>
 </div>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -250,10 +176,10 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="flex items-center justify-between mb-stack-md">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-surface-container-high border border-white/10 overflow-hidden">
-                  <img alt="${inv.full_name}" class="w-full h-full object-cover" src="${photo}"/>
+                  <img alt="${esc(inv.full_name)}" class="w-full h-full object-cover" src="${safeUrl(photo)}"/>
                 </div>
                 <div>
-                  <h4 class="font-title-lg text-title-lg text-on-surface leading-tight">${inv.full_name}</h4>
+                  <h4 class="font-title-lg text-title-lg text-on-surface leading-tight">${esc(inv.full_name)}</h4>
                   <p class="font-label-md text-label-md text-on-surface-variant">ID: ${inv.member_id}</p>
                 </div>
               </div>
@@ -303,6 +229,17 @@ document.addEventListener("DOMContentLoaded", () => {
   if (closeBtn) {
     closeBtn.onclick = () => {
       modal.style.display = 'none';
+      document.getElementById('payment-options').style.display = 'block';
+      document.getElementById('qr-container').style.display = 'none';
+    };
+  }
+
+  // Cancel QR view
+  const cancelQrBtn = document.getElementById('btn-cancel-qr');
+  if (cancelQrBtn) {
+    cancelQrBtn.onclick = () => {
+      document.getElementById('payment-options').style.display = 'block';
+      document.getElementById('qr-container').style.display = 'none';
     };
   }
 
@@ -323,10 +260,47 @@ document.addEventListener("DOMContentLoaded", () => {
       
       const resData = await response.json();
       if (response.ok) {
-        alert(`${resData.message}\\nTransaction Ref: ${resData.transactionReference}`);
-        modal.style.display = 'none';
-        // Redirect to receipt
-        window.location.href = `/receipt?receipt=${selectedInvoiceNumber}`;
+        if (resData.orderId) {
+          const options = {
+            key: resData.key_id,
+            amount: Math.round(resData.amount * 100),
+            currency: resData.currency || "INR",
+            name: window.APP_CONFIG.brand.name,
+            description: "Invoice Payment",
+            order_id: resData.orderId,
+            handler: async function (response) {
+              try {
+                const verifyRes = await window.api.fetch('/finance/collect/verify', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                    payment_id: resData.paymentId
+                  })
+                });
+                const verifyData = await verifyRes.json();
+                if (verifyRes.ok) {
+                  alert('Payment verified successfully!');
+                  modal.style.display = 'none';
+                  window.location.href = `/receipt?receipt=${selectedInvoiceNumber}`;
+                } else {
+                  alert('Payment failed verification: ' + verifyData.error);
+                }
+              } catch (e) {
+                alert('Error verifying payment.');
+              }
+            },
+            theme: { color: "#2d6aff" }
+          };
+          const rzp1 = new Razorpay(options);
+          rzp1.open();
+        } else {
+          alert(`${resData.message}\nTransaction Ref: ${resData.transactionReference}`);
+          modal.style.display = 'none';
+          window.location.href = `/receipt?receipt=${selectedInvoiceNumber}`;
+        }
       } else {
         alert(resData.error || 'Failed to process transaction.');
       }
@@ -339,22 +313,46 @@ document.addEventListener("DOMContentLoaded", () => {
   // Bind modal payment option buttons
   const cashBtn = Array.from(modal.querySelectorAll('button')).find(b => b.textContent.includes('Collect Cash'));
   if (cashBtn) {
-    cashBtn.onclick = () => processCollection('Cash');
+    cashBtn.onclick = (e) => { e.preventDefault(); processCollection('Cash'); };
   }
 
   const upiBtn = Array.from(modal.querySelectorAll('button')).find(b => b.textContent.includes('UPI'));
   if (upiBtn) {
-    upiBtn.onclick = () => processCollection('UPI');
+    upiBtn.onclick = async (e) => {
+      e.preventDefault();
+      processCollection('UPI');
+    };
+  }
+
+  const verifyBtn = document.getElementById('btn-verify-payment');
+  if (verifyBtn) {
+    verifyBtn.onclick = (e) => { e.preventDefault(); processCollection('Offline_UPI'); };
   }
 
   const receiptBtn = Array.from(modal.querySelectorAll('button')).find(b => b.textContent.includes('Generate Receipt Only'));
   if (receiptBtn) {
-    receiptBtn.onclick = () => processCollection('Bank Transfer');
+    receiptBtn.onclick = (e) => { e.preventDefault(); processCollection('Bank Transfer'); };
   }
 
-  loadPendingPayments();
+  // Load pending and check for member_id in URL
+  loadPendingPayments().then(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const mId = urlParams.get('member_id');
+    if (mId) {
+      // Find the card for this member and click it
+      const grid = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3');
+      const cards = grid.querySelectorAll('.glass-panel');
+      for (const card of cards) {
+        if (card.innerHTML.includes(`ID: ${mId}`)) {
+          const btn = card.querySelector('button');
+          if (btn) btn.click();
+          break;
+        }
+      }
+    }
+  });
 });
 </script>
 
-<div id="jsb-mobile-nav"></div>
+<!-- Focused flow: global bottom nav intentionally suppressed (back link used instead) -->
 </body></html>

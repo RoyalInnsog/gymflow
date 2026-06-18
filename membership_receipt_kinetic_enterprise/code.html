@@ -11,7 +11,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>Kinetic SaaS - Receipt</title>
+<title>Gym Flow - Receipt</title>
 <!-- Tailwind CSS -->
 
 <!-- Google Fonts & Material Symbols -->
@@ -58,7 +58,7 @@
 <div class="flex flex-col gap-unit">
 <div class="flex items-center gap-stack-sm text-primary mb-1">
 <span class="material-symbols-outlined text-[32px] dynamic-logo">fitness_center</span>
-<h1 class="font-headline-md text-headline-md tracking-tight"><span class="dynamic-gym-name">JSB Fitness</span></h1>
+<h1 class="font-headline-md text-headline-md tracking-tight"><span class="dynamic-gym-name"></span></h1>
 </div>
 <p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
                         High-Performance Facility Management<br>
@@ -119,17 +119,17 @@
 <div class="col-span-8 flex flex-col gap-2">
 <div class="flex items-center gap-stack-sm">
 <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-tertiary/20 text-tertiary border border-tertiary/30 uppercase tracking-widest">Premium</span>
-<p class="font-title-lg text-title-lg text-on-surface">Elite Annual Membership</p>
+<p id="rcpt-plan" class="font-title-lg text-title-lg text-on-surface">Membership Plan</p>
 </div>
-<p class="font-body-md text-body-md text-on-surface-variant">Validity: Oct 24, 2023 - Oct 23, 2024</p>
+<p id="rcpt-validity" class="font-body-md text-body-md text-on-surface-variant">Validity: --</p>
 <ul class="list-disc list-inside font-body-md text-body-md text-on-surface-variant/70 mt-1 space-y-1">
 <li>24/7 All-Access Facility Pass</li>
 <li>4 Personal Training Sessions / Month</li>
 <li>Recovery Zone Access (Sauna/Ice Bath)</li>
 </ul>
 </div>
-<div class="col-span-4 text-right font-title-lg text-title-lg text-on-surface">
-                        ₹25,000.00
+<div id="rcpt-item-price" class="col-span-4 text-right font-title-lg text-title-lg text-on-surface">
+                        ₹0
                     </div>
 </div>
 </div>
@@ -138,15 +138,15 @@
 <div class="w-full sm:w-1/2 flex flex-col gap-stack-sm">
 <div class="flex justify-between items-center text-on-surface-variant font-body-lg text-body-lg px-2">
 <span>Subtotal</span>
-<span>₹21,186.44</span>
+<span id="rcpt-subtotal">₹0</span>
 </div>
 <div class="flex justify-between items-center text-on-surface-variant font-body-lg text-body-lg px-2 pb-stack-sm border-b border-white/10">
-<span>GST (18%)</span>
-<span>₹3,813.56</span>
+<span>GST</span>
+<span id="rcpt-gst">₹0</span>
 </div>
 <div class="flex justify-between items-center pt-stack-sm px-2">
 <span class="font-headline-md text-headline-md text-on-surface">Total Paid</span>
-<span class="font-headline-lg text-headline-lg text-primary font-bold tracking-tight">₹25,000</span>
+<span id="rcpt-total" class="font-headline-lg text-headline-lg text-primary font-bold tracking-tight">₹0</span>
 </div>
 </div>
 </div>
@@ -200,57 +200,55 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
+    // Defensive helpers — never render undefined / NaN.
+    const money = (v) => `₹${(Number(v) || 0).toLocaleString('en-IN')}`;
+    const txt = (v) => { const s = (v === undefined || v === null || v === '') ? '--' : String(v); return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); };
+    const fmtDate = (v) => { const d = v ? new Date(v) : null; return (d && !isNaN(d)) ? d.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' }) : '--'; };
+
     // 1. Metadata
     const receiptNumEl = document.querySelector('.flex-col.items-start.sm\\:items-end p.font-headline-md');
-    if (receiptNumEl) receiptNumEl.innerText = `Receipt #${data.invoice_number}`;
+    if (receiptNumEl) receiptNumEl.innerText = `Receipt #${txt(data.invoice_number)}`;
 
     const dateEl = document.querySelector('.flex-col.items-start.sm\\:items-end p.font-body-md');
-    if (dateEl && data.payment_date) {
-      const pDate = new Date(data.payment_date);
-      dateEl.innerHTML = `<span class="material-symbols-outlined text-[16px] opacity-70">calendar_today</span> ${pDate.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })}`;
+    if (dateEl) {
+      const shown = fmtDate(data.payment_date || data.created_at);
+      dateEl.innerHTML = `<span class="material-symbols-outlined text-[16px] opacity-70">calendar_today</span> ${shown}`;
     }
 
     // 2. Billed To
     const billedToCard = document.querySelectorAll('.grid-cols-1.sm\\:grid-cols-2 > div')[0];
     if (billedToCard) {
-      billedToCard.querySelector('p.font-title-lg').innerText = data.full_name;
+      billedToCard.querySelector('p.font-title-lg').innerText = txt(data.full_name);
       const details = billedToCard.querySelectorAll('div.font-body-md p');
       if (details.length >= 3) {
-        details[0].innerText = `ID: ${data.member_number}`;
-        details[1].innerText = data.email || '--';
-        details[2].innerText = data.phone || '--';
+        details[0].innerText = `ID: ${txt(data.member_number)}`;
+        details[1].innerText = txt(data.email);
+        details[2].innerText = txt(data.phone);
       }
     }
 
     // 3. Payment Details
     const paymentCard = document.querySelectorAll('.grid-cols-1.sm\\:grid-cols-2 > div')[1];
     if (paymentCard) {
-      paymentCard.querySelector('p.font-title-lg').innerText = `${data.method || 'UPI'} Transaction`;
+      paymentCard.querySelector('p.font-title-lg').innerText = `${txt(data.method)} Transaction`;
       const details = paymentCard.querySelectorAll('div.font-body-md p');
       if (details.length >= 2) {
-        details[0].innerText = `Txn ID: ${data.transaction_reference || 'N/A'}`;
-        details[1].innerText = `Status: Successful verified`;
+        details[0].innerText = `Txn ID: ${txt(data.transaction_reference)}`;
+        details[1].innerText = `Status: ${txt(data.status) === 'Paid' ? 'Successful — verified' : txt(data.status)}`;
       }
     }
 
-    // 4. Item table details
-    const itemTitle = document.querySelector('.col-span-8 p.font-title-lg');
-    if (itemTitle) {
-      itemTitle.innerText = data.total_amount >= 25000 ? 'Elite Platinum (12 Months)' : (data.total_amount >= 15000 ? 'Pro Gold (6 Months)' : 'Base Silver (Monthly)');
-    }
-
-    const priceCell = document.querySelector('.col-span-4.text-right.font-title-lg');
-    if (priceCell) priceCell.innerText = `₹${Number(data.total_amount).toLocaleString()}`;
-
-    // 5. Totals
-    const subtotalCell = document.querySelectorAll('.w-full.sm\\:w-1/2 .flex.justify-between.text-on-surface-variant span:last-child')[0];
-    if (subtotalCell) subtotalCell.innerText = `₹${Number(data.subtotal).toLocaleString()}`;
-
-    const taxCell = document.querySelectorAll('.w-full.sm\\:w-1/2 .flex.justify-between.text-on-surface-variant span:last-child')[1];
-    if (taxCell) taxCell.innerText = `₹${Number(data.tax_amount).toLocaleString()}`;
-
-    const totalCell = document.querySelector('.pt-stack-sm.px-2 span:last-child');
-    if (totalCell) totalCell.innerText = `₹${Number(data.total_amount).toLocaleString()}`;
+    // 4 & 5. Item + totals — target stable IDs (the old CSS-chain selectors were
+    // fragile and one was invalid CSS, so these never updated before).
+    const setText = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+    setText('rcpt-plan', txt(data.plan_name) === '--' ? 'Membership Plan' : data.plan_name);
+    setText('rcpt-validity', (data.start_date || data.end_date)
+      ? `Validity: ${fmtDate(data.start_date)} - ${fmtDate(data.end_date)}`
+      : 'Validity: --');
+    setText('rcpt-item-price', money(data.total_amount));
+    setText('rcpt-subtotal', money(data.subtotal));
+    setText('rcpt-gst', money(data.tax_amount));
+    setText('rcpt-total', money(data.total_amount));
 
   } catch (err) {
     console.error(err);

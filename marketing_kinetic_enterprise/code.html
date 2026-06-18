@@ -11,7 +11,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-  <title>Kinetic SaaS - Marketing Center</title>
+  <title>Gym Flow - Marketing Center</title>
   
   
   
@@ -255,7 +255,7 @@
               <span class="material-symbols-outlined text-white text-[18px]">fitness_center</span>
             </div>
             <div>
-              <p class="font-bold text-xs text-white">JSB Fitness Official</p>
+              <p class="font-bold text-xs text-white"><span class="dynamic-gym-name"></span> Official</p>
               <p class="text-[10px] text-white/80">Active Broadcast</p>
             </div>
           </div>
@@ -696,7 +696,7 @@
       tr.innerHTML = `
         <td class="py-3 px-4 font-bold">${log.recipient_name || 'Member'}</td>
         <td class="py-3 px-4 text-on-surface-variant">${log.recipient_phone || 'N/A'}</td>
-        <td class="py-3 px-4 text-on-surface max-w-xs truncate" title="${log.message}">${log.message}</td>
+        <td class="py-3 px-4 text-on-surface max-w-xs truncate" title="${esc(log.message)}">${esc(log.message)}</td>
         <td class="py-3 px-4 text-on-surface-variant">${new Date(log.created_at).toLocaleString()}</td>
         <td class="py-3 px-4 font-bold ${statusClass}">${log.delivery_status || 'Sent'}</td>
         <td class="py-3 px-4 font-label-caps text-xs text-primary">${log.campaign_source || 'Direct Message'}</td>
@@ -750,8 +750,8 @@
           <div>
             ${imageTag}
             <div class="flex justify-between items-start mb-2">
-              <h3 class="font-title-lg text-on-surface font-bold leading-tight">${c.name}</h3>
-              <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] uppercase font-bold">${c.status}</span>
+              <h3 class="font-title-lg text-on-surface font-bold leading-tight">${esc(c.name)}</h3>
+              <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] uppercase font-bold">${esc(c.status)}</span>
             </div>
             <p class="text-xs text-outline mb-4">Date Sent: ${new Date(c.created_at).toLocaleDateString()}</p>
             <p class="text-xs text-on-surface-variant leading-relaxed line-clamp-3 mb-4">${c.message_body}</p>
@@ -803,7 +803,7 @@
         card.className = "glass-panel rounded-xl p-5 hover:border-primary/20 transition-all flex flex-col justify-between";
         card.innerHTML = `
           <div>
-            <h3 class="font-title-lg text-on-surface font-bold mb-1">${t.name}</h3>
+            <h3 class="font-title-lg text-on-surface font-bold mb-1">${esc(t.name)}</h3>
             <span class="inline-block px-2 py-0.5 rounded bg-primary/10 text-primary text-[9px] font-bold uppercase tracking-wider mb-4 border border-primary/20">System Key: ${t.id}</span>
             <p class="text-xs text-on-surface-variant leading-relaxed italic bg-surface-container/50 p-3 rounded border border-white/5 whitespace-pre-wrap font-sans">${t.message_body}</p>
           </div>

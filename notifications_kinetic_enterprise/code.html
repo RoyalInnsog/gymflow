@@ -11,7 +11,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>Kinetic SaaS - Communication Center</title>
+<title>Gym Flow - Communication Center</title>
 
 <style>
         .glass-card {
@@ -392,8 +392,8 @@ async function loadNotifications() {
                                     <span class="font-label-md text-label-md text-on-surface-variant">${a.type}</span>
                                     <span class="font-label-md text-label-md text-on-surface-variant ml-auto">${new Date(a.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                                 </div>
-                                <h4 class="font-title-lg text-title-lg text-on-surface mb-2">${a.title}</h4>
-                                <p class="font-body-md text-body-md text-on-surface-variant mb-4">${a.message}</p>
+                                <h4 class="font-title-lg text-title-lg text-on-surface mb-2">${esc(a.title)}</h4>
+                                <p class="font-body-md text-body-md text-on-surface-variant mb-4">${esc(a.message)}</p>
                                 <div class="flex gap-3">
                                     <button class="px-4 py-2 bg-error text-on-error rounded font-label-md text-label-md hover:bg-error/90 transition-colors action-btn" data-id="${a.id}">${a.priority === "Critical" ? "Send Reminder" : "Action"}</button>
                                     <button class="px-4 py-2 bg-transparent border border-outline text-on-surface rounded font-label-md text-label-md hover:bg-surface-variant transition-colors dismiss-btn-sec" data-id="${a.id}">Dismiss</button>
@@ -455,8 +455,8 @@ async function loadNotifications() {
                                     <span class="font-label-md text-label-md text-on-surface-variant">${a.type}</span>
                                     <span class="text-[10px] text-on-surface-variant">${new Date(a.created_at).toLocaleDateString()}</span>
                                 </div>
-                                <h4 class="font-body-md text-body-md font-semibold text-on-surface">${a.title}</h4>
-                                <p class="font-body-md text-[13px] text-on-surface-variant mt-1">${a.message}</p>
+                                <h4 class="font-body-md text-body-md font-semibold text-on-surface">${esc(a.title)}</h4>
+                                <p class="font-body-md text-[13px] text-on-surface-variant mt-1">${esc(a.message)}</p>
                             </div>
                         </div>
                     `;

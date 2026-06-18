@@ -11,8 +11,8 @@
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<title>JSB Fitness — Executive Dashboard</title>
-<meta name="description" content="CEO-grade executive dashboard for JSB Fitness. Revenue intelligence, renewal forecasting, churn analytics, and business health monitoring.">
+<title>Gym Flow</title>
+<meta name="description" content="CEO-grade executive dashboard. Revenue intelligence, renewal forecasting, churn analytics, and business health monitoring.">
 <style>
   body { font-family: 'Inter', sans-serif; }
   .glass-card {
@@ -61,7 +61,7 @@
   <!-- Page Header & Actions -->
   <div class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-4">
     <div>
-      <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Revenue Command Center</h1>
+      <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface"><span class="dynamic-gym-name text-primary"></span> Revenue Command Center</h1>
       <p class="font-body-md text-body-md text-on-surface-variant mt-1">Real-time business intelligence for strategic decisions.</p>
     </div>
     <div class="flex items-center gap-2 bg-surface-container-low p-1 border border-outline-variant/30 rounded-lg">
@@ -76,7 +76,7 @@
     <a href="/add-member-step-1" class="flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-lg font-label-md hover:bg-primary/20 transition-colors border border-primary/20 whitespace-nowrap">
       <span class="material-symbols-outlined text-[18px]">person_add</span> Add Member
     </a>
-    <a href="/payment-center" class="flex items-center gap-2 bg-surface-container text-on-surface px-4 py-2 rounded-lg font-label-md hover:bg-surface-variant transition-colors border border-outline-variant/30 whitespace-nowrap">
+    <a href="/expiry-management" class="flex items-center gap-2 bg-surface-container text-on-surface px-4 py-2 rounded-lg font-label-md hover:bg-surface-variant transition-colors border border-outline-variant/30 whitespace-nowrap">
       <span class="material-symbols-outlined text-[18px]">payments</span> Collect Payment
     </a>
     <a href="/marketing" class="flex items-center gap-2 bg-surface-container text-on-surface px-4 py-2 rounded-lg font-label-md hover:bg-surface-variant transition-colors border border-outline-variant/30 whitespace-nowrap">
@@ -348,8 +348,10 @@ let segmentChart = null;
 let churnChart = null;
 let currentRange = 6;
 
-const fmt = v => (v != null && !Number.isNaN(Number(v))) ? '₹' + Number(v).toLocaleString('en-IN') : '—';
-const pct = v => (v != null && !Number.isNaN(Number(v))) ? v + '%' : '—';
+const fmt = v => (v != null && !Number.isNaN(Number(v))) ? '₹' + Number(v).toLocaleString('en-IN') : '₹0';
+const pct = v => (v != null && !Number.isNaN(Number(v))) ? v + '%' : '0%';
+const txt = v => (v == null || String(v) === 'undefined' || String(v) === 'NaN' || String(v) === 'null' || v === '') ? '--' : v;
+const num = v => (v == null || Number.isNaN(Number(v))) ? 0 : Number(v);
 
 document.addEventListener('DOMContentLoaded', () => {
   // Range buttons
@@ -395,24 +397,24 @@ async function loadExecutiveSummary() {
     document.getElementById('intel-arpm').innerText = fmt(k.arpm.value);
 
     // Membership
-    document.getElementById('kpi-active-members').innerText = Number(k.activeMembers.value).toLocaleString();
+    document.getElementById('kpi-active-members').innerText = Number(k.activeMembers.value || 0).toLocaleString();
     document.getElementById('kpi-active-trend').innerHTML = trendBadge(k.activeMembers.growth, 'New');
-    document.getElementById('intel-new').innerText = data.newMembersThisMonth;
+    document.getElementById('intel-new').innerText = txt(data.newMembersThisMonth);
     document.getElementById('kpi-renewal').innerText = pct(k.renewalRate.value);
 
     // Financial
     document.getElementById('intel-growth').innerText = (k.monthlyRevenue.growth >= 0 ? '+' : '') + k.monthlyRevenue.growth + '%';
     document.getElementById('kpi-churn').innerText = pct(k.churnRate.value);
-    document.getElementById('intel-unpaid').innerText = k.outstandingDues.count;
+    document.getElementById('intel-unpaid').innerText = txt(k.outstandingDues.count);
 
     // Health Score
     const hs = data.healthScore;
-    document.getElementById('health-score-val').innerText = hs.score;
+    document.getElementById('health-score-val').innerText = txt(hs?.score);
 
     // Engagement
     document.getElementById('intel-present-today').innerText = Number(data.presentToday || 0).toLocaleString();
-    document.getElementById('intel-peak-hour').innerText = data.peakHour || 'N/A';
-    document.getElementById('intel-most-active').innerText = data.mostActiveMember || 'None';
+    document.getElementById('intel-peak-hour').innerText = txt(data.peakHour) === '--' ? 'N/A' : data.peakHour;
+    document.getElementById('intel-most-active').innerText = txt(data.mostActiveMember) === '--' ? 'None' : data.mostActiveMember;
     const ring = document.getElementById('health-ring');
     if (ring) {
         const offset = 314 - (314 * hs.score / 100);
@@ -423,10 +425,10 @@ async function loadExecutiveSummary() {
         else ring.setAttribute('stroke', '#ff897d');
     }
     const gradeEl = document.getElementById('health-grade');
-    gradeEl.innerText = hs.grade;
-    if (hs.grade === 'Excellent') gradeEl.className = 'px-2 py-0.5 rounded font-label-sm text-label-sm border bg-[#81c995]/10 text-[#81c995] border-[#81c995]/30';
-    else if (hs.grade === 'Good') gradeEl.className = 'px-2 py-0.5 rounded font-label-sm text-label-sm border bg-primary/10 text-primary border-primary/30';
-    else if (hs.grade === 'Fair') gradeEl.className = 'px-2 py-0.5 rounded font-label-sm text-label-sm border bg-tertiary/10 text-tertiary border-tertiary/30';
+    gradeEl.innerText = txt(hs?.grade);
+    if ((hs?.grade || '') === 'Excellent') gradeEl.className = 'px-2 py-0.5 rounded font-label-sm text-label-sm border bg-[#81c995]/10 text-[#81c995] border-[#81c995]/30';
+    else if ((hs?.grade || '') === 'Good') gradeEl.className = 'px-2 py-0.5 rounded font-label-sm text-label-sm border bg-primary/10 text-primary border-primary/30';
+    else if ((hs?.grade || '') === 'Fair') gradeEl.className = 'px-2 py-0.5 rounded font-label-sm text-label-sm border bg-tertiary/10 text-tertiary border-tertiary/30';
     else gradeEl.className = 'px-2 py-0.5 rounded font-label-sm text-label-sm border bg-error/10 text-error border-error/30';
 
     window._execData = data;
@@ -499,15 +501,15 @@ async function loadRenewalForecast() {
     const res = await window.api.fetch('/analytics/renewal-forecast');
     const data = await res.json();
 
-    document.getElementById('rf-7-count').innerText = data.expiring7.count;
+    document.getElementById('rf-7-count').innerText = num(data.expiring7?.count);
     document.getElementById('rf-7-revenue').innerText = 'Revenue at risk: ' + fmt(data.expiring7.revenueAtRisk);
-    document.getElementById('rf-30-count').innerText = data.expiring30.count;
+    document.getElementById('rf-30-count').innerText = num(data.expiring30?.count);
     document.getElementById('rf-30-revenue').innerText = 'Revenue at risk: ' + fmt(data.expiring30.revenueAtRisk);
-    document.getElementById('rf-60-count').innerText = data.expiring60.count;
+    document.getElementById('rf-60-count').innerText = num(data.expiring60?.count);
     document.getElementById('rf-60-revenue').innerText = 'Revenue at risk: ' + fmt(data.expiring60.revenueAtRisk);
-    document.getElementById('rf-expected').innerText = data.expiring30.expectedRenewals;
-    document.getElementById('rf-lost').innerText = data.expiring30.expectedLost;
-    document.getElementById('rf-rate').innerText = data.historicalRenewalRate + '%';
+    document.getElementById('rf-expected').innerText = txt(data.expiring30?.expectedRenewals);
+    document.getElementById('rf-lost').innerText = txt(data.expiring30?.expectedLost);
+    document.getElementById('rf-rate').innerText = pct(data.historicalRenewalRate);
 
     // Intel
     document.getElementById('intel-expiring').innerText = data.expiring30.count;
@@ -524,7 +526,7 @@ async function loadChurnAnalytics() {
     const data = await res.json();
 
     document.getElementById('churn-rate-val').innerText = pct(data.churnRate);
-    document.getElementById('churn-atrisk-val').innerText = data.atRiskCount;
+    document.getElementById('churn-atrisk-val').innerText = txt(data.atRiskCount);
     const kpiAtRisk = document.getElementById('kpi-atrisk-val');
     if (kpiAtRisk) kpiAtRisk.innerText = data.atRiskCount;
     document.getElementById('churn-lost-rev').innerText = fmt(data.lostRevenue);
@@ -618,11 +620,11 @@ async function loadVIPMembers() {
       return `<tr class="border-b border-outline-variant/10 hover:bg-surface-container-high/20 transition-colors cursor-pointer" onclick="window.location.href='/member-profile?id=${m.id}'">
         <td class="py-3 px-3"><div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold text-xs">${initials}</div>
-          <div><div class="font-medium text-on-surface">${m.name}</div><div class="text-[10px] text-on-surface-variant">${m.phone || ''}</div></div>
+          <div><div class="font-medium text-on-surface">${esc(m.name)}</div><div class="text-[10px] text-on-surface-variant">${esc(m.phone || '')}</div></div>
         </div></td>
         <td class="py-3 px-3 font-bold text-secondary">${fmt(m.lifetimeValue)}</td>
         <td class="py-3 px-3 text-on-surface-variant">${m.renewals}×</td>
-        <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusClass}">${m.status}</span></td>
+        <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusClass}">${esc(m.status)}</span></td>
       </tr>`;
     }).join('');
   } catch (err) { console.error('VIP error:', err); }
@@ -634,7 +636,7 @@ async function loadLeadIntelligence() {
     const res = await window.api.fetch('/analytics/lead-intelligence');
     const data = await res.json();
 
-    document.getElementById('intel-leads-total').innerText = data.totalLeads;
+    document.getElementById('intel-leads-total').innerText = txt(data.totalLeads);
     document.getElementById('intel-leads-conv').innerText = pct(data.conversionRate);
     document.getElementById('intel-leads-pipeline').innerText = fmt(data.pipelineValue);
     document.getElementById('intel-leads-channel').innerText = data.channels.length > 0 ? data.channels[0].acquisition_channel : '—';
@@ -674,6 +676,60 @@ function trendBadge(value, label, isPercent = false, isCurrency = false) {
 }
 
 // Business Alerts Engine
+</script>
+
+<!-- Expiry Alerts Modal -->
+<div id="expiry-modal-overlay" class="fixed inset-0 z-[100] flex items-center justify-center hidden" style="background-color: rgba(0,0,0,0.7); backdrop-filter: blur(4px);">
+  <div class="glass-card w-full max-w-lg rounded-2xl flex flex-col overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] border border-white/20 p-6 m-4 max-h-[80vh] overflow-y-auto hide-scrollbar">
+    <div class="flex justify-between items-start mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center text-error border border-error/20">
+          <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">warning</span>
+        </div>
+        <div>
+          <h3 class="font-headline-sm text-headline-sm text-on-surface">Expiry Alerts</h3>
+          <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Members requiring immediate attention</p>
+        </div>
+      </div>
+      <button onclick="document.getElementById('expiry-modal-overlay').style.display='none'" class="text-on-surface-variant hover:text-on-surface p-1 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center">
+        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">close</span>
+      </button>
+    </div>
+    
+    <div id="expiry-modal-content" class="flex flex-col gap-2">
+      <div class="text-center py-8 text-on-surface-variant">Scanning members...</div>
+    </div>
+    
+    <div class="mt-6 pt-4 border-t border-white/10 flex justify-end">
+      <button onclick="document.getElementById('expiry-modal-overlay').style.display='none'" class="bg-surface-container-high hover:bg-surface-variant text-on-surface px-6 py-2 rounded-lg font-label-lg transition-colors border border-white/10">Dismiss</button>
+    </div>
+  </div>
+</div>
+
+<!-- Generic Drill-Down Modal -->
+<div id="drill-overlay" class="fixed inset-0 z-[100] flex items-center justify-center hidden" style="background-color: rgba(0,0,0,0.7); backdrop-filter: blur(4px);" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="glass-card w-full max-w-2xl rounded-2xl flex flex-col overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] border border-white/20 p-6 m-4 max-h-[85vh]">
+    <div class="flex justify-between items-start mb-5">
+      <div class="flex items-center gap-3">
+        <div id="drill-icon" class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+          <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">insights</span>
+        </div>
+        <div>
+          <h3 id="drill-title" class="font-headline-sm text-headline-sm text-on-surface">Details</h3>
+          <p id="drill-subtitle" class="font-body-sm text-body-sm text-on-surface-variant mt-1">Breakdown</p>
+        </div>
+      </div>
+      <button onclick="document.getElementById('drill-overlay').classList.add('hidden')" class="text-on-surface-variant hover:text-on-surface p-1 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div id="drill-body" class="flex flex-col gap-2 overflow-y-auto hide-scrollbar">
+      <div class="text-center py-8 text-on-surface-variant">Loading…</div>
+    </div>
+  </div>
+</div>
+
+<script>
 async function loadAlerts() {
   try {
       const res = await window.api.fetch('/analytics/alerts');
@@ -700,14 +756,220 @@ async function loadAlerts() {
               <div class="flex items-start gap-3 p-3 rounded-lg border border-${colorClass}/20 bg-${colorClass}/5 hover:bg-${colorClass}/10 transition-colors">
                   <span class="material-symbols-outlined text-${colorClass} shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">${icon}</span>
                   <div>
-                      <h4 class="font-label-md text-label-md text-on-surface font-bold">${a.title}</h4>
-                      <p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">${a.message}</p>
+                      <h4 class="font-label-md text-label-md text-on-surface font-bold">${esc(a.title)}</h4>
+                      <p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">${esc(a.message)}</p>
                   </div>
               </div>
           `;
       });
   } catch(err) { console.error(err); }
 }
-document.addEventListener('DOMContentLoaded', () => loadAlerts());
+  
+async function checkExpiryAlerts() {
+  if (sessionStorage.getItem('expiryAlertShown') === 'true') return;
+  sessionStorage.setItem('expiryAlertShown', 'true');
+  
+  try {
+    const res = await window.api.fetch('/members');
+    const members = await res.json();
+    
+    const expired = [];
+    const in7 = [];
+    const in30 = [];
+    
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    members.forEach(m => {
+      let daysLeft = 0;
+      if (m.expiry_date) {
+        const [y, mo, d] = m.expiry_date.split('-');
+        const expDate = new Date(y, mo - 1, d);
+        daysLeft = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+      } else {
+        return;
+      }
+      
+      if (m.status === 'Active' || m.status === 'Expired') {
+        if (daysLeft < 0) expired.push({...m, daysLeft});
+        else if (daysLeft >= 0 && daysLeft <= 7) in7.push({...m, daysLeft});
+        else if (daysLeft > 7 && daysLeft <= 30) in30.push({...m, daysLeft});
+      }
+    });
+    
+    if (expired.length === 0 && in7.length === 0 && in30.length === 0) return;
+    
+    let html = '';
+    const renderGroup = (title, arr, color) => {
+      if (arr.length === 0) return '';
+      let list = `<h4 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-2 mt-4">${title} (${arr.length})</h4>`;
+      arr.slice(0, 5).forEach(m => {
+        list += `
+          <div class="flex items-center justify-between p-3 rounded-lg border border-${color}/20 bg-${color}/5 mb-2">
+            <div>
+              <p class="font-title-md text-on-surface">${esc(m.full_name)}</p>
+              <p class="font-body-sm text-on-surface-variant">${esc(m.plan_name || 'No Plan')} • ${m.daysLeft < 0 ? Math.abs(m.daysLeft) + ' days ago' : m.daysLeft + ' days left'}</p>
+            </div>
+            <a href="/renew?member_id=${m.id}" class="px-3 py-1 bg-primary text-on-primary hover:bg-primary-fixed rounded text-sm font-medium transition-colors">Renew Now</a>
+          </div>
+        `;
+      });
+      if (arr.length > 5) list += `<p class="text-xs text-center text-on-surface-variant mt-2">+ ${arr.length - 5} more</p>`;
+      return list;
+    };
+    
+    html += renderGroup('Expired', expired, 'error');
+    html += renderGroup('Expiring in 7 Days', in7, 'tertiary');
+    html += renderGroup('Expiring in 30 Days', in30, 'primary');
+    
+    document.getElementById('expiry-modal-content').innerHTML = html;
+    document.getElementById('expiry-modal-overlay').style.display = 'flex';
+  } catch(e) { console.error('Failed to load expiry alerts', e); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadAlerts();
+    checkExpiryAlerts();
+});
+
+// ─── Dashboard Drill-Down ───────────────────────────────
+(function () {
+  const overlay = document.getElementById('drill-overlay');
+  const titleEl = document.getElementById('drill-title');
+  const subEl   = document.getElementById('drill-subtitle');
+  const bodyEl  = document.getElementById('drill-body');
+  const iconWrap = document.getElementById('drill-icon');
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const money = v => '₹' + Number(v || 0).toLocaleString('en-IN');
+  const getJSON = async p => { try { const r = await window.api.fetch(p); return r.ok ? await r.json() : null; } catch (e) { return null; } };
+
+  function open(title, subtitle, icon, color) {
+    titleEl.innerText = title;
+    subEl.innerText = subtitle || '';
+    iconWrap.className = `w-10 h-10 rounded-full bg-${color}/10 flex items-center justify-center text-${color} border border-${color}/20`;
+    iconWrap.querySelector('span').innerText = icon;
+    bodyEl.innerHTML = '<div class="text-center py-8 text-on-surface-variant">Loading…</div>';
+    overlay.classList.remove('hidden');
+  }
+  const empty = '<div class="text-center py-8 text-on-surface-variant">No data available yet.</div>';
+  const barRow = (label, value, max, color, valTxt) => {
+    const pct = max > 0 ? Math.round(Math.abs(value) / max * 100) : 0;
+    return `<div class="py-2">
+      <div class="flex justify-between text-sm mb-1"><span class="text-on-surface">${esc(label)}</span><span class="text-on-surface-variant">${esc(valTxt)}</span></div>
+      <div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${pct}%;background:${color};"></div></div>
+    </div>`;
+  };
+  const memberRow = (name, sub, right, initialsColor) => {
+    const initials = (name || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    return `<div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full ${initialsColor} flex items-center justify-center text-xs font-medium">${esc(initials)}</div>
+        <div><p class="font-body-md text-on-surface">${esc(name)}</p><p class="text-xs text-on-surface-variant">${esc(sub)}</p></div>
+      </div>
+      <span class="text-sm font-medium text-on-surface">${right}</span>
+    </div>`;
+  };
+
+  const drills = {
+    async revenue() {
+      open('Revenue Breakdown', 'Monthly trend, methods & collections', 'payments', 'secondary');
+      const [trend, fin] = await Promise.all([getJSON('/analytics/revenue-trend?months=6'), getJSON('/analytics/finance-dashboard?months=6')]);
+      let html = '';
+      const t = (trend && trend.trend) || [];
+      const maxRev = Math.max(1, ...t.map(m => Math.abs(m.revenue || 0)));
+      html += '<h4 class="font-label-md uppercase tracking-wider text-on-surface-variant mb-1">Monthly Trend</h4>';
+      html += t.length ? t.map(m => barRow(m.label || m.month, m.revenue, maxRev, '#81c995', money(m.revenue))).join('') : empty;
+      if (trend) html += `<p class="text-xs text-on-surface-variant mt-1">Projected next month: <span class="text-on-surface font-medium">${money(trend.projected)}</span> · Avg growth ${esc(trend.avgGrowthRate)}%</p>`;
+      if (fin) {
+        const pm = fin.paymentMethods;
+        const entries = Array.isArray(pm) ? pm.map(x => [x.method || x.label, x.total != null ? x.total : x.amount]) : (pm ? Object.entries(pm) : []);
+        const maxM = Math.max(1, ...entries.map(e => Math.abs(Number(e[1]) || 0)));
+        html += '<h4 class="font-label-md uppercase tracking-wider text-on-surface-variant mb-1 mt-4">Payment Methods</h4>';
+        html += entries.length ? entries.map(e => barRow(e[0], Number(e[1]) || 0, maxM, '#b5c4ff', money(e[1]))).join('') : '<p class="text-sm text-on-surface-variant py-2">No payments recorded.</p>';
+        html += `<div class="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-white/10">
+          <div><span class="block text-[10px] uppercase tracking-wider text-on-surface-variant">This Month</span><span class="text-on-surface font-bold">${money(fin.currentMonthRevenue)}</span></div>
+          <div><span class="block text-[10px] uppercase tracking-wider text-on-surface-variant">Outstanding</span><span class="text-tertiary font-bold">${money(fin.totalOutstanding)}</span></div>
+          <div><span class="block text-[10px] uppercase tracking-wider text-on-surface-variant">Unpaid Invoices</span><span class="text-error font-bold">${esc(fin.unpaidInvoices || 0)}</span></div>
+          <div><span class="block text-[10px] uppercase tracking-wider text-on-surface-variant">Forecast</span><span class="text-on-surface font-bold">${money(fin.forecast)}</span></div>
+        </div>`;
+      }
+      bodyEl.innerHTML = html || empty;
+    },
+    async segments() {
+      open('Member Segmentation', 'Distribution of your member base', 'donut_small', 'primary');
+      const seg = await getJSON('/analytics/member-segments');
+      const arr = (seg && seg.segments) || [];
+      const max = Math.max(1, ...arr.map(s => s.count || 0));
+      bodyEl.innerHTML = arr.length
+        ? `<p class="text-sm text-on-surface-variant mb-3">Total members: <span class="text-on-surface font-medium">${esc(seg.totalMembers)}</span></p>` +
+          arr.map(s => barRow(s.label, s.count, max, s.color || '#b5c4ff', s.count)).join('')
+        : empty;
+    },
+    async churn() {
+      open('At-Risk Members', 'Members by days since last visit', 'sentiment_dissatisfied', 'error');
+      const data = await getJSON('/retention/inactive');
+      const groups = [['Critical (30+ days)', data && data.critical, 'bg-error/10 text-error'], ['High (20-29 days)', data && data.high, 'bg-tertiary/10 text-tertiary'], ['Medium (10-19 days)', data && data.medium, 'bg-primary/10 text-primary']];
+      let html = '';
+      groups.forEach(([label, list, cls]) => {
+        if (list && list.length) {
+          html += `<h4 class="font-label-md uppercase tracking-wider text-on-surface-variant mb-1 mt-3">${label} · ${list.length}</h4>`;
+          html += list.slice(0, 6).map(m => memberRow(m.full_name, 'Last visit: ' + (m.last_visit || 'Never'), `<a href="/member-profile?id=${esc(m.id)}" class="text-primary text-xs hover:underline">View</a>`, cls)).join('');
+        }
+      });
+      bodyEl.innerHTML = html || '<div class="text-center py-8 text-on-surface-variant">No at-risk members. Everyone is active! 🎉</div>';
+    },
+    async vip() {
+      open('VIP Members', 'Highest lifetime value members', 'workspace_premium', 'tertiary');
+      const data = await getJSON('/analytics/high-value-members');
+      const arr = (data && data.members) || [];
+      bodyEl.innerHTML = arr.length
+        ? arr.map(m => memberRow(m.name, `${esc(m.status)} · ${m.renewals || 0} renewals`, money(m.lifetimeValue), 'bg-tertiary/10 text-tertiary')).join('')
+        : '<div class="text-center py-8 text-on-surface-variant">No payment data yet. VIP members appear after transactions.</div>';
+    },
+    async renewal() {
+      open('Renewal Forecast', 'Upcoming & expiring memberships', 'event_repeat', 'tertiary');
+      const data = await getJSON('/analytics/renewal-queue');
+      const q = (data && data.queue) || [];
+      let html = data ? `<p class="text-sm text-on-surface-variant mb-3">Revenue at risk: <span class="text-tertiary font-medium">${money(data.totalRevenueAtRisk)}</span></p>` : '';
+      html += q.length
+        ? q.slice(0, 12).map(m => memberRow(m.full_name, `${esc(m.plan_name || 'No plan')} · ${m.daysLeft < 0 ? Math.abs(m.daysLeft) + 'd overdue' : m.daysLeft + 'd left'}`, `<a href="/renew?member_id=${esc(m.member_id)}" class="text-primary text-xs hover:underline">Renew</a>`, 'bg-primary/10 text-primary')).join('')
+        : empty;
+      bodyEl.innerHTML = html;
+    }
+  };
+
+  function wire(el, type) {
+    if (!el) return;
+    el.classList.add('cursor-pointer');
+    el.setAttribute('title', 'Click for detailed breakdown');
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('a,button')) return; // let inner links work
+      if (drills[type]) drills[type]();
+    });
+  }
+  const cardOf = id => { const el = document.getElementById(id); return el ? el.closest('.glass-card') : null; };
+
+  // KPI cards
+  wire(cardOf('kpi-revenue'), 'revenue');
+  wire(cardOf('kpi-active-members'), 'segments');
+  wire(cardOf('health-score-val'), 'churn');
+  wire(cardOf('churn-rate-val'), 'churn');
+  // Big sections
+  wire(cardOf('projected-badge'), 'revenue');       // Revenue Trend
+  wire(cardOf('rf-7-count'), 'renewal');             // Renewal Forecast
+  wire(cardOf('churn-lost-rev'), 'churn');           // Churn Analytics
+  // Member Segmentation + VIP sections by heading
+  document.querySelectorAll('h3').forEach(h => {
+    const t = h.textContent.trim();
+    if (t === 'Member Segmentation') wire(h.closest('.glass-card'), 'segments');
+    if (t === 'VIP Members') wire(h.closest('.glass-card'), 'vip');
+  });
+  // VIP "View All" link → open VIP drill instead of /members
+  document.querySelectorAll('a').forEach(a => {
+    if (a.textContent.trim().startsWith('View All') && a.closest('.glass-card') && a.closest('.glass-card').querySelector('h3') && /VIP/.test(a.closest('.glass-card').querySelector('h3').textContent)) {
+      a.addEventListener('click', e => { e.preventDefault(); drills.vip(); });
+    }
+  });
+})();
 </script>
 </body></html>

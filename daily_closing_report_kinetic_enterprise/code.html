@@ -11,7 +11,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>Kinetic SaaS - Daily Closing Report</title>
+<title>Gym Flow - Daily Closing Report</title>
 
 <style>
         .glass-panel {
@@ -38,7 +38,7 @@
 <div>
 <p class="text-on-surface-variant font-body-md text-body-md mb-1 uppercase tracking-widest text-[10px]">Daily Summary</p>
 <h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Closing Report</h2>
-<p class="text-on-surface-variant font-body-md text-body-md mt-2">Oct 24, 2023 • JSB Fitness Mumbai</p>
+<p class="text-on-surface-variant font-body-md text-body-md mt-2"><span id="closingDate">—</span> • <span class="dynamic-gym-name"></span></p>
 </div>
 <div class="flex items-center gap-2">
 <span class="flex h-3 w-3 relative">
@@ -59,32 +59,29 @@
 <h3 class="font-title-lg text-title-lg text-on-surface-variant">Total Revenue Collected</h3>
 </div>
 <div class="flex items-baseline gap-4">
-<span class="font-display-lg text-display-lg break-words min-w-0 text-on-surface">₹4,25,000</span>
-<span class="text-secondary font-label-md text-label-md flex items-center bg-secondary/10 px-2 py-1 rounded border border-secondary/20">
-<span class="material-symbols-outlined text-[14px] mr-1">trending_up</span> +12% vs yesterday
-                        </span>
+<span class="font-display-lg text-display-lg break-words min-w-0 text-on-surface">₹0</span>
 </div>
 </div>
 <!-- Payment Breakdown Mini-Chart -->
 <div class="mt-8 flex flex-col gap-3 relative z-10">
 <p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Method Breakdown</p>
 <div class="flex h-2 w-full rounded-full overflow-hidden bg-surface-container-high">
-<div class="bg-primary h-full" style="width: 65%;"></div>
-<div class="bg-tertiary h-full" style="width: 25%;"></div>
-<div class="bg-secondary h-full" style="width: 10%;"></div>
+<div class="bg-primary h-full" style="width: 0%;"></div>
+<div class="bg-tertiary h-full" style="width: 0%;"></div>
+<div class="bg-secondary h-full" style="width: 0%;"></div>
 </div>
 <div class="flex gap-6 mt-2">
 <div class="flex items-center gap-2">
 <div class="w-2 h-2 rounded-full bg-primary"></div>
-<span class="font-body-md text-body-md text-on-surface">UPI (65%)</span>
+<span class="font-body-md text-body-md text-on-surface">UPI (0%)</span>
 </div>
 <div class="flex items-center gap-2">
 <div class="w-2 h-2 rounded-full bg-tertiary"></div>
-<span class="font-body-md text-body-md text-on-surface">Bank (25%)</span>
+<span class="font-body-md text-body-md text-on-surface">Bank (0%)</span>
 </div>
 <div class="flex items-center gap-2">
 <div class="w-2 h-2 rounded-full bg-secondary"></div>
-<span class="font-body-md text-body-md text-on-surface">Cash (10%)</span>
+<span class="font-body-md text-body-md text-on-surface">Cash (0%)</span>
 </div>
 </div>
 </div>
@@ -96,8 +93,8 @@
 <span class="material-symbols-outlined text-error">warning</span>
 <h3 class="font-title-lg text-title-lg text-on-surface-variant">Outstanding Dues</h3>
 </div>
-<span class="font-headline-lg text-headline-lg text-error">₹85,500</span>
-<p class="font-body-md text-body-md text-on-surface-variant mt-2">Across 14 active members.</p>
+<span id="duesAmount" class="font-headline-lg text-headline-lg text-error">₹0</span>
+<p class="font-body-md text-body-md text-on-surface-variant mt-2"><span id="defaulterCount">0</span> members with pending dues.</p>
 </div>
 <button class="mt-6 w-full py-3 px-4 bg-transparent border border-white/10 hover:border-primary text-on-surface font-label-md text-label-md rounded-lg transition-colors flex justify-center items-center gap-2">
                     View Defaulters <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
@@ -110,8 +107,8 @@
 <h3 class="font-title-lg text-title-lg text-on-surface-variant">New Admissions</h3>
 </div>
 <div class="flex items-end justify-between">
-<span class="font-headline-lg text-headline-lg text-on-surface">12</span>
-<span class="font-body-md text-body-md text-on-surface-variant">Target: 15</span>
+<span class="font-headline-lg text-headline-lg text-on-surface">0</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Today</span>
 </div>
 </div>
 <div class="glass-panel rounded-xl p-6 col-span-1 md:col-span-4">
@@ -120,8 +117,8 @@
 <h3 class="font-title-lg text-title-lg text-on-surface-variant">Renewals</h3>
 </div>
 <div class="flex items-end justify-between">
-<span class="font-headline-lg text-headline-lg text-on-surface">28</span>
-<span class="font-body-md text-body-md text-on-surface-variant">Target: 25</span>
+<span class="font-headline-lg text-headline-lg text-on-surface">0</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Today</span>
 </div>
 </div>
 <div class="glass-panel rounded-xl p-6 col-span-1 md:col-span-4">
@@ -130,14 +127,14 @@
 <h3 class="font-title-lg text-title-lg text-on-surface-variant">Attendance Summary</h3>
 </div>
 <div class="flex items-end justify-between">
-<span class="font-headline-lg text-headline-lg text-on-surface">412</span>
+<span class="font-headline-lg text-headline-lg text-on-surface">0</span>
 <span class="font-body-md text-body-md text-on-surface-variant">Unique Check-ins</span>
 </div>
 </div>
 <!-- Cash Denomination / Note (Optional Detail Area) -->
 <div class="glass-panel rounded-xl p-6 col-span-1 md:col-span-12 border-l-2 border-l-tertiary">
 <h3 class="font-title-lg text-title-lg text-on-surface mb-2">Manager's Note</h3>
-<p class="font-body-md text-body-md text-on-surface-variant">Cash collection verified. Discrepancy of ₹500 in till box has been logged and adjusted against petty cash. All equipment functional; AC unit 3 requires maintenance.</p>
+<p class="font-body-md text-body-md text-on-surface-variant italic opacity-70">No notes added yet. You can add a closing note when you approve &amp; close the day.</p>
 </div>
 </div>
 <!-- Action Area -->
@@ -170,14 +167,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     const data = await response.json();
     reportData = data.report;
 
-    const { totalRevenue, upiPercent, cashPercent, bankPercent, outstandingDues, newAdmissions, renewals, attendanceCount } = data.report;
+    const { totalRevenue, upiPercent, cashPercent, bankPercent, outstandingDues, defaulterCount, newAdmissions, renewals, attendanceCount } = data.report;
+
+    // 0. Today's date in the header
+    const dateEl = document.getElementById('closingDate');
+    if (dateEl) dateEl.innerText = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
     // 1. Populate Metrics
     const revEl = document.querySelector('.font-display-lg');
-    if (revEl) revEl.innerText = '₹' + Number(totalRevenue).toLocaleString();
+    if (revEl) revEl.innerText = '₹' + Number(totalRevenue).toLocaleString('en-IN');
 
-    const duesEl = document.querySelector('.text-error');
-    if (duesEl) duesEl.innerText = '₹' + Number(outstandingDues).toLocaleString();
+    const duesEl = document.getElementById('duesAmount');
+    if (duesEl) duesEl.innerText = '₹' + Number(outstandingDues).toLocaleString('en-IN');
+
+    const defEl = document.getElementById('defaulterCount');
+    if (defEl) defEl.innerText = Number(defaulterCount || 0);
 
     const opNumbers = document.querySelectorAll('.glass-panel .font-headline-lg');
     if (opNumbers.length >= 4) {

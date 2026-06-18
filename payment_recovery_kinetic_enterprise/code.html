@@ -11,7 +11,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>Kinetic SaaS - Payment Recovery</title>
+<title>Gym Flow - Payment Recovery</title>
 
 <style>
     .glass-card {
@@ -169,16 +169,16 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       
       if (severeCount > 0) {
-          insightsContainer.innerHTML += \`<div class="flex items-start gap-3 bg-error/10 p-4 rounded-lg border border-error/20"><span class="material-symbols-outlined text-error mt-0.5">warning</span><p class="font-body-md text-body-md text-on-surface"><strong>Critical Risk:</strong> \${severeCount} members are overdue by more than 15 days. Potential recovery of <span class="text-error font-bold">₹\${severeAmount.toLocaleString()}</span> requires immediate intervention.</p></div>\`;
+          insightsContainer.innerHTML += `<div class="flex items-start gap-3 bg-error/10 p-4 rounded-lg border border-error/20"><span class="material-symbols-outlined text-error mt-0.5">warning</span><p class="font-body-md text-body-md text-on-surface"><strong>Critical Risk:</strong> ${severeCount} members are overdue by more than 15 days. Potential recovery of <span class="text-error font-bold">₹${severeAmount.toLocaleString()}</span> requires immediate intervention.</p></div>`;
       }
       
       const earlyAmount = data.segments['1-7'] + data.segments['8-15'];
       if (earlyAmount > 0) {
-          insightsContainer.innerHTML += \`<div class="flex items-start gap-3 bg-tertiary/10 p-4 rounded-lg border border-tertiary/20"><span class="material-symbols-outlined text-tertiary mt-0.5">campaign</span><p class="font-body-md text-body-md text-on-surface"><strong>Soft Follow-Up:</strong> ₹\${earlyAmount.toLocaleString()} is stuck in the 1-15 day window. Automated WhatsApp reminders have an 80% success rate in this segment.</p></div>\`;
+          insightsContainer.innerHTML += `<div class="flex items-start gap-3 bg-tertiary/10 p-4 rounded-lg border border-tertiary/20"><span class="material-symbols-outlined text-tertiary mt-0.5">campaign</span><p class="font-body-md text-body-md text-on-surface"><strong>Soft Follow-Up:</strong> ₹${earlyAmount.toLocaleString()} is stuck in the 1-15 day window. Automated WhatsApp reminders have an 80% success rate in this segment.</p></div>`;
       }
       
       if (severeCount === 0 && earlyAmount === 0) {
-          insightsContainer.innerHTML = \`<p class="font-body-lg text-body-lg text-[#81c995]">All dues collected! You are running a highly optimized operation.</p>\`;
+          insightsContainer.innerHTML = `<p class="font-body-lg text-body-lg text-[#81c995]">All dues collected! You are running a highly optimized operation.</p>`;
       }
 
       const tbody = document.getElementById('invoices-table-body');
@@ -196,11 +196,11 @@ document.addEventListener("DOMContentLoaded", () => {
         else if (inv.daysOverdue > 15) agingColor = "text-orange-400";
         else if (inv.daysOverdue > 7) agingColor = "text-tertiary";
 
-        tr.innerHTML = \`
-          <td class="py-3 px-4 font-body-md text-body-md">\${inv.full_name}<br><span class="text-xs text-on-surface-variant">\${inv.phone || 'N/A'}</span></td>
-          <td class="py-3 px-4 font-body-md text-body-md">\${inv.invoice_number}</td>
-          <td class="py-3 px-4 font-body-md text-body-md \${agingColor}">\${inv.daysOverdue} Days</td>
-          <td class="py-3 px-4 font-body-md text-body-md font-bold">₹ \${inv.amount.toLocaleString()}</td>
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-body-md text-body-md">${esc(inv.full_name)}<br><span class="text-xs text-on-surface-variant">${esc(inv.phone || 'N/A')}</span></td>
+          <td class="py-3 px-4 font-body-md text-body-md">${esc(inv.invoice_number)}</td>
+          <td class="py-3 px-4 font-body-md text-body-md ${agingColor}">${inv.daysOverdue} Days</td>
+          <td class="py-3 px-4 font-body-md text-body-md font-bold">₹ ${inv.amount.toLocaleString()}</td>
           <td class="py-3 px-4 text-right">
               <div class="flex items-center justify-end gap-2">
                 <button class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors" title="Send Reminder">
@@ -211,7 +211,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 </button>
               </div>
           </td>
-        \`;
+        `;
         tbody.appendChild(tr);
       });
       

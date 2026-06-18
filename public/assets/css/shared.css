@@ -1,0 +1,396 @@
+/**
+ * JSB Fitness — Shared Styles
+ * Canonical CSS loaded by every page. Contains base resets,
+ * sidebar collapse behavior, glass-card definitions, scrollbar
+ * hiding, and bottom-nav safe-area handling.
+ */
+
+/* ─── BASE ────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  background: #111111;
+}
+
+body {
+  min-height: 100dvh;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0) 320px),
+    #111111;
+  color: #f1f1f1;
+  font-family: Inter, sans-serif;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── MATERIAL SYMBOLS ────────────────────────────────── */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 22px;
+  line-height: 1;
+  display: inline-block;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── GLASS CARDS ─────────────────────────────────────── */
+.glass-card {
+  background:
+    linear-gradient(135deg, rgba(31,31,31,0.92), rgba(17,17,17,0.92)),
+    #171717;
+  border: 1px solid rgba(255,255,255,0.09);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 4px rgba(0,0,0,0.1);
+  transition: border-color 200ms ease, transform 200ms ease, box-shadow 200ms ease;
+}
+
+.glass-card:hover {
+    /* Restrained, premium lift: neutral border brighten + soft depth shadow
+       (Linear/Vercel) instead of a saturated neon glow. */
+    border-color: rgba(255,255,255,0.14);
+    transform: translateY(-2px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 12px 28px -14px rgba(0,0,0,0.55);
+}
+
+/* Focus States & Button Feedback */
+*:focus-visible {
+  outline: 2px solid #16c8ee !important;
+  outline-offset: 2px !important;
+  border-radius: 4px;
+}
+
+button {
+  transition: transform 150ms ease, opacity 150ms ease, filter 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+button:not(:disabled) { cursor: pointer; }
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+button:disabled,
+button[disabled],
+button[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.glass-panel {
+  background: rgba(27, 27, 27, 0.7);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* ─── STATUS BADGES ───────────────────────────────────── */
+.status-active  { background-color: rgba(80,227,164,0.1);  color: #50e3a4; border: 1px solid rgba(80,227,164,0.2); }
+.status-expired { background-color: rgba(255,170,163,0.1); color: #ffaaa3; border: 1px solid rgba(255,170,163,0.2); }
+.status-pending { background-color: rgba(255,191,98,0.1);  color: #ffbf62; border: 1px solid rgba(255,191,98,0.2); }
+
+/* ─── SCROLLBAR HIDING ────────────────────────────────── */
+.hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ─── SIDEBAR COLLAPSE ────────────────────────────────── */
+@media (min-width: 768px) {
+  body.sidebar-collapsed { padding-left: 80px !important; }
+  body.sidebar-collapsed header { margin-left: 80px !important; }
+  body.sidebar-collapsed nav.desktop-sidebar { width: 80px !important; }
+  body.sidebar-collapsed nav.desktop-sidebar .sidebar-text,
+  body.sidebar-collapsed nav.desktop-sidebar .profile-details,
+  body.sidebar-collapsed nav.desktop-sidebar .logo-text,
+  body.sidebar-collapsed nav.desktop-sidebar .role-badge { display: none !important; }
+  body.sidebar-collapsed nav.desktop-sidebar .logo-container {
+    justify-content: center !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+  body.sidebar-collapsed nav.desktop-sidebar .logo-container button { display: none !important; }
+  body.sidebar-collapsed nav.desktop-sidebar .nav-item {
+    justify-content: center !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  body.sidebar-collapsed nav.desktop-sidebar .nav-item span.material-symbols-outlined { margin-right: 0 !important; }
+  body.sidebar-collapsed nav.desktop-sidebar .profile-container {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    justify-content: center !important;
+  }
+}
+
+/* Smooth transitions for sidebar collapse. Scope to the properties that
+   actually change (width / spacing / opacity) — `transition: all` is an
+   anti-pattern: it animates layout + paint props like letter-spacing and
+   outline-width, hurting perf and causing transition noise. */
+nav.desktop-sidebar, header, .nav-item, .logo-text, .sidebar-text {
+  transition: width 0.2s ease-in-out, margin 0.2s ease-in-out,
+              padding 0.2s ease-in-out, opacity 0.2s ease-in-out;
+}
+body {
+  transition: padding-left 0.2s ease-in-out;
+}
+
+/* ─── CUSTOM SCROLLBAR (opt-in) ───────────────────────── */
+.custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; display: block !important; }
+.custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #16c8ee; }
+
+/* ─── BOTTOM NAV SAFE AREA ────────────────────────────── */
+/* Reserve room for the fixed 64px mobile bottom nav so page content never
+   hides behind it. Flat fallback works everywhere; @supports adds the device
+   safe-area inset (home indicator) only where env() is understood. */
+@media (max-width: 767px) {
+  body { padding-bottom: 88px !important; }
+  /* Focused flows have no bottom nav, so no reservation is needed. */
+  body.no-bottom-nav { padding-bottom: 0 !important; }
+}
+@supports (padding: env(safe-area-inset-bottom)) {
+  @media (max-width: 767px) {
+    body { padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important; }
+  }
+  /* The bottom nav itself sits above the home indicator. */
+  .jsb-bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
+  /* Fixed/sticky action bars on focused flows (add member, payment, renew) also
+     clear the home indicator. !important wins over Tailwind's pb utility. */
+  .jsb-action-bar { padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important; }
+}
+
+/* ─── OVERFLOW PREVENTION ─────────────────────────────── */
+html, body { overflow-x: hidden; }
+main { min-width: 0; }
+
+/* ─── TYPOGRAPHY POLISH ───────────────────────────────── */
+/* Inter reads better with a hair of negative tracking at body sizes; headings
+   get balanced wrapping so titles never leave a lonely orphan word. */
+body { letter-spacing: -0.011em; }
+h1, h2, h3, .text-headline-xl, .text-headline-lg, .text-headline-md, .text-title-lg {
+  text-wrap: balance;
+}
+::selection { background: rgba(22,200,238,0.28); color: #ffffff; }
+html { scroll-behavior: smooth; }
+
+/* ─── SKELETON LOADING ────────────────────────────────── */
+/* Reusable shimmer placeholder. Use <div class="skeleton h-4 w-32 rounded">.
+   A .skeleton-card composes the glass-card frame with a muted, non-interactive
+   look so list/grid loading states match the real content footprint. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent);
+  animation: jsb-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes jsb-shimmer { 100% { transform: translateX(100%); } }
+.skeleton-card { pointer-events: none; }
+.skeleton-card .skeleton { background: rgba(255,255,255,0.06); }
+
+/* ─── TOAST NOTIFICATIONS ─────────────────────────────── */
+/* Replaces native alert(): non-blocking, stacked, auto-dismissing. Rendered by
+   window.toast() in utils.js. Top-right on desktop, bottom-center (above the
+   mobile nav) on phones. */
+.jsb-toast-container {
+  position: fixed;
+  top: calc(4rem + 12px);
+  right: 16px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  pointer-events: none;
+  max-width: min(380px, calc(100vw - 32px));
+}
+@media (max-width: 640px) {
+  .jsb-toast-container {
+    top: auto;
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+    left: 16px;
+    right: 16px;
+    align-items: stretch;
+    max-width: none;
+  }
+}
+.jsb-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(31,31,31,0.97), rgba(20,20,20,0.97));
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 12px 32px -8px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05);
+  color: #f1f1f1;
+  font-size: 13.5px;
+  line-height: 1.45;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  cursor: pointer;
+  transform: translateY(-8px);
+  opacity: 0;
+  transition: transform 240ms cubic-bezier(0.21,1.02,0.73,1), opacity 240ms ease;
+}
+@media (max-width: 640px) {
+  .jsb-toast { transform: translateY(8px); }
+}
+.jsb-toast.show { transform: translateY(0); opacity: 1; }
+.jsb-toast.hide { opacity: 0; transform: translateY(-8px) scale(0.98); }
+.jsb-toast__icon { font-size: 20px; line-height: 1; flex-shrink: 0; margin-top: 1px; }
+.jsb-toast__msg { flex: 1; min-width: 0; word-break: break-word; }
+.jsb-toast--success { border-color: rgba(80,227,164,0.35); }
+.jsb-toast--success .jsb-toast__icon { color: #50e3a4; }
+.jsb-toast--error   { border-color: rgba(255,170,163,0.35); }
+.jsb-toast--error   .jsb-toast__icon { color: #ffaaa3; }
+.jsb-toast--warning { border-color: rgba(255,191,98,0.35); }
+.jsb-toast--warning .jsb-toast__icon { color: #ffbf62; }
+.jsb-toast--info    { border-color: rgba(22,200,238,0.35); }
+.jsb-toast--info    .jsb-toast__icon { color: #16c8ee; }
+
+/* Promise-based confirm modal (window.confirmDialog) */
+.jsb-modal-overlay {
+  position: fixed; inset: 0; z-index: 210;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  opacity: 0; transition: opacity 180ms ease;
+}
+.jsb-modal-overlay.show { opacity: 1; }
+.jsb-modal {
+  width: 100%; max-width: 400px;
+  background: linear-gradient(135deg, rgba(31,31,31,0.98), rgba(17,17,17,0.98));
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.5);
+  padding: 24px;
+  transform: scale(0.96); transition: transform 180ms cubic-bezier(0.21,1.02,0.73,1);
+}
+.jsb-modal-overlay.show .jsb-modal { transform: scale(1); }
+
+/* ─── REFINED SCROLLBARS ──────────────────────────────── */
+/* The default chunky light OS scrollbar reads as "cheap" on a dark UI. Replace
+   with a thin, quiet, self-hiding thumb. Pages that opt into .hide-scrollbar
+   still win (their rule loads later). Desktop pointers only. */
+@media (pointer: fine) {
+  html { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.16) transparent; }
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.14);
+    border-radius: 8px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.26);
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-corner { background: transparent; }
+}
+
+/* ─── PREMIUM COMPONENT BASELINE ──────────────────────── */
+/* All rules below use :where() (specificity 0) so they act as tasteful global
+   defaults that ANY page-level Tailwind utility overrides. This upgrades every
+   table/form/menu app-wide with zero per-page edits and zero conflict risk. */
+
+/* Data tables — Stripe/Linear style: quiet uppercase headers, hairline row
+   dividers, row hover, tabular figures so numeric columns never jitter.
+   Element-level (not :where) so these beat Tailwind's preflight `*{border:0}`
+   reset, while page-level utility classes (.border-0, .text-left, …) still win. */
+table thead th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  color: #8e8e99;
+  padding: 12px 16px;
+  white-space: nowrap;
+}
+table tbody td {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  vertical-align: middle;
+}
+table tbody tr { transition: background-color 140ms ease; }
+table tbody tr:hover { background-color: rgba(255,255,255,0.025); }
+table td, table th { font-variant-numeric: tabular-nums; }
+
+/* Form controls — consistent placeholder, smooth focus transition, pointer on
+   selects, and a calm disabled treatment everywhere. */
+:where(input, textarea, select) {
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+:where(input, textarea)::placeholder { color: rgba(200,200,207,0.38); }
+:where(select) { cursor: pointer; }
+:where(input:disabled, textarea:disabled, select:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Dropdown / overflow menus — soft entrance + readable item rows. Opt-in via
+   .jsb-menu so existing absolute-positioned menus can adopt it incrementally. */
+.jsb-menu {
+  background: linear-gradient(135deg, rgba(31,31,31,0.98), rgba(20,20,20,0.98));
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px -12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
+  padding: 6px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.jsb-menu button, .jsb-menu a {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; text-align: left;
+  padding: 8px 10px; border-radius: 8px;
+  font-size: 13.5px; color: #f1f1f1;
+  transition: background-color 130ms ease, color 130ms ease;
+}
+.jsb-menu button:hover, .jsb-menu a:hover { background: rgba(255,255,255,0.06); }
+
+/* ─── FORM VALIDATION ─────────────────────────────────── */
+/* Reusable inline-error treatment for required fields. Pair .input-invalid on
+   the control with a <p class="field-error"> helper message beneath it. */
+.input-invalid,
+.input-invalid:focus {
+  border-color: #ffaaa3 !important;
+  box-shadow: 0 0 0 1px rgba(255,170,163,0.45) !important;
+}
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #ffaaa3;
+  font-size: 12px;
+  line-height: 16px;
+  margin-top: 6px;
+}
+.field-error::before {
+  content: "error";
+  font-family: "Material Symbols Outlined";
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* ─── REDUCED MOTION ──────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .skeleton::after { display: none; }
+}

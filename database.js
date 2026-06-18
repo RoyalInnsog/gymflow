@@ -8,6 +8,19 @@ const db = new sqlite3.Database(dbPath, (err) => {
     console.error('Error opening database:', err.message);
   } else {
     console.log('Connected to the SQLite database.');
+    // [REL] Concurrency hardening for the Node.js + SQLite combo.
+    //  * WAL lets readers run concurrently with a writer (no more reader/writer
+    //    lock contention during the morning check-in rush).
+    //  * busy_timeout makes a blocked writer wait-and-retry for up to 5s instead
+    //    of immediately throwing SQLITE_BUSY when another write is in flight.
+    //  * NORMAL synchronous is the safe, fast pairing for WAL.
+    //  * foreign_keys enforces referential integrity (off by default in SQLite).
+    db.serialize(() => {
+      db.run('PRAGMA journal_mode = WAL');
+      db.run('PRAGMA busy_timeout = 5000');
+      db.run('PRAGMA synchronous = NORMAL');
+      db.run('PRAGMA foreign_keys = ON');
+    });
   }
 });
 
@@ -38,6 +51,53 @@ function allQuery(sql, params = []) {
   });
 }
 
+// ============================================================
+// PER-TENANT DEFAULTS
+// ============================================================
+// Real data, not demo data: every tenant needs its own copy of the operational
+// settings the app reads strictly by tenant_id (reminder windows, payment-method
+// toggles, GST config, etc.) and the discount-rule scaffold. Signup used to seed
+// only gym_name + currency, so real tenants were missing renewal/payment/GST
+// settings and the dashboards/automations silently fell back to nothing.
+const DEFAULT_TENANT_SETTINGS = [
+  ['logo_url', ''], ['cover_image', ''], ['theme_color', ''],
+  ['support_phone', ''], ['support_email', ''], ['website', ''],
+  ['gst_number', ''], ['address', ''], ['city', ''], ['state', ''], ['country', 'India'],
+  ['renewal_reminder_days', '7,15,30'],
+  ['absent_member_alerts', '3,5,10,30'],
+  ['payment_reminder_rules', '1,7,15,30'],
+  ['renewal_forecast_window', '30,60,90'],
+  ['gst_enabled', 'false'], ['gst_percent', '18'],
+  ['upi_id', ''], ['upi_name', ''],
+  ['account_name', ''], ['bank_name', ''], ['account_number', ''], ['ifsc', ''],
+  ['enable_cash', 'true'], ['enable_upi', 'true'], ['enable_card', 'true'], ['enable_bank_transfer', 'true']
+];
+
+const DEFAULT_DISCOUNT_RULES = [
+  ['loyalty', 'Loyalty Discount'],
+  ['student', 'Student Discount'],
+  ['corporate', 'Corporate Discount'],
+  ['promotional', 'Promotional Discount'],
+  ['custom', 'Custom Discount']
+];
+
+// Idempotent (INSERT OR IGNORE) so it can backfill existing tenants on boot and
+// seed brand-new ones at signup without ever clobbering a tenant's own edits.
+async function seedTenantDefaults(tenantId, gymName) {
+  await runQuery(`INSERT OR IGNORE INTO settings (tenant_id, setting_key, setting_value) VALUES (?, 'gym_name', ?)`, [tenantId, gymName || 'My Gym']);
+  await runQuery(`INSERT OR IGNORE INTO settings (tenant_id, setting_key, setting_value) VALUES (?, 'currency', '₹')`, [tenantId]);
+  for (const [k, v] of DEFAULT_TENANT_SETTINGS) {
+    await runQuery(`INSERT OR IGNORE INTO settings (tenant_id, setting_key, setting_value) VALUES (?, ?, ?)`, [tenantId, k, v]);
+  }
+  for (const [ruleId, ruleName] of DEFAULT_DISCOUNT_RULES) {
+    await runQuery(
+      `INSERT OR IGNORE INTO discount_rules (id, tenant_id, name, enabled, discount_type, amount, percent)
+       VALUES (?, ?, ?, 0, 'amount', 0, 0)`,
+      [ruleId, tenantId, ruleName]
+    );
+  }
+}
+
 async function initializeDatabase() {
   db.serialize(async () => {
     // -1. Tenants table
@@ -56,6 +116,18 @@ async function initializeDatabase() {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Onboarding columns
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN tour_completed INTEGER DEFAULT 0`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN onboarding_completed INTEGER DEFAULT 0`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN recommended_plan TEXT`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN gym_type TEXT`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN opening_time TEXT`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN closing_time TEXT`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN staff_count INTEGER`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN expected_members INTEGER`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN logo_url TEXT`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN cover_url TEXT`); } catch (e) {}
 
     // 0. Settings table
     await runQuery(`
@@ -251,6 +323,67 @@ async function initializeDatabase() {
       )
     `);
 
+    // 8b. [M4] Per-tenant, per-year monotonic invoice counter (atomic via
+    // INSERT ... ON CONFLICT ... RETURNING) so receipt numbers never collide.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS invoice_sequences (
+        tenant_id TEXT NOT NULL,
+        year INTEGER NOT NULL,
+        last_value INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (tenant_id, year)
+      )
+    `);
+
+    // 8c. [M4/L3] Legacy schema drift: older databases created invoices with a
+    // GLOBAL `invoice_number TEXT UNIQUE`. Per-tenant receipt sequences (INV-2026-
+    // 00001) are meant to restart per gym, so two tenants' first invoice collide on
+    // a global unique. Rebuild the table so uniqueness is per-tenant
+    // (UNIQUE(tenant_id, invoice_number)). Runs once, only when the old constraint
+    // is detected; preserves all existing invoice rows.
+    try {
+      const invSql = await getQuery(`SELECT sql FROM sqlite_master WHERE type='table' AND name='invoices'`);
+      if (invSql && /invoice_number\s+TEXT\s+UNIQUE/i.test(invSql.sql)) {
+        console.log('[migration] Rebuilding invoices: global invoice_number UNIQUE -> per-tenant.');
+        const cols = (await allQuery(`PRAGMA table_info(invoices)`)).map(c => c.name);
+        const colList = cols.join(', ');
+        await runQuery('PRAGMA foreign_keys=OFF');
+        await runQuery('BEGIN');
+        await runQuery(`
+          CREATE TABLE invoices_new (
+            id TEXT PRIMARY KEY,
+            tenant_id TEXT,
+            member_id TEXT,
+            membership_id TEXT,
+            invoice_number TEXT,
+            subtotal REAL,
+            tax_amount REAL,
+            total_amount REAL,
+            status TEXT,
+            pdf_url TEXT,
+            due_date DATETIME,
+            amount_due REAL,
+            applied_discounts TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        // Copy only columns that exist in both tables (intersection by name).
+        const newCols = ['id','tenant_id','member_id','membership_id','invoice_number','subtotal','tax_amount','total_amount','status','pdf_url','due_date','amount_due','applied_discounts','created_at'];
+        const shared = newCols.filter(c => cols.includes(c));
+        await runQuery(`INSERT INTO invoices_new (${shared.join(', ')}) SELECT ${shared.join(', ')} FROM invoices`);
+        await runQuery('DROP TABLE invoices');
+        await runQuery('ALTER TABLE invoices_new RENAME TO invoices');
+        await runQuery('COMMIT');
+        await runQuery('PRAGMA foreign_keys=ON');
+        await runQuery(`CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_invoice_per_tenant ON invoices(tenant_id, invoice_number)`);
+        console.log('[migration] invoices rebuilt with per-tenant invoice_number uniqueness.');
+      } else {
+        await runQuery(`CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_invoice_per_tenant ON invoices(tenant_id, invoice_number)`);
+      }
+    } catch (e) {
+      console.error('[migration] invoices uniqueness migration failed:', e.message);
+      try { await runQuery('ROLLBACK'); } catch (_) {}
+    }
+
     // 9. Payments table
     await runQuery(`
       CREATE TABLE IF NOT EXISTS payments (
@@ -298,6 +431,11 @@ async function initializeDatabase() {
     // Schema alterations for Phase 3
     try { await runQuery(`ALTER TABLE invoices ADD COLUMN due_date DATETIME`); } catch (e) {}
     try { await runQuery(`ALTER TABLE invoices ADD COLUMN amount_due REAL`); } catch (e) {}
+
+    // [DISCOUNT-FIX] Persist the exact discount line-items that were applied to an
+    // invoice. Stored as a JSON string snapshot so historical receipts keep showing
+    // what was charged even if a rule is later edited or disabled.
+    try { await runQuery(`ALTER TABLE invoices ADD COLUMN applied_discounts TEXT`); } catch (e) {}
 
     // 11. Campaigns table
     await runQuery(`
@@ -423,9 +561,148 @@ async function initializeDatabase() {
     await runQuery(`CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(is_read) WHERE is_read = 0`);
     await runQuery(`CREATE INDEX IF NOT EXISTS idx_tenant_id ON settings(tenant_id)`);
 
-    // Unique indexes for duplicate member protection (same tenant cannot have duplicate phone/email)
-    await runQuery(`CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_phone_per_tenant ON members(tenant_id, phone)`);
-    await runQuery(`CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_email_per_tenant ON members(tenant_id, email)`);
+    // ============================================================
+    // Performance indexes — members / memberships / attendance /
+    // payments / membership_plans
+    // ============================================================
+    //
+    // Design rules:
+    //   * All unique indexes on (tenant_id, ...) above are also the
+    //     fastest lookup indexes for those columns, so we do NOT
+    //     re-add plain (phone) or (email) indexes — they're covered.
+    //   * Composite indexes are ordered by equality filters first,
+    //     then range / ORDER BY columns last (SQLite left-to-prefix rule).
+    //   * status is selective enough on its own to deserve a partial
+    //     index for the very common WHERE status='Active' dashboard
+    //     queries that scan large member tables.
+    // ------------------------------------------------------------
+
+    // --- members ---
+    // (id, tenant_id) lookup: PK on id covers equality, but most
+    // handlers also pass tenant_id. A composite (tenant_id, id)
+    // serves both directions and matches `WHERE id=? AND tenant_id=?`.
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_members_tenant_id ON members(tenant_id, id)`);
+
+    // Phone/email search across the whole table (e.g. /attendance
+    // handler that does SELECT * FROM members WHERE phone = ?).
+    // Covered by the unique (tenant_id, phone/email) indexes above
+    // when a tenant_id is available, but the cross-tenant phone-only
+    // search path is still hot, so add a non-unique phone index too.
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_members_phone ON members(phone)`);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_members_email ON members(email) WHERE email IS NOT NULL AND email != ''`);
+
+    // Tenant-scoped status filter used by every dashboard endpoint
+    // (active counts, expired counts, member directory).
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_members_tenant_status ON members(tenant_id, status)`);
+
+    // Recent-members-by-tenant listing.
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_members_tenant_created ON members(tenant_id, created_at DESC)`);
+
+    // --- memberships ---
+    // Member timeline: WHERE member_id = ? ORDER BY created_at DESC
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_memberships_member_created ON memberships(member_id, created_at DESC)`);
+
+    // Status scans (active memberships, expiry scans, renewals).
+    // tenant_id is included because all queries are tenant-scoped.
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_memberships_tenant_status ON memberships(tenant_id, status)`);
+
+    // Expiry window scans: status='Active' AND end_date BETWEEN ...
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_memberships_status_enddate ON memberships(status, end_date)`);
+
+    // Plan lookups (e.g. revenue by plan, JOIN membership_plans p ON ms.plan_id = p.id)
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_memberships_plan ON memberships(plan_id)`);
+
+    // --- attendance ---
+    // Member timeline: WHERE member_id = ? ORDER BY check_in DESC
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_attendance_member_checkin ON attendance(member_id, check_in DESC)`);
+
+    // Tenant-scoped date-range scans (dashboard, recent attendance).
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_attendance_tenant_checkin ON attendance(tenant_id, check_in DESC)`);
+
+    // --- payments ---
+    // Member payment history: WHERE member_id = ? ORDER BY created_at DESC
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_payments_member_created ON payments(member_id, created_at DESC)`);
+
+    // Invoice -> payments JOIN.
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_payments_invoice ON payments(invoice_id)`);
+
+    // Revenue / status aggregations across tenants (Successful payments).
+    // Partial index keeps it tiny since most rows aren't 'Successful'.
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_payments_status_created ON payments(status, created_at) WHERE status = 'Successful'`);
+
+    // Tenant-scoped payment listing.
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_payments_tenant_created ON payments(tenant_id, created_at DESC)`);
+
+    // --- membership_plans ---
+    // Tenant-scoped plan listing and active-plan filter.
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_membership_plans_tenant ON membership_plans(tenant_id)`);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_membership_plans_tenant_active ON membership_plans(tenant_id, is_active)`);
+
+    // --- Duplicate member protection ---
+    // Same tenant cannot have duplicate phone numbers.
+    // Same tenant cannot have duplicate emails (when email is not empty).
+    // Different tenants may use the same phone/email.
+    //
+    // Step 1: Clean up any pre-existing duplicate records safely.
+    // Keep the OLDEST member per (tenant_id, phone) and per (tenant_id, email) group;
+    // re-assign or blank the duplicates so the unique index can be created.
+    // PHONE duplicates (phone is required, never NULL — treat empty string as same bucket)
+    try {
+      await runQuery(`
+        UPDATE members
+        SET phone = phone || '_dup_' || id
+        WHERE id IN (
+          SELECT id FROM (
+            SELECT id,
+                   ROW_NUMBER() OVER (
+                     PARTITION BY tenant_id, phone
+                     ORDER BY created_at ASC, id ASC
+                   ) AS rn
+            FROM members
+            WHERE phone IS NOT NULL AND phone != ''
+          )
+          WHERE rn > 1
+        )
+      `);
+    } catch (e) {
+      console.error('Failed to deduplicate phone values:', e.message);
+    }
+
+    // EMAIL duplicates (only when email is not empty)
+    try {
+      await runQuery(`
+        UPDATE members
+        SET email = NULL
+        WHERE email IS NOT NULL AND email != ''
+          AND id IN (
+            SELECT id FROM (
+              SELECT id,
+                     ROW_NUMBER() OVER (
+                       PARTITION BY tenant_id, email
+                       ORDER BY created_at ASC, id ASC
+                     ) AS rn
+              FROM members
+              WHERE email IS NOT NULL AND email != ''
+            )
+            WHERE rn > 1
+          )
+      `);
+    } catch (e) {
+      console.error('Failed to deduplicate email values:', e.message);
+    }
+
+    // Step 2: Database-level protection with partial unique indexes.
+    // Phone: required, never empty — full unique on (tenant_id, phone).
+    await runQuery(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_phone_per_tenant
+        ON members(tenant_id, phone)
+    `);
+    // Email: only enforced when email is not NULL and not empty string.
+    await runQuery(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_email_per_tenant
+        ON members(tenant_id, email)
+        WHERE email IS NOT NULL AND email != ''
+    `);
 
     // 18. Templates table
     await runQuery(`
@@ -437,6 +714,113 @@ async function initializeDatabase() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // 18b. Discount Rules table
+    // [DISCOUNT-FIX] One row per (rule_id, tenant_id). Rules are STRUCTURED (not
+    // key/value) so the renewal flow can read a single row to apply a discount.
+    // 5 fixed rule ids: loyalty, student, corporate, promotional, custom.
+    // `enabled` gates whether the rule applies; `discount_type` is 'amount' | 'percent'.
+    // Exactly one of (amount, percent) is meaningful per rule — enforced server-side.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS discount_rules (
+        id            TEXT NOT NULL,
+        tenant_id     TEXT NOT NULL,
+        name          TEXT,
+        enabled       INTEGER DEFAULT 0,
+        discount_type TEXT DEFAULT 'amount',
+        amount        REAL DEFAULT 0,
+        percent       REAL DEFAULT 0,
+        updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id, tenant_id)
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_discount_rules_tenant ON discount_rules(tenant_id)`);
+
+    // ============================================================
+    // SUBSCRIPTION BILLING TABLES (Razorpay integration)
+    // ============================================================
+
+    // subscriptions: per-tenant current billing state — single row per tenant.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT UNIQUE,
+        plan TEXT NOT NULL,
+        status TEXT NOT NULL,
+        razorpay_customer_id TEXT,
+        razorpay_subscription_id TEXT,
+        razorpay_plan_id TEXT,
+        start_date DATETIME,
+        expiry_date DATETIME,
+        next_billing_date DATETIME,
+        trial_end DATETIME,
+        cancelled_at DATETIME,
+        cancel_at_period_end INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+      )
+    `);
+
+    // subscription_history: immutable ledger of plan changes.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS subscription_history (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT,
+        from_plan TEXT,
+        to_plan TEXT,
+        action TEXT,
+        razorpay_subscription_id TEXT,
+        razorpay_payment_id TEXT,
+        amount REAL,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+      )
+    `);
+
+    // billing_events: webhook delivery log + audit trail.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS billing_events (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT,
+        event_type TEXT,
+        razorpay_event_id TEXT UNIQUE,
+        razorpay_subscription_id TEXT,
+        razorpay_payment_id TEXT,
+        payload TEXT,
+        status TEXT DEFAULT 'processed',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+      )
+    `);
+
+    // Backfill columns on tenants for Razorpay linkage (idempotent ALTERs).
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN razorpay_customer_id TEXT`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN razorpay_subscription_id TEXT`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN next_billing_date DATETIME`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN cancelled_at DATETIME`); } catch (e) {}
+
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_subscriptions_tenant ON subscriptions(tenant_id)`);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_subscriptions_rzp_sub ON subscriptions(razorpay_subscription_id)`);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_subscription_history_tenant ON subscription_history(tenant_id, created_at DESC)`);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_billing_events_tenant ON billing_events(tenant_id, created_at DESC)`);
+
+    // 19. Email Logs table
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS email_logs (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT,
+        recipient TEXT,
+        subject TEXT,
+        provider TEXT,
+        provider_message_id TEXT,
+        status TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_email_logs_tenant ON email_logs(tenant_id, created_at DESC)`);
 
     console.log('All tables and indexes created.');
 
@@ -452,100 +836,61 @@ async function initializeDatabase() {
       console.log('Seeded roles.');
     }
 
-    // Seed Owner and Manager Users
-    const usersCount = await getQuery(`SELECT COUNT(*) as count FROM users`);
-    if (usersCount.count === 0) {
-      const ownerHash = await bcrypt.hash('admin123', 10);
-      const managerHash = await bcrypt.hash('vikram123', 10);
-
-      await runQuery(`INSERT INTO users (id, role_id, email, password_hash, full_name, email_verified, status) VALUES 
-        ('u1', 'r1', 'admin@jsbfitness.in', '${ownerHash}', 'System Admin', 1, 'active'),
-        ('u2', 'r2', 'manager@jsbfitness.in', '${managerHash}', 'Gym Manager', 1, 'active')
-      `);
-      console.log('Seeded users.');
+    // [C4 FIX] No seeded human/admin accounts and no default passwords.
+    // The first Owner account is created exclusively via the public signup flow
+    // (POST /api/v1/auth/signup). We also purge any legacy hard-coded backdoor
+    // accounts that may already exist in an older database file (idempotent).
+    const purged = await runQuery(
+      `DELETE FROM users WHERE id IN ('u1', 'u2') OR email IN ('admin@jsbfitness.in', 'manager@jsbfitness.in')`
+    );
+    if (purged && purged.changes > 0) {
+      console.log(`Removed ${purged.changes} legacy seeded backdoor account(s).`);
     }
 
-    // Seed Staff
-    const staffCount = await getQuery(`SELECT COUNT(*) as count FROM staff`);
-    if (staffCount.count === 0) {
-      await runQuery(`INSERT INTO staff (id, user_id, name, role, email, phone, branch_id, base_salary, bonus_earned, status) VALUES 
-        ('s1', 'u2', 'Vikram Singh', 'Admin', 'manager@jsbfitness.in', '+91 98765 43210', 'JSB Fitness Mumbai', 85000, 15000, 'Checked In')
-      `);
-      console.log('Seeded staff.');
-    }
+    // [DEMO-DATA] No seeded demo staff. The old seed created "Vikram Singh"
+    // linked to the removed backdoor account (manager@jsbfitness.in). Staff are
+    // created per-tenant through Staff Management.
 
-    // Seed Membership Plans (Upgraded to Monthly, Quarterly, Half-Yearly, Annual)
-    const plansCount = await getQuery(`SELECT COUNT(*) as count FROM membership_plans`);
-    if (plansCount.count === 0) {
-      await runQuery(`INSERT INTO membership_plans (id, name, duration_months, price, tax_rate_percent, description) VALUES 
-        ('p_monthly', 'Monthly Membership', 1, 1500, 18.00, 'Gym Access Only (Monthly)'),
-        ('p_quarterly', 'Quarterly Power Plan', 3, 4000, 18.00, 'Full Gym Access (3 Months)'),
-        ('p_half_yearly', 'Half-Yearly Value Plan', 6, 7500, 18.00, 'Gym Access + 2 Guest Passes (6 Months)'),
-        ('p_annual', 'Annual Pro Elite Plan', 12, 12000, 18.00, 'Gym Access, Recovery Room, 4 PT Sessions (12 Months)')
-      `);
-      console.log('Seeded plans.');
-    }
+    // [DEMO-DATA] No global demo membership plans. The old seed inserted four
+    // tenant_id=NULL plans (Monthly/Quarterly/…) that no real tenant could ever
+    // see (all plan reads are scoped by tenant_id). Plans are now created per gym
+    // through Settings → Membership Plans / onboarding.
 
-    const requiredPlans = [
-      ['p_monthly', 'Monthly Membership', 1, 1500, 18.00, 'Gym Access Only (Monthly)'],
-      ['p_quarterly', 'Quarterly Power Plan', 3, 4000, 18.00, 'Full Gym Access (3 Months)'],
-      ['p_half_yearly', 'Half-Yearly Value Plan', 6, 7500, 18.00, 'Gym Access + 2 Guest Passes (6 Months)'],
-      ['p_annual', 'Annual Pro Elite Plan', 12, 12000, 18.00, 'Gym Access, Recovery Room, 4 PT Sessions (12 Months)']
-    ];
-
-    for (const plan of requiredPlans) {
-      const existingPlan = await getQuery(`SELECT id FROM membership_plans WHERE id = ?`, [plan[0]]);
-      if (!existingPlan) {
-        await runQuery(`
-          INSERT INTO membership_plans (id, name, duration_months, price, tax_rate_percent, description)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `, plan);
-      }
-    }
-
-    // Seed default tenant t1 if not exists
+    // [L5] System/platform tenant `t1` is the inbox that receives SaaS billing
+    // notifications (UPI subscription requests). It is NOT a demo gym — it has no
+    // owner login and holds no member data. Seed it with an explicit, valid plan/
+    // status so it is never reported as a NULL-plan "active enterprise" anomaly.
     const t1Exists = await getQuery(`SELECT id FROM tenants WHERE id = 't1'`);
     if (!t1Exists) {
-      const trialStart = new Date().toISOString();
-      const trialEnd = new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString();
-      await runQuery(`INSERT INTO tenants (id, gym_name, subdomain, owner_user_id, subscription_plan, trial_start, trial_end, subscription_status)
-                      VALUES ('t1', 'Kinetic Enterprise', 'kinetic', 'u1', 'enterprise', ?, ?, 'active')`, [trialStart, trialEnd]);
-      console.log('Seeded default tenant t1.');
+      await runQuery(`INSERT INTO tenants (id, gym_name, subdomain, owner_user_id, subscription_plan, subscription_status)
+                      VALUES ('t1', 'Gym Flow', 'platform', NULL, 'enterprise', 'active')`);
+      console.log('Seeded platform tenant t1.');
+    } else {
+      // Repair an older t1 that was left with a NULL/trial plan — the platform
+      // tenant is always a valid active enterprise account.
+      await runQuery(`UPDATE tenants SET subscription_plan = 'enterprise', subscription_status = 'active' WHERE id = 't1'`);
     }
 
-    // Seed Settings
-    const settingsCount = await getQuery(`SELECT COUNT(*) as count FROM settings`);
-    if (settingsCount.count === 0) {
-      await runQuery(`INSERT INTO settings (setting_key, setting_value) VALUES 
-        ('gym_name', 'Kinetic Enterprise'),
-        ('logo_url', ''),
-        ('cover_image', ''),
-        ('owner_name', 'System Admin'),
-        ('support_phone', '+91 00000 00000'),
-        ('email', 'admin@kinetic.app'),
-        ('website', 'www.kinetic.app'),
-        ('gst_number', ''),
-        ('address', 'HQ Address'),
-        ('city', 'City'),
-        ('state', 'State'),
-        ('country', 'India'),
-        ('renewal_reminder_days', '7,15,30'),
-        ('absent_member_alerts', '3,5,10,30'),
-        ('payment_reminder_rules', '1,7,15,30'),
-        ('renewal_forecast_window', '30,60,90'),
-        ('upi_id', ''),
-        ('account_name', ''),
-        ('bank_name', ''),
-        ('account_number', ''),
-        ('ifsc', ''),
-        ('razorpay_key_id', ''),
-        ('razorpay_secret', ''),
-        ('enable_cash', 'true'),
-        ('enable_upi', 'true'),
-        ('enable_card', 'true'),
-        ('enable_bank_transfer', 'true')
-      `);
-      console.log('Seeded default settings.');
+    // [L6] One-time cleanup of orphaned rows with a NULL tenant_id (left behind by
+    // pre-isolation writes). They belong to no tenant and are invisible to every
+    // tenant-scoped query, so they are pure dead data — remove them.
+    for (const tbl of ['members', 'attendance', 'memberships', 'payments', 'invoices', 'leads', 'tasks']) {
+      try {
+        const res = await runQuery(`DELETE FROM ${tbl} WHERE tenant_id IS NULL`);
+        if (res && res.changes > 0) console.log(`[L6] Removed ${res.changes} orphan NULL-tenant row(s) from ${tbl}.`);
+      } catch (e) { /* table may not exist yet */ }
+    }
+
+    // [REAL-DATA] Backfill the full default settings + discount-rule scaffold for
+    // EVERY existing tenant (idempotent). Previously only gym_name + currency were
+    // seeded at signup, so live tenants were missing reminder windows, GST config
+    // and payment-method toggles that the dashboards/automation read by tenant_id.
+    const tenantRows = await allQuery(`SELECT id, gym_name FROM tenants`);
+    for (const t of tenantRows) {
+      await seedTenantDefaults(t.id, t.gym_name);
+    }
+    if (tenantRows.length > 0) {
+      console.log(`Backfilled settings + discount_rules for ${tenantRows.length} tenant(s).`);
     }
 
     // Seed Templates with INSERT OR REPLACE to update existing ones
@@ -567,5 +912,6 @@ module.exports = {
   runQuery,
   getQuery,
   allQuery,
-  initializeDatabase
+  initializeDatabase,
+  seedTenantDefaults
 };

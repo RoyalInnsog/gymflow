@@ -11,7 +11,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>Kinetic SaaS - Attendance</title>
+<title>Gym Flow - Attendance</title>
 <!-- Google Fonts -->
 
 <!-- Material Symbols -->
@@ -115,8 +115,8 @@
 <div>
 <h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest mb-2">Hourly Trend</h3>
 <div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-primary text-sm" data-icon="trending_up">trending_up</span>
-<span class="font-body-sm text-body-sm text-primary">+12% vs yesterday</span>
+<span class="material-symbols-outlined text-primary text-sm" data-icon="schedule">schedule</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Today's hourly activity</span>
 </div>
 </div>
 <!-- CSS simulated sparkline -->
@@ -251,7 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <img src="${photo}" class="w-full h-full object-cover"/>
               </div>
               <div>
-                <div class="font-body-md text-body-md text-on-surface font-medium">${log.full_name}</div>
+                <div class="font-body-md text-body-md text-on-surface font-medium">${esc(log.full_name)}</div>
                 <div class="font-body-sm text-body-sm text-on-surface-variant">Access: ${log.access_method}</div>
               </div>
             </div>

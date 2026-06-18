@@ -11,7 +11,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>JSB Fitness - Activity Log</title>
+<title>Gym Flow</title>
 
 <style>
     .glass-card {
@@ -101,33 +101,33 @@ document.addEventListener("DOMContentLoaded", () => {
           try {
              const parsed = JSON.parse(log.new_values);
              if (parsed && Object.keys(parsed).length > 0) {
-                 detailHtml = '<div class="mt-2 p-3 bg-surface-container-lowest rounded-md text-xs font-mono text-on-surface-variant overflow-x-auto">' + JSON.stringify(parsed) + '</div>';
+                 detailHtml = '<div class="mt-2 p-3 bg-surface-container-lowest rounded-md text-xs font-mono text-on-surface-variant overflow-x-auto">' + esc(JSON.stringify(parsed)) + '</div>';
              }
           } catch(e){}
 
           const item = document.createElement('div');
           item.className = 'relative';
-          item.innerHTML = \`
+          item.innerHTML = `
             <!-- Timeline Line Connector & Dot -->
             <div class="absolute -left-[43px] top-1 w-10 flex justify-end">
-                <div class="w-8 h-8 rounded-full \${iconBg} flex items-center justify-center timeline-dot border border-white/5 z-10">
-                    <span class="material-symbols-outlined \${iconColor} text-[16px]">\${icon}</span>
+                <div class="w-8 h-8 rounded-full ${iconBg} flex items-center justify-center timeline-dot border border-white/5 z-10">
+                    <span class="material-symbols-outlined ${iconColor} text-[16px]">${icon}</span>
                 </div>
             </div>
 
             <div class="bg-surface-container/50 border border-white/5 rounded-lg p-4 hover:border-white/10 transition-colors">
                 <div class="flex justify-between items-start mb-1">
-                    <p class="font-label-md text-label-md font-bold text-on-surface uppercase tracking-wider">\${actionLabel} <span class="text-on-surface-variant lowercase font-normal ml-2">on \${log.table_name}</span></p>
-                    <span class="font-label-sm text-label-sm text-on-surface-variant">\${new Date(log.created_at).toLocaleString()}</span>
+                    <p class="font-label-md text-label-md font-bold text-on-surface uppercase tracking-wider">${actionLabel} <span class="text-on-surface-variant lowercase font-normal ml-2">on ${esc(log.table_name)}</span></p>
+                    <span class="font-label-sm text-label-sm text-on-surface-variant">${new Date(log.created_at).toLocaleString()}</span>
                 </div>
                 <p class="font-body-sm text-body-sm text-on-surface-variant mb-1">
                     <span class="material-symbols-outlined text-[14px] align-middle mr-1">person</span>
-                    \${email}
+                    ${esc(email)}
                 </p>
-                <p class="font-body-sm text-body-sm text-on-surface">Record ID: <span class="font-mono text-xs">\${log.record_id}</span></p>
-                \${detailHtml}
+                <p class="font-body-sm text-body-sm text-on-surface">Record ID: <span class="font-mono text-xs">${esc(log.record_id)}</span></p>
+                ${detailHtml}
             </div>
-          \`;
+          `;
           container.appendChild(item);
       });
 

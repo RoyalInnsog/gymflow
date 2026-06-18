@@ -2,4 +2,20 @@ node_modules/
 .env
 database.db
 database.sqlite
+
+# [M7] Backups live outside the web root and must never be committed.
+data/
 backup_*.db
+backup_*.json
+
+# Local server logs / scratch
+_srv_out.log
+_srv_err.log
+_*.js
+
+# Archived one-off dev/migration scripts (kept out of the repo root)
+archive/
+
+# Pre-refactor DB snapshots
+*.bak
+database.db.pre_*

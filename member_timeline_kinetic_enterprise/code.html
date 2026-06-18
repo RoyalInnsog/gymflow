@@ -11,7 +11,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>Kinetic SaaS - Member Timeline</title>
+<title>Gym Flow - Member Timeline</title>
 
 <style>
         /* Glassmorphism utility */
@@ -217,8 +217,8 @@
                   <span class="material-symbols-outlined text-[#25D366] text-[12px]">forum</span>
                 </div>
                 <div>
-                  <p class="font-body-md text-on-surface line-clamp-1">${c.title}</p>
-                  <p class="text-on-surface-variant line-clamp-2 mt-0.5 font-light">${c.message}</p>
+                  <p class="font-body-md text-on-surface line-clamp-1">${esc(c.title)}</p>
+                  <p class="text-on-surface-variant line-clamp-2 mt-0.5 font-light">${esc(c.message)}</p>
                   <p class="text-[10px] text-outline mt-0.5">${new Date(c.created_at).toLocaleDateString()}</p>
                 </div>
               `;
@@ -275,7 +275,7 @@
                     <span class="font-body-md text-body-md text-on-surface-variant text-sm">${event.date}</span>
                   </div>
                 </div>
-                <h3 class="font-title-lg text-title-lg text-on-surface mb-1">${event.title}</h3>
+                <h3 class="font-title-lg text-title-lg text-on-surface mb-1">${esc(event.title)}</h3>
                 <p class="font-body-md text-body-md text-on-surface-variant">${event.details}</p>
               </div>
             `;

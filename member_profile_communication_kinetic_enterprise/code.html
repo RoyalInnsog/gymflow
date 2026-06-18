@@ -11,7 +11,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>Kinetic SaaS - Communications</title>
+<title>Gym Flow - Communications</title>
 
 <style>
         .glass-panel {
@@ -222,11 +222,11 @@
                 <div class="flex justify-between items-start mb-2">
                   <div class="flex items-center gap-2">
                     <span class="material-symbols-outlined text-secondary text-[20px]">chat</span>
-                    <h4 class="font-label-md text-label-md text-on-surface">${com.title}</h4>
+                    <h4 class="font-label-md text-label-md text-on-surface">${esc(com.title)}</h4>
                   </div>
                   <span class="font-label-md text-label-md text-on-surface-variant">just now</span>
                 </div>
-                <p class="font-body-sm text-body-sm text-on-surface-variant mt-2">${com.message}</p>
+                <p class="font-body-sm text-body-sm text-on-surface-variant mt-2">${esc(com.message)}</p>
                 <div class="mt-3 inline-block px-2 py-1 rounded bg-secondary/10 text-secondary font-label-md text-[10px]">${com.type}</div>
               </div>
             `;

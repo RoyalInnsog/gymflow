@@ -11,7 +11,8 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>Kinetic SaaS - Renew Membership</title>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<title>Gym Flow - Renew Membership</title>
 
 <style>
         .material-symbols-outlined {
@@ -21,7 +22,7 @@
             font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
         
-        /* Custom input styling for JSB Fitness */
+        /* Custom input styling for <span class="dynamic-gym-name"></span> */
         .kinetic-input {
             background-color: #121212;
             border-color: rgba(255, 255, 255, 0.1);
@@ -131,42 +132,64 @@
 <span class="font-title-lg text-title-lg">UPI</span>
 </button>
 <!-- Option 3: Cash -->
-<button class="flex flex-col items-center justify-center gap-3 p-6 rounded-lg bg-surface-container border border-outline-variant/50 text-on-surface-variant hover:bg-surface-variant/50 hover:border-outline-variant transition-all" onclick="window.location.href='/finance'">
+<button class="flex flex-col items-center justify-center gap-3 p-6 rounded-lg bg-surface-container border border-outline-variant/50 text-on-surface-variant hover:bg-surface-variant/50 hover:border-outline-variant transition-all">
 <span class="material-symbols-outlined text-[32px]">payments</span>
 <span class="font-title-lg text-title-lg">Cash</span>
 </button>
 </div>
-<!-- Selected Method Details: Card Input -->
-<div class="flex flex-col gap-stack-md pt-stack-sm border-t border-white/5">
-<h3 class="font-title-lg text-title-lg text-on-surface">Card Details</h3>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
-<!-- Name on Card -->
-<div class="flex flex-col gap-2 md:col-span-2">
-<label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Name on Card</label>
-<input class="kinetic-input w-full h-12 rounded-lg px-4 text-on-surface font-body-lg focus:ring-0" placeholder="e.g. Vikram Malhotra" type="text">
-</div>
-<!-- Card Number -->
-<div class="flex flex-col gap-2 md:col-span-2">
-<label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Card Number</label>
-<div class="relative">
-<input class="kinetic-input w-full h-12 rounded-lg pl-12 pr-4 text-on-surface font-body-lg focus:ring-0 tracking-widest" placeholder="0000 0000 0000 0000" type="text">
-<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">credit_card</span>
-</div>
-</div>
-<!-- Expiry -->
-<div class="flex flex-col gap-2">
-<label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Expiry Date</label>
-<input class="kinetic-input w-full h-12 rounded-lg px-4 text-on-surface font-body-lg focus:ring-0" placeholder="MM/YY" type="text">
-</div>
-<!-- CVV -->
-<div class="flex flex-col gap-2">
-<label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">CVV</label>
-<div class="relative">
-<input class="kinetic-input w-full h-12 rounded-lg px-4 text-on-surface font-body-lg focus:ring-0 tracking-widest" placeholder="•••" type="password">
-<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px] cursor-help" title="3 digits on back of card">info</span>
-</div>
-</div>
-</div>
+<!-- Selected Method Details -->
+<div id="payment-details-container" class="flex flex-col gap-stack-md pt-stack-sm border-t border-white/5 min-h-[250px]">
+  
+  <!-- Card Pane -->
+  <div id="pane-Card" class="flex flex-col gap-stack-md block">
+    <h3 class="font-title-lg text-title-lg text-on-surface">Card Details</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+      <!-- Name on Card -->
+      <div class="flex flex-col gap-2 md:col-span-2">
+        <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Name on Card</label>
+        <input class="kinetic-input w-full h-12 rounded-lg px-4 text-on-surface font-body-lg focus:ring-0" placeholder="e.g. Vikram Malhotra" type="text">
+      </div>
+      <!-- Card Number -->
+      <div class="flex flex-col gap-2 md:col-span-2">
+        <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Card Number</label>
+        <div class="relative">
+          <input class="kinetic-input w-full h-12 rounded-lg pl-12 pr-4 text-on-surface font-body-lg focus:ring-0 tracking-widest" placeholder="0000 0000 0000 0000" type="text">
+          <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">credit_card</span>
+        </div>
+      </div>
+      <!-- Expiry -->
+      <div class="flex flex-col gap-2">
+        <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Expiry Date</label>
+        <input class="kinetic-input w-full h-12 rounded-lg px-4 text-on-surface font-body-lg focus:ring-0" placeholder="MM/YY" type="text">
+      </div>
+      <!-- CVV -->
+      <div class="flex flex-col gap-2">
+        <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">CVV</label>
+        <div class="relative">
+          <input class="kinetic-input w-full h-12 rounded-lg px-4 text-on-surface font-body-lg focus:ring-0 tracking-widest" placeholder="•••" type="password">
+          <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px] cursor-help" title="3 digits on back of card">info</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPI Pane -->
+  <div id="pane-UPI" class="flex flex-col gap-stack-md hidden items-center justify-center text-center py-4">
+    <h3 class="font-title-lg text-title-lg text-on-surface">Scan to Pay via UPI</h3>
+    <p class="font-body-md text-on-surface-variant">Use PhonePe, GPay, Paytm, or any UPI app.</p>
+    <div class="bg-white p-2 rounded-xl shadow-[0_0_20px_rgba(45,106,255,0.2)] inline-block mt-2">
+      <img id="qr-image" src="" class="w-48 h-48 object-contain" alt="UPI QR Code">
+    </div>
+    <p class="font-label-lg font-bold text-on-surface mt-2 text-xl" id="qr-amount-display"></p>
+  </div>
+
+  <!-- Cash Pane -->
+  <div id="pane-Cash" class="flex flex-col gap-stack-md hidden items-center justify-center text-center py-8">
+    <span class="material-symbols-outlined text-[64px] text-primary mb-2 opacity-80" style="font-variation-settings: 'FILL' 1;">payments</span>
+    <h3 class="font-title-lg text-title-lg text-on-surface">Cash Collection</h3>
+    <p class="font-body-md text-on-surface-variant max-w-sm mx-auto">Please confirm you have received the exact cash amount from the member before processing.</p>
+  </div>
+
 </div>
 </div>
 </div>
@@ -193,16 +216,16 @@
 <span class="font-body-md text-body-md text-on-surface-variant">Plan: Annual Pro Elite</span>
 <span class="font-body-md text-body-md text-on-surface">₹26,000</span>
 </div>
-<div class="flex justify-between items-center text-secondary">
+<div id="discount-row" class="flex justify-between items-center text-secondary hidden">
 <span class="font-body-md text-body-md flex items-center gap-1">
 <span class="material-symbols-outlined text-[16px]">local_offer</span>
-                                Loyalty Discount
+<span id="discount-label">Discount</span>
                             </span>
-<span class="font-body-md text-body-md">-₹2,000</span>
+<span id="discount-amount" class="font-body-md text-body-md">-₹0</span>
 </div>
 <div class="flex justify-between items-center">
-<span class="font-body-md text-body-md text-on-surface-variant">Taxes (18% GST)</span>
-<span class="font-body-md text-body-md text-on-surface">Included</span>
+<span id="tax-label" class="font-body-md text-body-md text-on-surface-variant">Taxes</span>
+<span id="tax-amount" class="font-body-md text-body-md text-on-surface">₹0</span>
 </div>
 </div>
 <!-- Total -->
@@ -218,7 +241,7 @@
 </div>
 </main>
 <!-- Wizard Footer (Sticky Bottom) -->
-<footer class="w-full bg-surface-container/90 backdrop-blur-xl border-t border-white/10 py-4 px-margin sticky bottom-0 z-40 mt-auto">
+<footer class="jsb-action-bar w-full bg-surface-container/90 backdrop-blur-xl border-t border-white/10 py-4 px-margin sticky bottom-0 z-40 mt-auto">
 <div class="max-w-container-max mx-auto flex items-center justify-between">
 <button class="px-6 py-3 rounded-lg border border-outline-variant/50 text-on-surface-variant font-title-lg text-title-lg hover:bg-surface-variant/30 hover:text-on-surface transition-colors flex items-center gap-2">
 <span class="material-symbols-outlined">arrow_back</span>
@@ -238,14 +261,64 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   let selectedMethod = 'Card';
   let selectedPlanId = 'p1';
-  let discount = 2000;
+  let discount = 0;          // resolved per-plan from the admin-configured discount rule (0 when none enabled)
+  let loyaltyRule = null;    // { enabled, discount_type, amount, percent, name } from /settings/discounts
   let planPrice = 25000;
-  let taxRate = 18.00;
+  let taxConfig = { enabled: false, percent: 0 };  // GST from settings, never hardcoded
+  let currentTotalDue = 0;
+
+  async function updatePaymentUI() {
+    ['Card', 'UPI', 'Cash'].forEach(m => {
+      const pane = document.getElementById(`pane-${m}`);
+      if (pane) {
+        if (m === selectedMethod) pane.classList.remove('hidden');
+        else pane.classList.add('hidden');
+      }
+    });
+
+    const processBtn = document.querySelector('footer button.bg-primary');
+    if (processBtn) {
+      if (selectedMethod === 'UPI' || selectedMethod === 'Cash') {
+        processBtn.innerHTML = `Confirm Payment Received <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">verified</span>`;
+      } else {
+        processBtn.innerHTML = `Process ₹${currentTotalDue.toLocaleString()} <span class="material-symbols-outlined">arrow_forward</span>`;
+      }
+    }
+
+    if (selectedMethod === 'UPI') {
+      try {
+        const setRes = await window.api.fetch('/settings/public');
+        const settings = await setRes.json();
+        const upiId = settings.upi_id || '';
+        const upiName = settings.upi_name || window.APP_CONFIG.brand.name;
+        
+        if (!upiId) {
+          alert('Gym UPI ID is not configured in Settings. Please add it first.');
+        } else {
+          const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${currentTotalDue}&cu=INR&tn=Gym+Membership`;
+          document.getElementById('qr-amount-display').innerText = `₹${currentTotalDue.toLocaleString()}`;
+          document.getElementById('qr-image').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiString)}`;
+        }
+      } catch (err) {
+        console.error('QR Gen error', err);
+      }
+    }
+  }
 
   // 1. Wire cancel button
   const cancelBtn = document.querySelector('header button');
   if (cancelBtn) {
     cancelBtn.onclick = () => window.location.href = `/member-profile?id=${memberId}`;
+  }
+
+  // [FIX] The sticky-footer "Back" button had no handler (dead button). Wire it to
+  // return to the member's profile (or browser history if available).
+  const footerBackBtn = document.querySelector('footer button:not(.bg-primary)');
+  if (footerBackBtn) {
+    footerBackBtn.onclick = () => {
+      if (window.history.length > 1) window.history.back();
+      else window.location.href = memberId ? `/member-profile?id=${memberId}` : '/members';
+    };
   }
 
   // 2. Wire payment method toggling
@@ -269,6 +342,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       const activeDot = document.createElement('div');
       activeDot.className = "absolute top-3 right-3 w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(45,106,255,0.8)]";
       btn.appendChild(activeDot);
+      
+      updatePaymentUI();
     };
   });
 
@@ -300,6 +375,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const plansRes = await window.api.fetch('/plans');
       const plans = await plansRes.json();
+
+      // Load the admin-configured discount rule (loyalty). Disabled by default => no discount.
+      try {
+        const discRes = await window.api.fetch('/settings/discounts');
+        if (discRes.ok) {
+          const rules = await discRes.json();
+          loyaltyRule = Array.isArray(rules) ? rules.find(r => r.id === 'loyalty') : null;
+        }
+      } catch (e) { console.warn('Discount rules unavailable; defaulting to no discount.', e); }
+
+      // Load GST config from settings (never hardcoded).
+      try {
+        const pubRes = await window.api.fetch('/settings/public');
+        if (pubRes.ok) {
+          const pub = await pubRes.json();
+          taxConfig = {
+            enabled: pub.gst_enabled === 'true',
+            percent: parseFloat(pub.gst_percent) || 0
+          };
+        }
+      } catch (e) { console.warn('Tax config unavailable; defaulting to no GST.', e); }
+
       plans.forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.id;
@@ -312,11 +409,22 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (selectedPlan) {
           selectedPlanId = selectedPlan.id;
           planPrice = selectedPlan.price;
-          taxRate = selectedPlan.tax_rate_percent || 18.00;
+
+          // Resolve the discount from the admin-configured rule. No rule enabled => no discount.
+          discount = 0;
+          if (loyaltyRule && loyaltyRule.enabled) {
+            discount = loyaltyRule.discount_type === 'percent'
+              ? Math.round(planPrice * (Number(loyaltyRule.percent) || 0) / 100 * 100) / 100
+              : (Number(loyaltyRule.amount) || 0);
+            if (discount > planPrice) discount = planPrice; // never push the total below zero
+          }
 
           const subtotal = planPrice - discount;
-          const taxAmount = subtotal * (taxRate / 100);
-          const totalDue = subtotal + taxAmount;
+          // GST comes from settings (Tax Settings). Disabled => no tax, total = base.
+          const taxAmount = taxConfig.enabled
+            ? Math.round(subtotal * (taxConfig.percent / 100) * 100) / 100
+            : 0;
+          currentTotalDue = subtotal + taxAmount;
 
           const planRow = document.querySelectorAll('.flex.flex-col.gap-3.py-4 > div')[0];
           if (planRow) {
@@ -324,13 +432,28 @@ document.addEventListener("DOMContentLoaded", async () => {
             planRow.querySelector('span:last-child').innerText = `₹${planPrice.toLocaleString()}`;
           }
 
-          const totalDueCell = document.querySelector('.pt-4 .font-display-lg');
-          if (totalDueCell) totalDueCell.innerText = `₹${totalDue.toLocaleString()}`;
-
-          const processBtn = document.querySelector('footer button.bg-primary');
-          if (processBtn) {
-            processBtn.innerHTML = `Process ₹${totalDue.toLocaleString()} <span class="material-symbols-outlined">arrow_forward</span>`;
+          // Show the discount line only when an actual discount applies.
+          const discountRow = document.getElementById('discount-row');
+          if (discountRow) {
+            if (discount > 0) {
+              document.getElementById('discount-label').innerText = (loyaltyRule && loyaltyRule.name) || 'Discount';
+              document.getElementById('discount-amount').innerText = `-₹${discount.toLocaleString()}`;
+              discountRow.classList.remove('hidden');
+            } else {
+              discountRow.classList.add('hidden');
+            }
           }
+
+          // Tax line reflects the configured GST.
+          const taxLabelEl = document.getElementById('tax-label');
+          const taxAmtEl = document.getElementById('tax-amount');
+          if (taxLabelEl) taxLabelEl.innerText = taxConfig.enabled ? `Taxes (${taxConfig.percent}% GST)` : 'Taxes (No GST)';
+          if (taxAmtEl) taxAmtEl.innerText = `₹${taxAmount.toLocaleString()}`;
+
+          const totalDueCell = document.querySelector('.pt-4 .font-display-lg');
+          if (totalDueCell) totalDueCell.innerText = `₹${currentTotalDue.toLocaleString()}`;
+
+          updatePaymentUI();
         }
       }
 
@@ -358,8 +481,45 @@ document.addEventListener("DOMContentLoaded", async () => {
 
           const renewData = await renewResponse.json();
           if (renewResponse.ok) {
-            alert(renewData.message);
-            window.location.href = `/receipt?receipt=${renewData.invoiceNumber}`;
+            if (renewData.orderId) {
+              const options = {
+                key: renewData.key_id,
+                amount: Math.round(renewData.totalAmount * 100),
+                currency: renewData.currency || "INR",
+                name: window.APP_CONFIG.brand.name,
+                description: "Membership Renewal",
+                order_id: renewData.orderId,
+                handler: async function (response) {
+                  try {
+                    const verifyRes = await window.api.fetch('/memberships/renew/verify', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_signature: response.razorpay_signature,
+                        payment_id: renewData.paymentId
+                      })
+                    });
+                    const verifyData = await verifyRes.json();
+                    if (verifyRes.ok) {
+                      alert('Payment verified! ' + verifyData.message);
+                      window.location.href = `/receipt?receipt=${renewData.invoiceNumber}`;
+                    } else {
+                      alert('Payment failed verification: ' + verifyData.error);
+                    }
+                  } catch (e) {
+                    alert('Error verifying payment.');
+                  }
+                },
+                theme: { color: "#2d6aff" }
+              };
+              const rzp1 = new Razorpay(options);
+              rzp1.open();
+            } else {
+              alert(renewData.message);
+              window.location.href = `/receipt?receipt=${renewData.invoiceNumber}`;
+            }
           } else {
             alert(renewData.error || 'Failed to process renewal.');
           }
@@ -376,5 +536,5 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 </script>
 
-<div id="jsb-mobile-nav"></div>
+<!-- Focused flow: global bottom nav intentionally suppressed (back link used instead) -->
 </body></html>

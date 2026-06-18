@@ -11,7 +11,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
-<title>Kinetic SaaS - Member Profile</title>
+<title>Gym Flow - Member Profile</title>
 
 <style>
     .glass-card {
@@ -589,10 +589,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Update Header
       document.title = `Member Profile - ${member.full_name}`;
       document.getElementById('member-name-heading').innerText = member.full_name;
+      document.getElementById('member-branch').innerText = window.APP_CONFIG?.brand?.name || 'Headquarters';
       
       const planBadge = document.getElementById('member-plan-badge');
       if (membership) {
-        planBadge.innerHTML = `<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span> ${membership.plan_name}`;
+        planBadge.innerHTML = `<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span> ${esc(membership.plan_name)}`;
       } else {
         planBadge.innerHTML = `<span class="material-symbols-outlined text-[14px]">star</span> No Plan`;
       }
@@ -625,7 +626,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Days Remaining Ring
       let daysLeft = 0;
       if (membership && member.status === 'Active') {
-        const diff = new Date(membership.end_date) - new Date();
+        const [year, month, day] = membership.end_date.split('-');
+        const endLocal = new Date(year, month - 1, day);
+        endLocal.setHours(23, 59, 59, 999);
+        const diff = endLocal - new Date();
         daysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
       }
       document.getElementById('days-left-count').innerText = daysLeft;
@@ -741,8 +745,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           const row = document.createElement('tr');
           row.innerHTML = `
             <td class="py-3 px-4 font-mono text-on-surface-variant text-xs">${new Date(c.created_at).toLocaleDateString()}</td>
-            <td class="py-3 px-4 font-bold text-on-surface">${c.title}</td>
-            <td class="py-3 px-4 text-on-surface-variant max-w-md truncate" title="${c.message}">${c.message}</td>
+            <td class="py-3 px-4 font-bold text-on-surface">${esc(c.title)}</td>
+            <td class="py-3 px-4 text-on-surface-variant max-w-md truncate" title="${esc(c.message)}">${esc(c.message)}</td>
           `;
           communicationTable.appendChild(row);
         });
@@ -859,7 +863,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function updateWhatsappPreview() {
     if (!loadedMember) return;
     const templateId = whatsappTemplateSelect.value;
-    const gymName = window.APP_CONFIG?.brand?.name || 'Kinetic SaaS';
+    const gymName = window.APP_CONFIG?.brand?.name || 'Gym Flow';
     let msg = '';
     if (templateId === 'welcome') {
       msg = `Hello *${loadedMember.full_name}*, welcome to *${gymName}*! Your profile is set up. Let's crush those fitness goals! 💪`;

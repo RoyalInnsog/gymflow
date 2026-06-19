@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Gym Flow</title>
+  <style>
+    :root { color-scheme: dark; }
+    html, body {
+      margin: 0; height: 100%;
+      background: #0B1120;
+      color: #E2E8F0;
+      font-family: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap {
+      height: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 24px;
+      padding-top: max(24px, env(safe-area-inset-top));
+      padding-bottom: max(24px, env(safe-area-inset-bottom));
+    }
+    .logo { width: 96px; height: 96px; object-fit: contain; border-radius: 20px; margin-bottom: 20px; }
+    h1 { font-size: 20px; font-weight: 600; margin: 0 0 8px; }
+    p { font-size: 14px; line-height: 1.5; color: #94A3B8; max-width: 320px; margin: 0; }
+    .spinner {
+      margin-top: 28px; width: 28px; height: 28px;
+      border: 3px solid rgba(148,163,184,.25);
+      border-top-color: #6366F1; border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <img class="logo" src="logo.png" alt="Gym Flow" />
+    <h1>Gym Flow</h1>
+    <p>Connecting to your gym&rsquo;s servers&hellip; If this screen persists, check your internet connection or contact support.</p>
+    <div class="spinner" aria-hidden="true"></div>
+  </div>
+  <!--
+    This is the bundled offline/fallback shell. In production the app loads the live
+    web app from capacitor.config.json -> server.url, so this page is only shown if the
+    backend URL is unset or unreachable.
+  -->
+</body>
+</html>

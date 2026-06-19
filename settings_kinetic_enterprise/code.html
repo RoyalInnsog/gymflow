@@ -1474,7 +1474,7 @@
         <div class="glass-panel p-4 rounded-xl border border-outline/20 flex flex-col justify-between">
             <div>
                 <h4 class="font-title-md text-title-md text-on-surface mb-2">${esc(t.name)}</h4>
-                <p class="text-on-surface-variant text-sm whitespace-pre-wrap font-mono truncate max-h-16">${t.message_body}</p>
+                <p class="text-on-surface-variant text-sm whitespace-pre-wrap font-mono truncate max-h-16">${esc(t.message_body)}</p>
             </div>
             <div class="flex items-center gap-2 mt-4 justify-end">
                 <button onclick="editTemplate('${t.id}')" class="px-3 py-1 bg-surface-container hover:bg-surface-container-high rounded-md text-primary text-sm font-medium transition-colors">Edit</button>

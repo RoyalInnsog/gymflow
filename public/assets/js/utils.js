@@ -292,3 +292,16 @@ window.addEventListener('DOMContentLoaded', async () => {
         console.error('Failed to load SaaS settings', e);
     }
 });
+
+// ─── App shell loader ────────────────────────────────────────────────────
+// The subscription status badge (Feature 1) and the guided product tour
+// (Features 3–5) live in a dedicated module so this file stays focused on
+// utilities. Loaded once, on every authenticated screen that includes utils.js.
+(function () {
+    if (window.__gymAppShellInjected) return;
+    window.__gymAppShellInjected = true;
+    var s = document.createElement('script');
+    s.src = '/assets/js/appShell.js';
+    s.defer = true;
+    (document.head || document.documentElement).appendChild(s);
+})();

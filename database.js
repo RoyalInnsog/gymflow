@@ -120,6 +120,8 @@ async function initializeDatabase() {
     // Onboarding columns
     try { await runQuery(`ALTER TABLE tenants ADD COLUMN tour_completed INTEGER DEFAULT 0`); } catch (e) {}
     try { await runQuery(`ALTER TABLE tenants ADD COLUMN onboarding_completed INTEGER DEFAULT 0`); } catch (e) {}
+    // [TUTORIAL] Resume index for the guided product tour (0 = not started).
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN tutorial_step INTEGER DEFAULT 0`); } catch (e) {}
     try { await runQuery(`ALTER TABLE tenants ADD COLUMN recommended_plan TEXT`); } catch (e) {}
     try { await runQuery(`ALTER TABLE tenants ADD COLUMN gym_type TEXT`); } catch (e) {}
     try { await runQuery(`ALTER TABLE tenants ADD COLUMN opening_time TEXT`); } catch (e) {}

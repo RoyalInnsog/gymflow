@@ -1,0 +1,14 @@
+{
+  "appId": "com.gymflow.app",
+  "appName": "Gym Flow",
+  "webDir": "www",
+  "server": {
+    "url": "https://REPLACE-WITH-YOUR-BACKEND-DOMAIN",
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0B1120"
+  }
+}

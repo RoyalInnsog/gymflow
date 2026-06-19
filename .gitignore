@@ -3,6 +3,10 @@ node_modules/
 database.db
 database.sqlite
 
+# SQLite runtime sidecar files (regenerated at runtime; never commit)
+database.db-shm
+database.db-wal
+
 # [M7] Backups live outside the web root and must never be committed.
 data/
 backup_*.db
@@ -19,3 +23,10 @@ archive/
 # Pre-refactor DB snapshots
 *.bak
 database.db.pre_*
+
+# Capacitor / Android wrapper (Phase 3)
+mobile/node_modules/
+# Android Studio signing credentials — NEVER commit
+**/keystore.properties
+*.keystore
+*.jks

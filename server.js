@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 require('dotenv').config();
-const { initializeDatabase, getQuery, runQuery, allQuery, seedTenantDefaults } = require('./database');
+const { initializeDatabase, getQuery, runQuery, seedTenantDefaults } = require('./database');
 const emailService = require('./lib/emailService');
 
 const app = express();
@@ -23,11 +23,61 @@ if (process.env.TRUST_PROXY) {
   app.set('trust proxy', tp === 'true' ? true : (isNaN(Number(tp)) ? tp : Number(tp)));
 }
 
+// [SEC] Do not advertise the server framework/version (info disclosure).
+app.disable('x-powered-by');
+
+// [SEC] Security response headers applied to EVERY response (pages, API, static
+// assets, webhook). Hand-rolled to avoid adding a dependency.
+//   * CSP locks the origins that may load scripts/styles/fonts/images/frames and
+//     blocks <base> hijacking, plugin objects, and clickjacking (frame-ancestors).
+//     Inline scripts/handlers and Tailwind's CDN JIT require 'unsafe-inline'/'eval',
+//     so script-src keeps those but still restricts WHICH external origins load.
+//     Razorpay's checkout origins are whitelisted so payments keep working exactly
+//     as before. Set DISABLE_CSP=true to ship only the non-CSP headers if a future
+//     page needs a new origin.
+//   * Payment Permissions-Policy / COOP are deliberately left permissive
+//     (same-origin-allow-popups, payment unrestricted) so the Razorpay popup/iframe
+//     flow is never severed.
+const RZP = 'https://*.razorpay.com';
+const CSP = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  `img-src 'self' data: blob: https://lh3.googleusercontent.com ${RZP}`,
+  "font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com",
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://checkout.razorpay.com`,
+  `connect-src 'self' ${RZP} https://lumberjack.razorpay.com`,
+  `frame-src https://checkout.razorpay.com https://api.razorpay.com ${RZP}`
+].join('; ');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), usb=()');
+  if (process.env.DISABLE_CSP !== 'true') {
+    res.setHeader('Content-Security-Policy', CSP);
+  }
+  // HSTS only in production (over HTTPS); browsers ignore it on plain-HTTP localhost.
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  }
+  next();
+});
+
 // [C4 FIX] JWT secret strictly loaded from environment variable.
 const JWT_SECRET = process.env.JWT_SECRET;
 const WEAK_SECRETS = ['password', 'secret', 'changeme', 'default', '123456', 'kinetic-dev-secret-do-not-use-in-production'];
 // [AUTH FIX] Email verification is only meaningful when a provider is configured.
 const EMAIL_ENABLED = !!process.env.EMAIL_API_KEY;
+
+// [SEC] Precomputed bcrypt hash of an unguessable random string. Used as a decoy in
+// the login handler so bcrypt.compare always runs (even for unknown emails) and the
+// response time does not reveal whether an account exists. Never matches any input.
+const DUMMY_PW_HASH = bcrypt.hashSync('decoy:' + crypto.randomBytes(32).toString('hex'), 10);
 
 // [Google OAuth] Standard OAuth2 (authorization code) sign-in. Enabled only when
 // credentials are configured; the login page hides the button otherwise.
@@ -345,12 +395,13 @@ app.post('/api/v1/auth/login', authLimiter, async (req, res) => {
 
   try {
     const user = await getQuery(`SELECT users.*, roles.permissions FROM users JOIN roles ON users.role_id = roles.id WHERE email = ?`, [email]);
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials.' });
-    }
 
-    const match = await bcrypt.compare(password, user.password_hash);
-    if (!match) {
+    // [SEC] Constant-ish-time auth: always run bcrypt.compare (against a dummy hash
+    // when the email is unknown) so response timing can't be used to enumerate which
+    // emails are registered. The error message is identical for "no such user" and
+    // "wrong password".
+    const match = await bcrypt.compare(password, user ? user.password_hash : DUMMY_PW_HASH);
+    if (!user || !match) {
       return res.status(401).json({ error: 'Invalid credentials.' });
     }
 
@@ -500,12 +551,16 @@ app.post('/api/v1/auth/forgot-password', authLimiter, async (req, res) => {
       await runQuery('UPDATE users SET reset_token = ?, token_expiry = ? WHERE id = ?', [hashedResetToken, expiry, user.id]);
       
       const emailResult = await emailService.sendPasswordReset(email, resetToken, user.tenant_id, PORT);
+      // [SEC] Do NOT surface send success/failure to the caller — a 502 only for
+      // existing accounts is an enumeration oracle. Log server-side and always return
+      // the same generic response below.
       if (!emailResult.success) {
-        return res.status(502).json({ error: 'Failed to dispatch password reset email.' });
+        console.error('[forgot-password] reset email dispatch failed for an existing account.');
       }
     }
     res.json({ message: 'Reset link sent if email exists.' });
   } catch (err) {
+    console.error('[forgot-password] error:', err && err.message);
     res.status(500).json({ error: 'Error processing request.' });
   }
 });
@@ -648,15 +703,15 @@ app.get('/api/v1/auth/google/callback', async (req, res) => {
 // Session Check API
 app.get('/api/v1/auth/session', authenticateToken, async (req, res) => {
   try {
-    const tenant = await getQuery(`SELECT subscription_plan, trial_start, trial_end, subscription_status, tour_completed, onboarding_completed FROM tenants WHERE id = ?`, [req.user.tenant_id]);
-    res.json({ 
+    const tenant = await getQuery(`SELECT subscription_plan, trial_start, trial_end, subscription_status, tour_completed, onboarding_completed, tutorial_step FROM tenants WHERE id = ?`, [req.user.tenant_id]);
+    res.json({
       user: req.user,
-      tenant: tenant || { subscription_plan: 'trial', subscription_status: 'trial', tour_completed: 0, onboarding_completed: 0 }
+      tenant: tenant || { subscription_plan: 'trial', subscription_status: 'trial', tour_completed: 0, onboarding_completed: 0, tutorial_step: 0 }
     });
   } catch (err) {
-    res.json({ 
+    res.json({
       user: req.user,
-      tenant: { subscription_plan: 'trial', subscription_status: 'trial', tour_completed: 0, onboarding_completed: 0 }
+      tenant: { subscription_plan: 'trial', subscription_status: 'trial', tour_completed: 0, onboarding_completed: 0, tutorial_step: 0 }
     });
   }
 });

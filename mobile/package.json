@@ -1,0 +1,21 @@
+{
+  "name": "gymflow-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Capacitor Android wrapper for Gym Flow. The app is a thin WebView over the hosted backend (set in capacitor.config.json -> server.url).",
+  "scripts": {
+    "sync": "cap sync android",
+    "open": "cap open android",
+    "assets": "capacitor-assets generate --android --assetPath assets",
+    "build:apk": "cd android && gradlew.bat assembleRelease",
+    "build:aab": "cd android && gradlew.bat bundleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5"
+  }
+}

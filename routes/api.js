@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getQuery, runQuery, allQuery } = require('../database');
-const { PLANS, isRazorpayConfigured, createOrder, verifyPaymentSignature } = require('../lib/razorpay');
+const { PLANS, isRazorpayConfigured, createOrder, verifyPaymentSignature, fetchOrder, cancelSubscription } = require('../lib/razorpay');
 const { getTodayString, getLastNDaysString, getNextNDaysString } = require('../lib/dateUtils');
 const whatsappService = require('../lib/whatsappService');
 
@@ -281,16 +281,19 @@ router.post('/onboarding/complete-setup', async (req, res) => {
   try {
     const trialEnd = new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString();
     
-    // 1. Update tenants table
+    // 1. Update tenants table.
+    // [SEC] Only stamp the trial window on the FIRST onboarding. The CASE guards
+    // mean re-POSTing /onboarding/complete-setup can no longer reset trial_end to
+    // now+21d on every call (which was an infinite-free-trial business-logic flaw).
     await runQuery(`
-      UPDATE tenants 
-      SET onboarding_completed = 1, 
+      UPDATE tenants
+      SET onboarding_completed = 1,
           gym_name = ?,
           logo_url = ?,
-          opening_time = ?, 
+          opening_time = ?,
           closing_time = ?,
-          trial_start = CURRENT_TIMESTAMP,
-          trial_end = ?
+          trial_start = CASE WHEN onboarding_completed = 1 THEN trial_start ELSE CURRENT_TIMESTAMP END,
+          trial_end   = CASE WHEN onboarding_completed = 1 THEN trial_end   ELSE ? END
       WHERE id = ?`, [gym_name, logo_url, opening_time, closing_time, trialEnd, req.tenant_id]);
 
     // 2. Insert Settings using EAV
@@ -350,11 +353,68 @@ router.post('/onboarding/complete-setup', async (req, res) => {
 
 router.post('/onboarding/restart-tour', async (req, res) => {
   try {
-    await runQuery("UPDATE tenants SET tour_completed = 0, onboarding_completed = 0 WHERE id = ? ", [req.tenant_id]);
+    // Restart only the guided product tour — do NOT wipe completed business setup
+    // (onboarding_completed). Resets the resume index so it replays from the start.
+    await runQuery("UPDATE tenants SET tour_completed = 0, tutorial_step = 0 WHERE id = ? ", [req.tenant_id]);
     res.json({ message: 'Tour restarted successfully.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to restart tour.' });
+  }
+});
+
+// [TUTORIAL] Persist the guided-tour resume index so the tour continues exactly
+// where the user left off after a reload or browser restart. Clamped to a sane
+// range; the client also calls /onboarding/complete-tour when it finishes.
+router.post('/onboarding/tutorial-progress', async (req, res) => {
+  const step = Math.max(0, Math.min(99, parseInt(req.body && req.body.step, 10) || 0));
+  try {
+    await runQuery("UPDATE tenants SET tutorial_step = ? WHERE id = ?", [step, req.tenant_id]);
+    res.json({ message: 'Progress saved.', step });
+  } catch (err) {
+    console.error('tutorial-progress error:', err && err.message);
+    res.status(500).json({ error: 'Failed to save tutorial progress.' });
+  }
+});
+
+// [FEATURE 2] Cancellation support. Safe addition — does NOT touch the order /
+// verify-payment security flow. If a real Razorpay recurring subscription is linked
+// (sub_*), it is cancelled at period end so the customer keeps the access they
+// already paid for (grace period); the webhook (subscription.cancelled/halted)
+// finalizes the downgrade. Otherwise we just reflect the cancellation locally.
+router.post('/subscription/cancel', async (req, res) => {
+  try {
+    const tenant = await getQuery(
+      "SELECT subscription_plan, razorpay_subscription_id, next_billing_date FROM tenants WHERE id = ?",
+      [req.tenant_id]
+    );
+    if (!tenant) return res.status(404).json({ error: 'Tenant not found.' });
+    if (!tenant.subscription_plan || tenant.subscription_plan === 'trial') {
+      return res.status(400).json({ error: 'No active paid subscription to cancel.' });
+    }
+
+    const rzpSubId = tenant.razorpay_subscription_id;
+    if (rzpSubId && /^sub_/.test(rzpSubId) && isRazorpayConfigured()) {
+      try { await cancelSubscription(rzpSubId); }
+      catch (e) { console.error('Razorpay cancel failed (continuing with local cancel):', e && e.message); }
+    }
+
+    await runQuery("UPDATE tenants SET subscription_status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP WHERE id = ?", [req.tenant_id]);
+    await runQuery("UPDATE subscriptions SET status = 'cancelled', cancel_at_period_end = 1, cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE tenant_id = ?", [req.tenant_id]);
+    await runQuery(
+      `INSERT INTO subscription_history (id, tenant_id, from_plan, to_plan, action, notes)
+       VALUES (?, ?, ?, ?, 'cancel', 'Self-service cancellation; access continues until period end.')`,
+      [uid('sub_hist_'), req.tenant_id, tenant.subscription_plan, tenant.subscription_plan]
+    );
+
+    res.json({
+      success: true,
+      message: 'Subscription cancelled. You keep access until the end of the current billing period.',
+      accessUntil: tenant.next_billing_date || null
+    });
+  } catch (err) {
+    console.error('subscription/cancel error:', err && err.message);
+    res.status(500).json({ error: 'Failed to cancel subscription.' });
   }
 });
 
@@ -447,30 +507,69 @@ router.post('/subscription/verify-payment', async (req, res) => {
       return res.status(400).json({ error: 'Payment verification failed. Invalid signature.' });
     }
 
+    // [SEC] The signature only proves order_id|payment_id are genuine — it does NOT
+    // prove WHAT was paid for. Re-fetch the authoritative order (whose notes we set
+    // at creation) and take the plan + amount from there. This blocks a client from
+    // paying for `basic` and claiming `enterprise`.
+    let order;
+    try {
+      order = await fetchOrder(razorpay_order_id);
+    } catch (e) {
+      console.error('verify-payment: order fetch failed:', e && e.message);
+      return res.status(400).json({ error: 'Could not verify the payment order.' });
+    }
+
     const prices = { basic: 299, pro: 499, enterprise: 999 };
-    const price = prices[plan];
+    const notes = (order && order.notes) || {};
+    const orderPlan = notes.plan;
+
+    // The paid order must belong to THIS tenant and carry a recognized plan whose
+    // price matches the amount actually charged.
+    if (notes.tenant_id !== req.tenant_id) {
+      return res.status(403).json({ error: 'This payment order does not belong to your account.' });
+    }
+    if (!['basic', 'pro', 'enterprise'].includes(orderPlan)) {
+      return res.status(400).json({ error: 'Payment order is missing a valid plan.' });
+    }
+    const price = prices[orderPlan];
+    if (Number(order.amount) !== price * 100) {
+      return res.status(400).json({ error: 'Payment amount does not match the selected plan.' });
+    }
+    // Defense in depth: the plan the client claims must agree with the paid order.
+    if (plan !== orderPlan) {
+      return res.status(400).json({ error: 'Plan mismatch between request and payment.' });
+    }
+
+    // [SEC] Idempotency — a given Razorpay payment may activate a plan only once.
+    const already = await getQuery(
+      "SELECT id FROM payments WHERE transaction_reference = ? AND tenant_id = ?",
+      [razorpay_payment_id, req.tenant_id]
+    );
+    if (already) {
+      return res.json({ success: true, message: `Subscription already active on ${orderPlan.toUpperCase()}.`, plan: orderPlan, duplicate: true });
+    }
 
     const currentTenant = await getQuery("SELECT subscription_plan FROM tenants WHERE id = ? ", [req.tenant_id]);
     const oldPlan = currentTenant ? currentTenant.subscription_plan : 'trial';
 
     const nextBillingDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    // 1. Update tenants table
-    await runQuery("UPDATE tenants SET subscription_plan = ?, subscription_status = 'active', next_billing_date = ? WHERE id = ? ", [plan, nextBillingDate, req.tenant_id]);
+    // 1. Update tenants table (use the SERVER-VERIFIED plan, never the client's)
+    await runQuery("UPDATE tenants SET subscription_plan = ?, subscription_status = 'active', next_billing_date = ? WHERE id = ? ", [orderPlan, nextBillingDate, req.tenant_id]);
 
     // 2. Insert/replace into subscriptions table
     const subId = 'sub_' + Date.now();
     await runQuery(`
       INSERT OR REPLACE INTO subscriptions (id, tenant_id, plan, status, razorpay_subscription_id, next_billing_date, updated_at)
       VALUES (?, ?, ?, 'active', ?, ?, CURRENT_TIMESTAMP)
-    `, [subId, req.tenant_id, plan, razorpay_payment_id, nextBillingDate]);
+    `, [subId, req.tenant_id, orderPlan, razorpay_payment_id, nextBillingDate]);
 
     // 3. Insert into subscription_history table
     const histId = 'sub_hist_' + Date.now();
     await runQuery(`
       INSERT INTO subscription_history (id, tenant_id, from_plan, to_plan, action, razorpay_payment_id, amount, notes)
       VALUES (?, ?, ?, ?, 'upgrade', ?, ?, 'Razorpay subscription payment verified.')
-    `, [histId, req.tenant_id, oldPlan, plan, razorpay_payment_id, price]);
+    `, [histId, req.tenant_id, oldPlan, orderPlan, razorpay_payment_id, price]);
 
     // 4. Create invoice & payment entry inside tenant billing center for records
     const invId = 'inv_saas_' + Date.now();
@@ -485,7 +584,7 @@ router.post('/subscription/verify-payment', async (req, res) => {
       VALUES (?, ?, ?, 'SaaS', ?, 'Razorpay', ?, 'Successful')
     `, [payId, req.tenant_id, invId, price, razorpay_payment_id]);
 
-    res.json({ success: true, message: `Successfully upgraded subscription to ${plan.toUpperCase()}.`, plan });
+    res.json({ success: true, message: `Successfully upgraded subscription to ${orderPlan.toUpperCase()}.`, plan: orderPlan });
   } catch (err) {
     console.error("Signature verification / DB update error:", err);
     res.status(500).json({ error: 'Failed to record subscription upgrade.' });
@@ -1227,7 +1326,9 @@ router.post('/members', async (req, res) => {
         error: `A member with this ${field} already exists for your gym.`
       });
     }
-    res.status(500).json({ error: err.message || 'Failed to create member.' });
+    // [SEC] Do not echo raw err.message (could expose SQL/internal detail). The
+    // known validation/constraint cases are handled above with clean messages.
+    res.status(500).json({ error: 'Failed to create member.' });
   }
 });
 
@@ -3630,7 +3731,8 @@ router.get('/analytics/renewal-queue', async (req, res) => {
       queue: enriched.sort((a, b) => a.daysLeft - b.daysLeft)
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[analytics/renewal-queue] error:', err && err.message);
+    res.status(500).json({ error: 'Failed to load the renewal queue.' });
   }
 });
 
@@ -3671,7 +3773,8 @@ router.get('/analytics/payment-recovery', async (req, res) => {
       invoices: enriched.sort((a, b) => b.daysOverdue - a.daysOverdue)
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[analytics/payment-recovery] error:', err && err.message);
+    res.status(500).json({ error: 'Failed to load payment recovery data.' });
   }
 });
 
@@ -3688,7 +3791,8 @@ router.get('/activity-logs', async (req, res) => {
     `, [req.tenant_id]);
     res.json(logs);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[activity-logs] error:', err && err.message);
+    res.status(500).json({ error: 'Failed to load activity logs.' });
   }
 });
 
@@ -3709,7 +3813,8 @@ router.get('/communications/history', async (req, res) => {
 
     res.json({ stats, history });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[communications/history] error:', err && err.message);
+    res.status(500).json({ error: 'Failed to load communication history.' });
   }
 });
 
@@ -3732,7 +3837,8 @@ router.get('/analytics/alerts', async (req, res) => {
 
     res.json(alerts);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[analytics/alerts] error:', err && err.message);
+    res.status(500).json({ error: 'Failed to load business alerts.' });
   }
 });
 
@@ -3782,7 +3888,8 @@ router.get('/export/:type', authorize('settings:write'), async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${type}_report.csv"`);
     res.send(csvRows.join('\n'));
   } catch (err) {
-    res.status(500).send(err.message);
+    console.error('[export] error:', err && err.message);
+    res.status(500).send('Export failed.');
   }
 });
 
@@ -3812,7 +3919,8 @@ router.post('/backup/create', authorize('settings:write'), async (req, res) => {
 
     res.json({ success: true, message: 'Backup created', file: backupName });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[backup/create] error:', err && err.message);
+    res.status(500).json({ error: 'Failed to create backup.' });
   }
 });
 
@@ -3833,7 +3941,8 @@ router.get('/backup/list', authorize('settings:write'), (req, res) => {
     sort((a, b) => b.created - a.created);
     res.json(files);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[backup/list] error:', err && err.message);
+    res.status(500).json({ error: 'Failed to list backups.' });
   }
 });
 

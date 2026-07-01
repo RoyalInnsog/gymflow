@@ -1,54 +1,76 @@
-const sqlite3 = require('sqlite3').verbose();
+const { createClient } = require('@libsql/client');
+const { pathToFileURL } = require('url');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 
-const dbPath = path.resolve(__dirname, 'database.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-  } else {
-    console.log('Connected to the SQLite database.');
-    // [REL] Concurrency hardening for the Node.js + SQLite combo.
-    //  * WAL lets readers run concurrently with a writer (no more reader/writer
-    //    lock contention during the morning check-in rush).
-    //  * busy_timeout makes a blocked writer wait-and-retry for up to 5s instead
-    //    of immediately throwing SQLITE_BUSY when another write is in flight.
-    //  * NORMAL synchronous is the safe, fast pairing for WAL.
-    //  * foreign_keys enforces referential integrity (off by default in SQLite).
-    db.serialize(() => {
-      db.run('PRAGMA journal_mode = WAL');
-      db.run('PRAGMA busy_timeout = 5000');
-      db.run('PRAGMA synchronous = NORMAL');
-      db.run('PRAGMA foreign_keys = ON');
-    });
+// ---------------------------------------------------------------------------
+// Database connection.
+//
+// Cloud (free hosting like Render, which has NO persistent disk): set
+//   TURSO_DATABASE_URL (libsql://...) and TURSO_AUTH_TOKEN. Data then lives in
+//   Turso — a hosted, SQLite-compatible database — so it survives every
+//   restart, spin-down and redeploy.
+//
+// Local dev (your PC): leave those unset and it opens an on-disk SQLite file
+//   exactly like before (libSQL reads the same .db format), so nothing changes
+//   when you run `node server.js` locally. DATABASE_PATH still overrides the file.
+// ---------------------------------------------------------------------------
+function buildDbConfig() {
+  if (process.env.TURSO_DATABASE_URL) {
+    return { url: process.env.TURSO_DATABASE_URL, authToken: process.env.TURSO_AUTH_TOKEN };
   }
-});
+  const file = process.env.DATABASE_PATH
+    ? path.resolve(process.env.DATABASE_PATH)
+    : path.resolve(__dirname, 'database.db');
+  return { url: pathToFileURL(file).href };
+}
 
-function runQuery(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
-      if (err) reject(err);
-      else resolve(this);
-    });
+const usingTurso = !!process.env.TURSO_DATABASE_URL;
+const db = createClient(buildDbConfig());
+console.log(`Connected to the database (${usingTurso ? 'Turso cloud' : 'local SQLite file'}).`);
+
+// Enforce referential integrity (SQLite/libSQL leave foreign keys off by
+// default). Best-effort; harmless if the host manages it server-side.
+db.execute('PRAGMA foreign_keys = ON').catch(() => {});
+
+// libSQL is stricter than node-sqlite3 about bind values: undefined and JS
+// booleans throw. Normalize to what the old driver tolerated (undefined -> NULL,
+// boolean -> 0/1) so none of the existing call sites need to change.
+function normArgs(params) {
+  return params.map((p) => {
+    if (p === undefined) return null;
+    if (typeof p === 'boolean') return p ? 1 : 0;
+    return p;
   });
 }
 
-function getQuery(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
-    });
+// libSQL returns array-like Row objects; normalize to plain {column: value}
+// objects so the rest of the app sees exactly what the old sqlite3 driver gave.
+function rowsToObjects(rs) {
+  return rs.rows.map((row) => {
+    const obj = {};
+    for (const col of rs.columns) obj[col] = row[col];
+    return obj;
   });
 }
 
-function allQuery(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
+// runQuery keeps the old sqlite3 result shape: { changes, lastID }.
+async function runQuery(sql, params = []) {
+  const rs = await db.execute({ sql, args: normArgs(params) });
+  return {
+    changes: rs.rowsAffected,
+    lastID: rs.lastInsertRowid != null ? Number(rs.lastInsertRowid) : undefined,
+  };
+}
+
+async function getQuery(sql, params = []) {
+  const rs = await db.execute({ sql, args: normArgs(params) });
+  return rowsToObjects(rs)[0];
+}
+
+async function allQuery(sql, params = []) {
+  const rs = await db.execute({ sql, args: normArgs(params) });
+  return rowsToObjects(rs);
 }
 
 // ============================================================
@@ -99,7 +121,7 @@ async function seedTenantDefaults(tenantId, gymName) {
 }
 
 async function initializeDatabase() {
-  db.serialize(async () => {
+  {
     // -1. Tenants table
     await runQuery(`
       CREATE TABLE IF NOT EXISTS tenants (
@@ -428,6 +450,10 @@ async function initializeDatabase() {
     try { await runQuery(`ALTER TABLE notifications ADD COLUMN recipient_phone TEXT`); } catch (e) {}
     try { await runQuery(`ALTER TABLE notifications ADD COLUMN delivery_status TEXT DEFAULT 'Sent'`); } catch (e) {}
     try { await runQuery(`ALTER TABLE notifications ADD COLUMN campaign_source TEXT`); } catch (e) {}
+    // [WHATSAPP] Real-send delivery logging: why a send failed and how many retries
+    // the outbound queue performed before reaching a terminal state.
+    try { await runQuery(`ALTER TABLE notifications ADD COLUMN failure_reason TEXT`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE notifications ADD COLUMN retry_count INTEGER DEFAULT 0`); } catch (e) {}
     try { await runQuery(`ALTER TABLE campaigns ADD COLUMN image_data TEXT`); } catch (e) {}
     
     // Schema alterations for Phase 3
@@ -906,7 +932,7 @@ async function initializeDatabase() {
       ('birthday', 'Birthday Greetings', 'Happy Birthday *{name}*! 🎂 Warmest wishes from *{gym_name}*. Have a fantastic day and keep crushing those goals! 🎉')
     `);
     console.log('Updated templates.');
-  });
+  }
 }
 
 module.exports = {

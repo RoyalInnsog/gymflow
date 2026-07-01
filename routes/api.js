@@ -3,7 +3,8 @@ const router = express.Router();
 const { getQuery, runQuery, allQuery } = require('../database');
 const { PLANS, isRazorpayConfigured, createOrder, verifyPaymentSignature, fetchOrder, cancelSubscription } = require('../lib/razorpay');
 const { getTodayString, getLastNDaysString, getNextNDaysString } = require('../lib/dateUtils');
-const whatsappService = require('../lib/whatsappService');
+const whatsappService = require('../services/whatsapp.service');
+const whatsappQueue = require('../services/whatsapp.queue');
 
 // ==========================================
 // VALIDATION & SANITIZATION HELPERS
@@ -707,6 +708,26 @@ async function resolveTemplate(templateId, data, tenantId) {
   return msg;
 }
 
+// [WHATSAPP] Dispatch a message through the REAL whatsapp-web.js outbound queue.
+// Sends ONLY when the tenant's WhatsApp account is connected; otherwise the outbox
+// row is marked Failed with a clear reason (never a fake "Delivered"). The queue
+// serializes sends one-at-a-time, retries transient failures, and writes the final
+// delivery_status / failure_reason / retry_count itself.
+//   wait=true  -> await the terminal result (single, user-initiated sends)
+//   wait=false -> fire-and-forget (cron + bulk campaigns); status updates async
+async function dispatchWhatsApp(tenantId, normalizedPhone, message, notificationId, { wait = false } = {}) {
+  if (!whatsappService.isConnected(tenantId)) {
+    await runQuery(
+      `UPDATE notifications SET delivery_status = 'Failed', failure_reason = ? WHERE id = ? AND tenant_id = ?`,
+      ['WhatsApp not connected. Link it in Settings → WhatsApp.', notificationId, tenantId]
+    );
+    return { success: false, error: 'WhatsApp is not connected for this account.' };
+  }
+  const pending = whatsappQueue.enqueue(tenantId, { phone: normalizedPhone, message, notificationId });
+  if (wait) return pending;
+  return { success: true, queued: true };
+}
+
 // [M6] Per-tenant throttle (the old single global `lastScanTime` let one tenant's
 // scan suppress every other tenant's scan for 10s — automations silently skipped).
 const lastScanByTenant = new Map();
@@ -765,9 +786,7 @@ async function runAutomationScans(tenantId, force = false) {
               INSERT INTO notifications (id, tenant_id, type, priority, title, message, is_read, recipient_name, recipient_phone, delivery_status, campaign_source)
               VALUES (?, ?, 'Membership', 'Critical', 'WhatsApp: Membership Expired', ?, 1, ?, ?, 'Pending', 'Auto Expiry Reminder')
             `, [ntIdOutbox, tenantId, whatsappMsg, ms.full_name, normalizedPhone]);
-            const sendResult = await whatsappService.sendMessage(normalizedPhone, whatsappMsg);
-            const status = sendResult.success ? 'Delivered' : 'Failed';
-            await runQuery(`UPDATE notifications SET delivery_status = ? WHERE id = ? AND tenant_id = ?`, [status, ntIdOutbox, tenantId]);
+            await dispatchWhatsApp(tenantId, normalizedPhone, whatsappMsg, ntIdOutbox);
           }
         }
 
@@ -823,9 +842,7 @@ async function runAutomationScans(tenantId, force = false) {
               INSERT INTO notifications (id, tenant_id, type, priority, title, message, is_read, recipient_name, recipient_phone, delivery_status, campaign_source)
               VALUES (?, ?, 'Membership', ?, ?, ?, 1, ?, ?, 'Pending', 'Auto Expiry Reminder')
             `, [ntIdOutbox, tenantId, priority, `WhatsApp: Expiry ${daysLeft}d`, whatsappMsg, ms.full_name, normalizedPhone]);
-            const sendResult = await whatsappService.sendMessage(normalizedPhone, whatsappMsg);
-            const status = sendResult.success ? 'Delivered' : 'Failed';
-            await runQuery(`UPDATE notifications SET delivery_status = ? WHERE id = ? AND tenant_id = ?`, [status, ntIdOutbox, tenantId]);
+            await dispatchWhatsApp(tenantId, normalizedPhone, whatsappMsg, ntIdOutbox);
           }
         }
 
@@ -916,9 +933,7 @@ async function runAutomationScans(tenantId, force = false) {
               INSERT INTO notifications (id, tenant_id, type, priority, title, message, is_read, recipient_name, recipient_phone, delivery_status, campaign_source)
               VALUES (?, ?, 'Attendance', ?, ?, ?, 1, ?, ?, 'Pending', 'Auto Absence Recovery')
             `, [ntIdOutbox, tenantId, priority, `WhatsApp: Absent ${threshold}d`, whatsappMsg, m.full_name, normalizedPhone]);
-            const sendResult = await whatsappService.sendMessage(normalizedPhone, whatsappMsg);
-            const status = sendResult.success ? 'Delivered' : 'Failed';
-            await runQuery(`UPDATE notifications SET delivery_status = ? WHERE id = ? AND tenant_id = ?`, [status, ntIdOutbox, tenantId]);
+            await dispatchWhatsApp(tenantId, normalizedPhone, whatsappMsg, ntIdOutbox);
           }
         }
 
@@ -972,9 +987,7 @@ async function runAutomationScans(tenantId, force = false) {
               INSERT INTO notifications (id, tenant_id, type, priority, title, message, is_read, recipient_name, recipient_phone, delivery_status, campaign_source)
               VALUES (?, ?, 'Payments', 'High', 'WhatsApp: Overdue Payment', ?, 1, ?, ?, 'Pending', 'Auto Payment Collection')
             `, [ntIdOutbox, tenantId, whatsappMsg, inv.full_name, normalizedPhone]);
-            const sendResult = await whatsappService.sendMessage(normalizedPhone, whatsappMsg);
-            const status = sendResult.success ? 'Delivered' : 'Failed';
-            await runQuery(`UPDATE notifications SET delivery_status = ? WHERE id = ? AND tenant_id = ?`, [status, ntIdOutbox, tenantId]);
+            await dispatchWhatsApp(tenantId, normalizedPhone, whatsappMsg, ntIdOutbox);
           }
         }
 
@@ -2295,14 +2308,9 @@ router.post('/whatsapp/send', async (req, res) => {
       VALUES (?, ?, ?, 'Medium', ?, ?, 1, ?, ?, 'Pending', 'Direct Message')
     `, [ntId, req.tenant_id, type || 'Marketing', `WhatsApp: ${template_id}`, messageText, member.full_name, normalizedPhone]);
 
-    // Send real message
-    const sendResult = await whatsappService.sendMessage(normalizedPhone, messageText);
-
-    let finalStatus = sendResult.success ? 'Delivered' : 'Failed';
-
-    await runQuery(`
-      UPDATE notifications SET delivery_status = ? WHERE id = ? AND tenant_id = ?
-    `, [finalStatus, ntId, req.tenant_id]);
+    // Send via the REAL WhatsApp queue. It serializes/retries and writes the final
+    // delivery_status + failure_reason + retry_count to the notification row itself.
+    const sendResult = await dispatchWhatsApp(req.tenant_id, normalizedPhone, messageText, ntId, { wait: true });
 
     if (type === 'Attendance') {
       const reId = 're' + Date.now();
@@ -2834,6 +2842,12 @@ router.post('/campaigns', async (req, res) => {
 
     const sentCount = members.length;
 
+    // WhatsApp campaigns require a linked WhatsApp account — fail fast with a clear
+    // message instead of recording a campaign full of "Failed" rows.
+    if ((channel || 'WhatsApp').toLowerCase().includes('whatsapp') && !whatsappService.isConnected(req.tenant_id)) {
+      return res.status(409).json({ error: 'WhatsApp is not connected. Open Settings → WhatsApp and scan the QR before launching a WhatsApp campaign.' });
+    }
+
     let actualSentCount = 0;
     for (const m of members) {
       const personalizedMsg = message.replace(/{name}/g, m.full_name);
@@ -2851,11 +2865,10 @@ router.post('/campaigns', async (req, res) => {
           VALUES (?, ?, 'Marketing', 'Medium', ?, ?, 1, ?, ?, 'Pending', ?)
         `, [ntIdOutbox, req.tenant_id, `Campaign: ${name}`, personalizedMsg, m.full_name, normalizedPhone, name]);
         
-        const sendResult = await whatsappService.sendMessage(normalizedPhone, personalizedMsg);
-        const status = sendResult.success ? 'Delivered' : 'Failed';
-        if (sendResult.success) actualSentCount++;
-        
-        await runQuery(`UPDATE notifications SET delivery_status = ? WHERE id = ? AND tenant_id = ?`, [status, ntIdOutbox, req.tenant_id]);
+        // Queue the real send (fire-and-forget). Per-recipient delivery status is
+        // written to its notification row by the queue as it drains.
+        const dispatchRes = await dispatchWhatsApp(req.tenant_id, normalizedPhone, personalizedMsg, ntIdOutbox);
+        if (dispatchRes.queued || dispatchRes.success) actualSentCount++;
       }
     }
 

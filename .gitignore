@@ -17,6 +17,11 @@ _srv_out.log
 _srv_err.log
 _*.js
 
+# [WHATSAPP] whatsapp-web.js session credentials & cache — NEVER commit. These hold
+# the linked WhatsApp account auth; committing them would expose the account.
+.wwebjs_auth/
+.wwebjs_cache/
+
 # Archived one-off dev/migration scripts (kept out of the repo root)
 archive/
 
@@ -30,3 +35,12 @@ mobile/node_modules/
 **/keystore.properties
 *.keystore
 *.jks
+
+# IDE settings — not part of the app
+.idea/
+
+# Local Chromium download — not app source, huge, rebuilt on the server
+chrome/
+
+# Scratch / temp test databases
+scratch-*.db

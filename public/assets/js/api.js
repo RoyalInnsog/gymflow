@@ -11,8 +11,15 @@ class ApiService {
     async fetch(endpoint, options = {}) {
         const url = endpoint.startsWith('http') ? endpoint : `${this.baseUrl}${endpoint}`;
 
-        // Default options
+        // Default options.
+        // credentials:'include' guarantees the httpOnly `auth_token` cookie rides
+        // with EVERY API call. On the web it's same-origin (harmless); inside the
+        // Capacitor Android WebView the browser default does not reliably attach the
+        // cookie, which left the app unauthenticated → subscription/plan data missing
+        // → feature gating defaulted wrong. This makes session restoration identical
+        // on desktop and in the app.
         const fetchOptions = {
+            credentials: 'include',
             ...options,
             headers: {
                 'Content-Type': 'application/json',

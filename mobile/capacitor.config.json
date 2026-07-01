@@ -3,12 +3,11 @@
   "appName": "Gym Flow",
   "webDir": "www",
   "server": {
-    "url": "https://REPLACE-WITH-YOUR-BACKEND-DOMAIN",
-    "androidScheme": "https",
-    "cleartext": false
+    "url": "https://desktop-s69biti.tail66553b.ts.net",
+    "cleartext": true
   },
   "android": {
-    "allowMixedContent": false,
+    "allowMixedContent": true,
     "backgroundColor": "#0B1120"
   }
 }

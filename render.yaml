@@ -1,0 +1,32 @@
+# Render Blueprint — deploys the Gym Flow backend, which ALSO serves the web
+# pages, as a single free web service. One URL = the whole app for gym owners.
+#
+# After importing this as a Blueprint in Render, three values must be filled in
+# by hand (marked sync:false): the two Turso database secrets and the final
+# public URL. Everything else is set automatically.
+services:
+  - type: web
+    name: gymflow
+    env: node
+    plan: free
+    region: singapore            # closest Render region to India
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"               # app runs behind Render's proxy
+      - key: WHATSAPP_ENABLED
+        value: "false"           # prototype: WhatsApp off (free host can't run Chromium)
+      - key: PUPPETEER_SKIP_DOWNLOAD
+        value: "true"            # skip the 170MB Chromium download at build (unused here)
+      - key: JWT_SECRET
+        generateValue: true      # Render generates a strong random secret
+      - key: TURSO_DATABASE_URL
+        sync: false              # paste from Turso after creating the database
+      - key: TURSO_AUTH_TOKEN
+        sync: false              # paste from Turso
+      - key: APP_BASE_URL
+        sync: false              # set to the final https://<name>.onrender.com

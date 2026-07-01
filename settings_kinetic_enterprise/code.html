@@ -107,6 +107,11 @@
                 </button>
                 <button
                     class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap"
+                    data-target="whatsapp-connect">
+                    <span class="material-symbols-outlined">chat</span> <span class="font-label-lg">WhatsApp</span>
+                </button>
+                <button
+                    class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap"
                     data-target="payments">
                     <span class="material-symbols-outlined">payments</span> <span class="font-label-lg">Payments</span>
                 </button>
@@ -403,6 +408,56 @@
                     </div>
                     <div id="templatesList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- Dynamic -->
+                    </div>
+                </section>
+
+                <!-- WhatsApp Connection -->
+                <section id="whatsapp-connect" class="tab-content space-y-6">
+                    <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
+                        <div>
+                            <h2 class="font-headline-md text-headline-md text-on-surface">WhatsApp Connection</h2>
+                            <p class="text-on-surface-variant text-sm mt-1">Link your gym's WhatsApp account once. All
+                                automated reminders and campaigns are then sent from your own number — free, with no
+                                third-party API or per-message cost.</p>
+                        </div>
+
+                        <div
+                            class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-container rounded-xl p-5 border border-outline/20">
+                            <div class="flex items-center gap-4">
+                                <span id="waStatusDot" class="w-3 h-3 rounded-full bg-red-500 shrink-0"></span>
+                                <div>
+                                    <p id="waStatusLabel" class="font-title-md text-title-md text-on-surface">Disconnected</p>
+                                    <p id="waStatusDesc" class="text-sm text-on-surface-variant">WhatsApp is not linked.
+                                        Click Connect to scan a QR code.</p>
+                                    <p id="waStatusInfo" class="text-xs text-primary mt-1 hidden"></p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button id="waConnectBtn" onclick="connectWhatsApp()"
+                                    class="bg-primary text-on-primary px-5 py-2.5 rounded-lg font-label-lg flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[18px]">qr_code_2</span> Connect WhatsApp
+                                </button>
+                                <button id="waDisconnectBtn" onclick="disconnectWhatsApp()"
+                                    class="hidden bg-error/10 text-error border border-error/30 px-5 py-2.5 rounded-lg font-label-lg flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[18px]">link_off</span> Disconnect
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <div class="flex items-start gap-2"><span
+                                    class="material-symbols-outlined text-primary text-[20px]">verified</span><span
+                                    class="text-on-surface-variant">Messages send from your own WhatsApp — members see
+                                    your gym's number.</span></div>
+                            <div class="flex items-start gap-2"><span
+                                    class="material-symbols-outlined text-primary text-[20px]">history</span><span
+                                    class="text-on-surface-variant">Stays linked across server restarts. You only scan
+                                    once.</span></div>
+                            <div class="flex items-start gap-2"><span
+                                    class="material-symbols-outlined text-primary text-[20px]">bolt</span><span
+                                    class="text-on-surface-variant">Messages are queued and sent one-by-one with
+                                    automatic retries.</span></div>
+                        </div>
                     </div>
                 </section>
 
@@ -1004,6 +1059,26 @@
         </form>
     </div>
 
+    <!-- WhatsApp QR Modal -->
+    <div id="whatsappQrModal"
+        class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-surface-container-high rounded-2xl p-6 hidden z-50 border border-outline/20 shadow-2xl">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-headline-sm text-on-surface">Link WhatsApp</h3>
+            <button onclick="closeWhatsAppQr()" class="text-on-surface-variant hover:text-on-surface"><span
+                    class="material-symbols-outlined">close</span></button>
+        </div>
+        <div class="flex flex-col items-center gap-4">
+            <div class="bg-white rounded-xl p-3 w-[260px] h-[260px] flex items-center justify-center">
+                <span id="waQrSpinner"
+                    class="material-symbols-outlined animate-spin text-gray-400 text-5xl">progress_activity</span>
+                <img id="waQrImg" src="" alt="WhatsApp QR code" class="w-full h-full object-contain hidden">
+            </div>
+            <p id="waQrHint" class="text-sm text-on-surface-variant text-center">Generating QR code…</p>
+            <p class="text-xs text-on-surface-variant text-center">On your phone: WhatsApp → <b>Settings</b> →
+                <b>Linked Devices</b> → <b>Link a Device</b>, then point the camera at this code.</p>
+        </div>
+    </div>
+
     <script>
         let globalSettings = {};
 
@@ -1015,77 +1090,44 @@
 
                 tab.classList.add('active');
                 document.getElementById(tab.dataset.target).classList.add('active');
+
+                // Poll WhatsApp connection status only while its tab is open.
+                if (tab.dataset.target === 'whatsapp-connect') startWhatsAppPolling();
+                else stopWhatsAppPolling();
             });
         });
 
 
         async function loadSubscription() {
+            // Fetch defensively. A failed or unauthenticated request — e.g. inside the
+            // Capacitor WebView before the session cookie is attached — must NEVER
+            // unlock premium UI. When plan data is unavailable we fall back to the most
+            // restrictive plan ('trial') so gating stays CLOSED (fail-safe).
+            let sub = null;
             try {
-                const sub = await window.api.get('/subscription/status');
+                sub = await window.api.get('/subscription/status');
+            } catch (err) {
+                console.error('Failed to load subscription status:', err);
+            }
+            const hasData = !!(sub && typeof sub === 'object' && !sub.error && sub.plan);
+            const plan = hasData ? sub.plan : 'trial';   // fail-closed default
 
-                // Platform SaaS-collection UPI is server-configured (never hardcoded).
-                platformUpi = sub.platformUpi || { id: '', name: 'GymFlow' };
+            // --- Feature gating: ALWAYS runs, even when plan data is missing. ---
+            // Lock Staff & Branches unless the tenant is on Enterprise. The backend
+            // independently enforces this (allowStaffAccounts / allowMultiBranch); this
+            // overlay only hides/disables the UI. Running this BEFORE any code that can
+            // throw on missing data is the fix — previously a null response threw here
+            // and skipped the overlay, leaving premium sections unlocked in the app.
+            ['staff-manager', 'branches'].forEach(id => {
+                const section = document.getElementById(id);
+                if (!section) return;
 
-                // 1. Hydrate Usage Meters
-                const memCurrent = sub.usage.members.current;
-                const memLimit = sub.usage.members.limit;
-                document.getElementById('subMembersCurrent').innerText = memCurrent;
-                document.getElementById('subMembersLimit').innerText = memLimit === Infinity ? 'Unlimited' : memLimit;
-                const memPct = memLimit === Infinity ? 100 : Math.min(100, Math.round((memCurrent / memLimit) * 100));
-                document.getElementById('subMembersProgress').style.width = memPct + '%';
+                const existing = section.querySelector('.premium-lock-overlay');
+                if (existing) existing.remove();
 
-                const waCurrent = sub.usage.whatsapp.current;
-                const waLimit = sub.usage.whatsapp.limit;
-                document.getElementById('subWhatsAppCurrent').innerText = waCurrent;
-                document.getElementById('subWhatsAppLimit').innerText = waLimit === 0 ? 'Not Included' : (waLimit === Infinity ? 'Unlimited' : waLimit);
-                const waPct = waLimit === 0 ? 0 : (waLimit === Infinity ? 100 : Math.min(100, Math.round((waCurrent / waLimit) * 100)));
-                document.getElementById('subWhatsAppProgress').style.width = waPct + '%';
-
-                // 2. Active Badges & Buttons state
-                const plan = sub.plan || 'trial';
-
-                // Reset matrices styles
-                ['trial', 'basic', 'pro', 'enterprise'].forEach(p => {
-                    const card = document.getElementById('cardPlan' + p.charAt(0).toUpperCase() + p.slice(1));
-                    const badge = document.getElementById('badgePlan' + p.charAt(0).toUpperCase() + p.slice(1));
-                    const btn = document.getElementById('btnPlan' + p.charAt(0).toUpperCase() + p.slice(1));
-
-                    if (card) card.className = "glass-panel p-6 rounded-2xl border border-outline-variant/30 flex flex-col justify-between relative";
-                    if (badge) badge.classList.add('hidden');
-                    if (btn) {
-                        btn.innerText = "Select Plan";
-                        btn.className = "w-full mt-6 bg-surface-container-highest text-on-surface hover:bg-surface-container-highest/80 py-2 rounded-lg font-label-md transition-all";
-                        btn.disabled = false;
-                    }
-                });
-
-                // Highlight Active Plan
-                const activeCard = document.getElementById('cardPlan' + plan.charAt(0).toUpperCase() + plan.slice(1));
-                const activeBadge = document.getElementById('badgePlan' + plan.charAt(0).toUpperCase() + plan.slice(1));
-                const activeBtn = document.getElementById('btnPlan' + plan.charAt(0).toUpperCase() + plan.slice(1));
-
-                if (activeCard) {
-                    activeCard.className = "glass-panel p-6 rounded-2xl border-2 border-primary flex flex-col justify-between relative shadow-lg shadow-primary/10";
-                }
-                if (activeBadge) activeBadge.classList.remove('hidden');
-                if (activeBtn) {
-                    activeBtn.innerText = "Current Plan";
-                    activeBtn.className = "w-full mt-6 bg-primary/20 text-primary py-2 rounded-lg font-label-md transition-all border border-primary/30 cursor-default";
-                    activeBtn.disabled = true;
-                }
-
-                // 3. Inject overlays on Staff and Branches if NOT Enterprise
-                const sectionsToLock = ['staff-manager', 'branches'];
-                sectionsToLock.forEach(id => {
-                    const section = document.getElementById(id);
-                    if (!section) return;
-
-                    const existing = section.querySelector('.premium-lock-overlay');
-                    if (existing) existing.remove();
-
-                    if (plan !== 'enterprise') {
-                        section.classList.add('relative');
-                        const overlayHtml = `
+                if (plan !== 'enterprise') {
+                    section.classList.add('relative');
+                    const overlayHtml = `
                     <div class="premium-lock-overlay absolute inset-0 bg-[#0c0c0c]/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none z-[30] rounded-2xl border border-outline-variant/30 min-h-[350px]">
                       <div class="h-16 w-16 bg-primary/10 rounded-full border border-primary/30 flex items-center justify-center mb-4">
                         <span class="material-symbols-outlined text-4xl text-primary" style="font-variation-settings: 'FILL' 1;">lock</span>
@@ -1099,12 +1141,60 @@
                       </button>
                     </div>
                 `;
-                        section.insertAdjacentHTML('afterbegin', overlayHtml);
-                    }
-                });
+                    section.insertAdjacentHTML('afterbegin', overlayHtml);
+                }
+            });
 
-            } catch (e) {
-                console.error('Failed to load subscription status:', e);
+            // No real data → keep safe defaults and stop. Never throw past the gating
+            // above (the previous version did, which is exactly what unlocked premium).
+            if (!hasData) return;
+
+            // Platform SaaS-collection UPI is server-configured (never hardcoded).
+            platformUpi = sub.platformUpi || { id: '', name: 'GymFlow' };
+
+            // 1. Hydrate Usage Meters
+            const memCurrent = sub.usage.members.current;
+            const memLimit = sub.usage.members.limit;
+            document.getElementById('subMembersCurrent').innerText = memCurrent;
+            document.getElementById('subMembersLimit').innerText = memLimit === Infinity ? 'Unlimited' : memLimit;
+            const memPct = memLimit === Infinity ? 100 : Math.min(100, Math.round((memCurrent / memLimit) * 100));
+            document.getElementById('subMembersProgress').style.width = memPct + '%';
+
+            const waCurrent = sub.usage.whatsapp.current;
+            const waLimit = sub.usage.whatsapp.limit;
+            document.getElementById('subWhatsAppCurrent').innerText = waCurrent;
+            document.getElementById('subWhatsAppLimit').innerText = waLimit === 0 ? 'Not Included' : (waLimit === Infinity ? 'Unlimited' : waLimit);
+            const waPct = waLimit === 0 ? 0 : (waLimit === Infinity ? 100 : Math.min(100, Math.round((waCurrent / waLimit) * 100)));
+            document.getElementById('subWhatsAppProgress').style.width = waPct + '%';
+
+            // 2. Active Badges & Buttons state. Reset matrices styles
+            ['trial', 'basic', 'pro', 'enterprise'].forEach(p => {
+                const card = document.getElementById('cardPlan' + p.charAt(0).toUpperCase() + p.slice(1));
+                const badge = document.getElementById('badgePlan' + p.charAt(0).toUpperCase() + p.slice(1));
+                const btn = document.getElementById('btnPlan' + p.charAt(0).toUpperCase() + p.slice(1));
+
+                if (card) card.className = "glass-panel p-6 rounded-2xl border border-outline-variant/30 flex flex-col justify-between relative";
+                if (badge) badge.classList.add('hidden');
+                if (btn) {
+                    btn.innerText = "Select Plan";
+                    btn.className = "w-full mt-6 bg-surface-container-highest text-on-surface hover:bg-surface-container-highest/80 py-2 rounded-lg font-label-md transition-all";
+                    btn.disabled = false;
+                }
+            });
+
+            // Highlight Active Plan
+            const activeCard = document.getElementById('cardPlan' + plan.charAt(0).toUpperCase() + plan.slice(1));
+            const activeBadge = document.getElementById('badgePlan' + plan.charAt(0).toUpperCase() + plan.slice(1));
+            const activeBtn = document.getElementById('btnPlan' + plan.charAt(0).toUpperCase() + plan.slice(1));
+
+            if (activeCard) {
+                activeCard.className = "glass-panel p-6 rounded-2xl border-2 border-primary flex flex-col justify-between relative shadow-lg shadow-primary/10";
+            }
+            if (activeBadge) activeBadge.classList.remove('hidden');
+            if (activeBtn) {
+                activeBtn.innerText = "Current Plan";
+                activeBtn.className = "w-full mt-6 bg-primary/20 text-primary py-2 rounded-lg font-label-md transition-all border border-primary/30 cursor-default";
+                activeBtn.disabled = true;
             }
         }
 
@@ -1740,6 +1830,140 @@
                 await window.api.delete('/branches/' + id);
                 loadData();
             }
+        }
+
+        // ==========================================
+        // WhatsApp Connection (real whatsapp-web.js)
+        // ==========================================
+        let waStatusTimer = null;
+        let waConnecting = false;
+
+        function waStatusMeta(status) {
+            switch (status) {
+                case 'CONNECTED':
+                    return { color: 'bg-green-500', label: 'Connected', desc: 'Your WhatsApp is linked. Automated messages send from your number.' };
+                case 'WAITING_FOR_QR':
+                    return { color: 'bg-yellow-500', label: 'Waiting for QR scan', desc: 'Scan the QR code with WhatsApp on your phone.' };
+                case 'INITIALIZING':
+                    return { color: 'bg-yellow-500', label: 'Initializing…', desc: 'Starting the WhatsApp session — this can take a few seconds.' };
+                default:
+                    return { color: 'bg-red-500', label: 'Disconnected', desc: 'WhatsApp is not linked. Click Connect to scan a QR code.' };
+            }
+        }
+
+        function renderWhatsAppStatus(s) {
+            const meta = waStatusMeta(s && s.status);
+            const dot = document.getElementById('waStatusDot');
+            const label = document.getElementById('waStatusLabel');
+            const desc = document.getElementById('waStatusDesc');
+            const info = document.getElementById('waStatusInfo');
+            const connectBtn = document.getElementById('waConnectBtn');
+            const disconnectBtn = document.getElementById('waDisconnectBtn');
+            const connected = !!(s && s.connected);
+
+            if (dot) dot.className = 'w-3 h-3 rounded-full shrink-0 ' + meta.color;
+            if (label) label.innerText = meta.label;
+            if (desc) desc.innerText = (s && s.lastError && !connected) ? s.lastError : meta.desc;
+            if (connectBtn) connectBtn.classList.toggle('hidden', connected);
+            if (disconnectBtn) disconnectBtn.classList.toggle('hidden', !connected);
+            if (info) {
+                if (connected && s.info && s.info.pushname) {
+                    info.classList.remove('hidden');
+                    info.innerText = 'Linked account: ' + s.info.pushname;
+                } else {
+                    info.classList.add('hidden');
+                    info.innerText = '';
+                }
+            }
+
+            // Auto-close the QR modal the moment the scan completes — no refresh needed.
+            if (connected && waConnecting) {
+                waConnecting = false;
+                closeAllModals();
+                if (window.toast) window.toast('WhatsApp connected successfully!', 'success');
+            }
+        }
+
+        async function loadWhatsAppStatus() {
+            try {
+                const s = await window.api.get('/whatsapp/status');
+                renderWhatsAppStatus(s);
+                return s;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        async function connectWhatsApp() {
+            try {
+                waConnecting = true;
+                document.getElementById('waQrImg').classList.add('hidden');
+                document.getElementById('waQrSpinner').classList.remove('hidden');
+                document.getElementById('waQrHint').innerText = 'Generating QR code…';
+                openModal('whatsappQrModal');
+                await window.api.post('/whatsapp/connect', {});
+                pollWhatsAppQr();
+            } catch (e) {
+                waConnecting = false;
+                if (window.toast) window.toast('Failed to start WhatsApp connection.', 'error');
+                else alert('Failed to start WhatsApp connection.');
+            }
+        }
+
+        async function pollWhatsAppQr() {
+            const modal = document.getElementById('whatsappQrModal');
+            // Stop polling if the modal was closed by any means.
+            if (!waConnecting || !modal || modal.classList.contains('hidden')) {
+                waConnecting = false;
+                return;
+            }
+            try {
+                const [qrRes, statusRes] = await Promise.all([
+                    window.api.get('/whatsapp/qr'),
+                    window.api.get('/whatsapp/status')
+                ]);
+                renderWhatsAppStatus(statusRes);
+                if (!waConnecting) return; // connected -> modal closed by renderWhatsAppStatus
+                if (qrRes && qrRes.qr) {
+                    const img = document.getElementById('waQrImg');
+                    img.src = qrRes.qr;
+                    img.classList.remove('hidden');
+                    document.getElementById('waQrSpinner').classList.add('hidden');
+                    document.getElementById('waQrHint').innerText =
+                        'Scan this code from WhatsApp → Linked Devices. It refreshes automatically.';
+                }
+            } catch (e) { /* transient — keep polling */ }
+            if (waConnecting) setTimeout(pollWhatsAppQr, 2500);
+        }
+
+        function closeWhatsAppQr() {
+            waConnecting = false;
+            closeAllModals();
+            loadWhatsAppStatus();
+        }
+
+        async function disconnectWhatsApp() {
+            const msg = 'Disconnect WhatsApp? You will need to scan the QR code again to reconnect.';
+            const ok = window.confirmDialog ? await window.confirmDialog(msg) : confirm(msg);
+            if (!ok) return;
+            try {
+                await window.api.post('/whatsapp/disconnect', {});
+                if (window.toast) window.toast('WhatsApp disconnected.', 'info');
+                loadWhatsAppStatus();
+            } catch (e) {
+                if (window.toast) window.toast('Failed to disconnect WhatsApp.', 'error');
+                else alert('Failed to disconnect WhatsApp.');
+            }
+        }
+
+        function startWhatsAppPolling() {
+            loadWhatsAppStatus();
+            if (waStatusTimer) clearInterval(waStatusTimer);
+            waStatusTimer = setInterval(loadWhatsAppStatus, 5000);
+        }
+
+        function stopWhatsAppPolling() {
+            if (waStatusTimer) { clearInterval(waStatusTimer); waStatusTimer = null; }
         }
 
         // Initialize

@@ -210,7 +210,7 @@ app.use(verifyCsrfOrigin);
 // [H6] Dependency-free in-memory rate limiter for auth/sensitive endpoints. Caps
 // brute-force attempts per IP+route within a sliding window. (For multi-instance
 // deployments swap the Map for a shared store such as Redis.)
-function rateLimit({ windowMs, max, message }) {
+function rateLimit({ windowMs, max, message, refundOnSuccess = true }) {
   const hits = new Map();
   setInterval(() => {
     const now = Date.now();
@@ -227,13 +227,31 @@ function rateLimit({ windowMs, max, message }) {
       return res.status(429).json({ error: message || 'Too many requests. Please try again later.' });
     }
     rec.count++;
-    // Only failed/blocked attempts count toward the limit — a successful login or
-    // valid reset must not lock out legitimate users who share an office/NAT IP.
-    res.on('finish', () => { if (res.statusCode < 400 && rec.count > 0) rec.count--; });
+    // For login/signup, a SUCCESSFUL attempt is refunded so legitimate users who
+    // share an office/NAT IP aren't locked out. But endpoints that ALWAYS return 200
+    // by design (forgot-password, resend-verification — they must not reveal whether
+    // an account exists) must NOT refund, otherwise they'd have no rate limit at all.
+    if (refundOnSuccess) {
+      res.on('finish', () => { if (res.statusCode < 400 && rec.count > 0) rec.count--; });
+    }
     next();
   };
 }
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: 'Too many attempts. Please wait a few minutes and try again.' });
+// Always-200 endpoints (enumeration-safe) get a real, non-refunding limit.
+const sensitiveLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, refundOnSuccess: false, message: 'Too many attempts. Please wait a few minutes and try again.' });
+
+// [AUTH] Single source of truth for "is this account allowed to sign in?" — used by
+// BOTH the password and Google paths so they can never diverge (the OAuth path used
+// to use && instead of ||, which let suspended accounts log in via Google).
+function isAccountActive(user) {
+  return !!(user && user.is_active && user.status === 'active');
+}
+// Normalize an email for storage/lookup so capitalization can't fork accounts or
+// lock users out (Google already lowercases; password paths must match).
+function normalizeEmail(raw) {
+  return String(raw || '').trim().toLowerCase();
+}
 
 // [H8] Token revocation list (jti -> expiry epoch ms). Logout / suspension add the
 // token's jti here so authenticateToken rejects it even though the JWT is still
@@ -720,6 +738,32 @@ app.get('/api/v1/auth/session', authenticateToken, async (req, res) => {
 const apiRouter = require('./routes/api');
 app.use('/api/v1', authenticateToken, requireTenant, apiRouter);
 
+// [WHATSAPP] Real WhatsApp automation (whatsapp-web.js). Connection management
+// lives in its own router but reuses the SAME auth + tenant isolation as the rest
+// of the API, so QR/status/connect are manager/admin-only and tenant-scoped.
+const whatsappService = require('./services/whatsapp.service');
+require('./services/whatsapp.queue'); // wires the service->queue resume hook
+const whatsappRouter = require('./routes/whatsapp.routes');
+app.use('/api/v1/whatsapp', authenticateToken, requireTenant, whatsappRouter);
+// Also expose the SAME router at /api/whatsapp so the Android WebView can open
+// /api/whatsapp/qr directly (it returns a scannable HTML page) without the /v1
+// prefix. Same auth + tenant isolation; the QR is resolved from the logged-in
+// manager's session cookie.
+app.use('/api/whatsapp', authenticateToken, requireTenant, whatsappRouter);
+
+// Restore any gym that already linked WhatsApp so it reconnects WITHOUT a new QR
+// after a server restart (LocalAuth session persistence). Non-blocking.
+// WHATSAPP_ENABLED=false disables this on hosts that can't run headless Chromium
+// (e.g. Render's free tier) so the server never tries to launch a browser there.
+if (process.env.WHATSAPP_ENABLED !== 'false') {
+  setTimeout(() => {
+    try { whatsappService.restorePersistedSessions(); }
+    catch (e) { console.error('[whatsapp] session restore error:', e.message); }
+  }, 5 * 1000);
+} else {
+  console.log('[whatsapp] Disabled (WHATSAPP_ENABLED=false) — skipping session restore.');
+}
+
 // [M6] Run automation scans (expiry alerts, payment-due tasks, absent-member
 // alerts) on a background interval for ALL tenants instead of on every dashboard
 // load. Idempotent: each scan checks for an existing alert/task before creating.
@@ -750,6 +794,20 @@ app.use((err, req, res, next) => {
 // ==========================================
 // START SERVER
 // ==========================================
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Gym Flow management server running at http://localhost:${PORT}`);
 });
+
+// [WHATSAPP] Graceful shutdown — destroy all WhatsApp/Chromium clients so headless
+// browser processes are not orphaned when the server stops.
+let shuttingDown = false;
+async function gracefulShutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`\n[shutdown] ${signal} received — closing WhatsApp clients...`);
+  try { await whatsappService.shutdown(); } catch (e) { /* best effort */ }
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 8000).unref();
+}
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

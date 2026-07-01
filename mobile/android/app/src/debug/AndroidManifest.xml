@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      DEBUG-ONLY overlay. The manifest merger applies this ONLY to debug builds
+      (npx cap run android / assembleDebug), never to release. It permits cleartext
+      HTTP so the WebView can load a LOCAL dev backend such as http://10.0.2.2:3000
+      (emulator) or http://<your-LAN-IP>:3000 (physical device on the same Wi-Fi).
+      Release builds stay HTTPS-only and are unaffected by this file.
+    -->
+    <application android:usesCleartextTraffic="true" />
+</manifest>

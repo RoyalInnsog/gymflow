@@ -74,7 +74,10 @@ app.use((req, res, next) => {
 // Auth ENDPOINTS live in routes/auth.js, mounted further below.
 const identity = require('./lib/identity/core');
 const { resolvePageAuth } = require('./lib/identity/refresh');
-const { authenticateToken, requireTenant, requireStaffRole, shellRedirectFor, shellForRole, authLimiter } = identity;
+const {
+  authenticateToken, requireTenant, requireStaffRole, shellRedirectFor, shellForRole, authLimiter, GOOGLE_ENABLED, EMAIL_ENABLED,
+  getUserRoles, setAuthCookie, signScopedToken, signPendingToken, rolesForClient, verifyToken, revokeToken, DUMMY_PW_HASH
+} = identity;
 
 
 // Member/staff photos are uploaded inline as base64 data URLs (front-end caps
@@ -524,7 +527,7 @@ app.post('/api/v1/auth/logout', (req, res) => {
   const token = req.cookies.auth_token;
   if (token) {
     try {
-      const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
+      const decoded = verifyToken(token);
       revokeToken(decoded);
     } catch (e) { /* already invalid/expired — nothing to revoke */ }
   }

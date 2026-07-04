@@ -62,11 +62,20 @@
 
     <main class="max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop mt-4 md:mt-8 pb-24">
         <!-- Header -->
-        <div class="mb-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-                <h1 class="font-headline-xl text-headline-xl text-on-surface">Business Control Center</h1>
-                <p class="font-body-md text-body-md text-on-surface-variant mt-2">Manage your SaaS configuration,
-                    pricing, branding, and operations.</p>
+        <div class="mb-xl flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-outline-variant/30 pb-6">
+            <div class="flex items-center gap-4">
+                <a href="/dashboard" class="flex items-center gap-3 group hover:opacity-80 transition-all duration-200" title="Return to Dashboard">
+                    <div class="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-lg shadow-primary/5 group-hover:scale-105 transition-transform duration-200">
+                        <span class="material-symbols-outlined text-[28px] font-bold">fitness_center</span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-headline-xl text-headline-xl text-on-surface font-extrabold tracking-tight">GYM Flow</span>
+                            <span class="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase">Portal</span>
+                        </div>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Business Control Center</p>
+                    </div>
+                </a>
             </div>
             <button id="globalSaveBtn"
                 class="bg-primary text-on-primary px-6 py-3 rounded-lg font-label-lg hover:bg-primary/90 transition-colors shadow-panel flex items-center gap-2"
@@ -81,6 +90,10 @@
                 <button class="nav-tab active flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap animate-fade-in" data-target="gym">
                     <span class="material-symbols-outlined">storefront</span>
                     <span class="font-label-lg">🏢 Gym</span>
+                </button>
+                <button class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap" data-target="plans">
+                    <span class="material-symbols-outlined">style</span>
+                    <span class="font-label-lg">🏷️ Plans</span>
                 </button>
                 <button class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap" data-target="team">
                     <span class="material-symbols-outlined">group</span>
@@ -718,7 +731,10 @@
                         </div>
                     </div>
 
-                    <!-- Membership Plans builder -->
+                </section>
+
+                <!-- 1.5 Membership Plans builder -->
+                <section id="plans" class="tab-content space-y-6 hidden">
                     <div id="membership-plans" class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
                         <div class="flex items-center justify-between">
                             <div>
@@ -731,7 +747,9 @@
                         </div>
                         <div id="plansList" class="grid grid-cols-1 gap-4"></div>
                     </div>
-                </section>    </section>
+                </section>
+
+                </section> <!-- Extra section from original codebase to preserve layout structure -->
 
             </div>
         </div>
@@ -998,13 +1016,14 @@
 
     <script>
         let globalSettings = {};
+        window._cachedPlans = [];
 
         // ─── Tab Navigation (hash-driven) ───────────────────────────────
         // The active tab lives in location.hash so deep links work
         // (/settings#subscription-plan from the trial badge), the state
         // survives refresh, and the browser Back button walks tabs before
         // leaving the page — proper back navigation, no dead-end.
-        const VALID_TABS = ['gym', 'team', 'appearance', 'security', 'billing'];
+        const VALID_TABS = ['gym', 'plans', 'team', 'appearance', 'security', 'billing'];
 
         function activateTab(id) {
             // Map old deep link hashes to the new top-level section ids
@@ -1013,8 +1032,10 @@
                 activeSectionId = 'gym';
             } else if (id === 'staff-manager') {
                 activeSectionId = 'team';
-            } else if (['subscription-plan', 'membership-plans'].includes(id)) {
+            } else if (id === 'subscription-plan') {
                 activeSectionId = 'billing';
+            } else if (id === 'membership-plans') {
+                activeSectionId = 'plans';
             }
 
             if (!VALID_TABS.includes(activeSectionId)) activeSectionId = 'gym';
@@ -1475,8 +1496,14 @@
 
         function renderPlans(plans) {
             const list = document.getElementById('plansList');
-            if (!plans || plans.length === 0) {
+            if (!Array.isArray(plans)) {
+                list.innerHTML = `<div class="glass-panel p-8 text-center rounded-xl text-error font-medium">Failed to load plans. Please try again.</div>`;
+                window._cachedPlans = [];
+                return;
+            }
+            if (plans.length === 0) {
                 list.innerHTML = `<div class="glass-panel p-8 text-center rounded-xl text-on-surface-variant">No plans found. Create one to start selling memberships.</div>`;
+                window._cachedPlans = [];
                 return;
             }
 
@@ -1774,10 +1801,17 @@
             payload.pt_included = formData.has('pt_included') ? 1 : 0;
 
             try {
+                let res;
                 if (id) {
-                    await window.api.put('/plans/' + id, payload);
+                    res = await window.api.put('/plans/' + id, payload);
                 } else {
-                    await window.api.post('/plans', payload);
+                    res = await window.api.post('/plans', payload);
+                }
+                if (res && res.error) {
+                    alert(res.error || 'Failed to save plan.');
+                    return;
+                }
+                if (!id) {
                     // Detour flow: Add Member sent the user here because no plans
                     // existed. First plan created → return them to their draft.
                     const returnTo = sessionStorage.getItem('gf_return_to');
@@ -1795,8 +1829,17 @@
         });
         async function deletePlan(id) {
             if (await window.confirmDialog('This membership plan will be removed. Existing members on it are not affected.', { title: 'Delete plan?', confirmText: 'Delete', danger: true })) {
-                await window.api.delete('/plans/' + id);
-                loadData();
+                try {
+                    const res = await window.api.delete('/plans/' + id);
+                    if (res && res.error) {
+                        alert(res.error || 'Failed to delete plan.');
+                    } else {
+                        window.toast && window.toast('Plan deleted successfully.', 'success');
+                    }
+                    loadData();
+                } catch (err) {
+                    alert('Error deleting plan.');
+                }
             }
         }
 
@@ -1970,8 +2013,9 @@
                 pollWhatsAppQr();
             } catch (e) {
                 waConnecting = false;
+                document.getElementById('waQrSpinner').classList.add('hidden');
+                document.getElementById('waQrHint').innerHTML = `<span class="text-error font-medium">Failed to start WhatsApp connection.</span>`;
                 if (window.toast) window.toast('Failed to start WhatsApp connection.', 'error');
-                else alert('Failed to start WhatsApp connection.');
             }
         }
 
@@ -1989,6 +2033,14 @@
                 ]);
                 renderWhatsAppStatus(statusRes);
                 if (!waConnecting) return; // connected -> modal closed by renderWhatsAppStatus
+                if (statusRes && (statusRes.lastError || (statusRes.status === 'DISCONNECTED' && !statusRes.connected))) {
+                    const errorMsg = statusRes.lastError || 'Initialization failed.';
+                    document.getElementById('waQrSpinner').classList.add('hidden');
+                    document.getElementById('waQrImg').classList.add('hidden');
+                    document.getElementById('waQrHint').innerHTML = `<span class="text-error font-medium">${esc(errorMsg)}</span>`;
+                    waConnecting = false;
+                    return;
+                }
                 if (qrRes && qrRes.qr) {
                     const img = document.getElementById('waQrImg');
                     img.src = qrRes.qr;

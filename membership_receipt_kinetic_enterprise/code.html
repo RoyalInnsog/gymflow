@@ -11,6 +11,7 @@
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/utils.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <title>Gym Flow - Receipt</title>
 <!-- Tailwind CSS -->
 
@@ -190,6 +191,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   const printBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Print'));
   if (printBtn) {
     printBtn.onclick = () => window.print();
+  }
+  const savePdfBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Save PDF'));
+  if (savePdfBtn) {
+    savePdfBtn.onclick = () => {
+      const element = document.querySelector('.bg-surface-container\\/70');
+      const opt = {
+        margin:       0.25,
+        filename:     `receipt-${receiptNum}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#171717' },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      html2pdf().from(element).set(opt).save();
+    };
   }
 
   try {

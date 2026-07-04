@@ -3490,7 +3490,7 @@ router.get('/analytics/member-segments', async (req, res) => {
     const newQ = await getQuery(`SELECT COUNT(*) as count FROM members WHERE date(created_at) >= '${getTodayString().substring(0, 8)}01' AND tenant_id = ? `, [req.tenant_id]);
 
     // Expiring soon (within 30 days)
-    const expiringQ = await allQuery(`
+    const expiringQ = await getQuery(`
       SELECT COUNT(DISTINCT ms.member_id) as count FROM memberships ms
       JOIN members m ON ms.member_id = m.id
       WHERE ms.status = 'Active' AND m.status = 'Active'
@@ -3501,7 +3501,7 @@ router.get('/analytics/member-segments', async (req, res) => {
     const expiredQ = await getQuery(`SELECT COUNT(*) as count FROM members WHERE status = 'Expired' AND tenant_id = ? `, [req.tenant_id]);
 
     // High-value (have renewed at least twice)
-    const highValueQ = await allQuery(`
+    const highValueQ = await getQuery(`
       SELECT COUNT(DISTINCT member_id) as count FROM memberships WHERE renewal_count >= 2
      AND tenant_id = ? `, [req.tenant_id]);
 

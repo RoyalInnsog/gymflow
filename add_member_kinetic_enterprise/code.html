@@ -49,6 +49,9 @@
 <span id="photoIcon" class="material-symbols-outlined text-[32px] mb-1 group-hover:scale-110 transition-transform duration-300">add_a_photo</span>
 <span id="photoLabel" class="font-label-sm text-label-sm">Upload</span>
 <input id="photoInput" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" type="file">
+<button id="removePhotoBtn" type="button" class="hidden absolute top-1 right-1 w-6 h-6 rounded-full bg-error text-on-error flex items-center justify-center shadow z-20 hover:scale-110 transition-transform" title="Remove Photo">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
 </div>
 </section>
 <!-- Personal Information Section -->
@@ -311,6 +314,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const photoPreview = document.getElementById('photoPreview');
   const photoIcon    = document.getElementById('photoIcon');
   const photoLabel   = document.getElementById('photoLabel');
+  const removeBtn    = document.getElementById('removePhotoBtn');
 
   if (photoInput) {
     photoInput.addEventListener('change', () => {
@@ -333,10 +337,27 @@ document.addEventListener("DOMContentLoaded", () => {
         photoPreview.classList.remove('hidden');
         photoIcon.classList.add('hidden');
         photoLabel.textContent = 'Change';
-        photoLabel.classList.add('relative', 'z-10', 'bg-black/50', 'px-2', 'rounded');
+        photoLabel.className = 'font-label-sm text-label-sm relative z-10 bg-black/50 px-2 rounded';
+        if (removeBtn) removeBtn.classList.remove('hidden');
         queueDraftSave(); // photo lands async — persist it once decoded
       };
       reader.readAsDataURL(file);
+    });
+  }
+
+  if (removeBtn) {
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      uploadedPhoto = null;
+      photoInput.value = '';
+      photoPreview.src = '';
+      photoPreview.classList.add('hidden');
+      photoIcon.classList.remove('hidden');
+      photoLabel.textContent = 'Upload';
+      photoLabel.className = 'font-label-sm text-label-sm';
+      removeBtn.classList.add('hidden');
+      queueDraftSave();
     });
   }
 
@@ -379,7 +400,8 @@ document.addEventListener("DOMContentLoaded", () => {
     photoPreview.classList.remove('hidden');
     photoIcon.classList.add('hidden');
     photoLabel.textContent = 'Change';
-    photoLabel.classList.add('relative', 'z-10', 'bg-black/50', 'px-2', 'rounded');
+    photoLabel.className = 'font-label-sm text-label-sm relative z-10 bg-black/50 px-2 rounded';
+    if (removeBtn) removeBtn.classList.remove('hidden');
   }
 
   function collectDraft() {

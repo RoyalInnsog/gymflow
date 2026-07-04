@@ -169,7 +169,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ---- Real Tasks (replaces all demo content) ----
   try {
     const res = await window.api.fetch('/tasks');
-    const tasks = res.ok ? await res.json() : [];
+    if (!res.ok) throw new Error('Failed to fetch tasks');
+    const tasks = await res.json();
     const list = document.getElementById('agenda-list');
     const pending = (Array.isArray(tasks) ? tasks : []).filter(t => t.status !== 'Completed');
     const badge = document.getElementById('pending-count');
@@ -230,7 +231,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ---- Real Pending Renewals (derived from live members; not plan-gated) ----
   try {
     const res = await window.api.fetch('/members');
-    const members = res.ok ? await res.json() : [];
+    if (!res.ok) throw new Error('Failed to fetch renewals');
+    const members = await res.json();
     const list = document.getElementById('renewals-list');
     const due = (Array.isArray(members) ? members : [])
       .filter(m => m.status === 'Expired' || (typeof m.daysLeft === 'number' && m.daysLeft >= 0 && m.daysLeft <= 7))
@@ -260,7 +262,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ---- Critical Alert: live overdue/unpaid payments ----
   try {
     const res = await window.api.fetch('/dashboard/summary');
-    const data = res.ok ? await res.json() : {};
+    if (!res.ok) throw new Error('Failed to fetch summary');
+    const data = await res.json();
     const count = Number(data.pendingInvoices || 0);
     const title = document.getElementById('alert-title');
     const desc = document.getElementById('alert-desc');
@@ -280,12 +283,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (reviewBtn) reviewBtn.className = 'text-sm font-medium text-secondary hover:opacity-80 underline decoration-secondary/30 underline-offset-4 transition-colors';
     }
     if (reviewBtn) reviewBtn.onclick = () => window.location.href = '/payment-recovery';
-  } catch (err) { console.error('Failed to load alert', err); }
+  } catch (err) {
+    console.error('Failed to load alert', err);
+    const title = document.getElementById('alert-title');
+    const desc = document.getElementById('alert-desc');
+    if (title) title.innerText = 'Could not load alerts';
+    if (desc) desc.innerText = 'Please refresh the page to try again.';
+  }
 
   // ---- Absent Members: live follow-up list ----
   try {
     const res = await window.api.fetch('/retention/inactive');
-    const data = res.ok ? await res.json() : {};
+    if (!res.ok) throw new Error('Failed to fetch inactive members');
+    const data = await res.json();
     const absent = [...(data.critical || []), ...(data.high || [])]
       .sort((a, b) => (b.absence_days || 0) - (a.absence_days || 0)).slice(0, 5);
     const list = document.getElementById('absent-list');
@@ -305,7 +315,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>`;
       }).join('');
     }
-  } catch (err) { console.error('Failed to load absent members', err); }
+  } catch (err) {
+    console.error('Failed to load absent members', err);
+    const list = document.getElementById('absent-list');
+    if (list) list.innerHTML = `<p class="text-center text-xs text-on-surface-variant py-4">Could not load absent members.</p>`;
+  }
 
   // ---- Button wiring ----
   const retBtn = document.getElementById('view-retention-btn');

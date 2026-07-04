@@ -731,6 +731,7 @@ async function initOnboardingCard() {
 async function loadExecutiveSummary() {
   try {
     const res = await window.api.fetch('/analytics/executive-summary');
+    if (!res.ok) throw new Error('Failed to fetch executive summary');
     const data = await res.json();
     const k = data.kpis;
 
@@ -777,13 +778,20 @@ async function loadExecutiveSummary() {
     else gradeEl.className = 'px-2 py-0.5 rounded font-label-sm text-label-sm border bg-error/10 text-error border-error/30';
 
     window._execData = data;
-  } catch (err) { console.error('Executive summary error:', err); }
+  } catch (err) {
+    console.error('Executive summary error:', err);
+    document.querySelectorAll('.skeleton').forEach(s => {
+      s.classList.remove('skeleton');
+      s.innerText = '--';
+    });
+  }
 }
 
 // 2. Revenue Trend
 async function loadRevenueTrend() {
   try {
     const res = await window.api.fetch('/analytics/revenue-trend?months=' + currentRange);
+    if (!res.ok) throw new Error('Failed to fetch revenue trend');
     const data = await res.json();
 
     document.getElementById('projected-badge').querySelector('span:last-child').innerText = 'Projected: ' + fmt(data.projected);
@@ -841,7 +849,13 @@ async function loadRevenueTrend() {
     });
     });
     window._revData = data;
-  } catch (err) { console.error('Revenue trend error:', err); }
+  } catch (err) {
+    console.error('Revenue trend error:', err);
+    const skeleton = document.getElementById('chart-revenue-skeleton');
+    if (skeleton) {
+      skeleton.innerHTML = `<div class="flex items-center justify-center h-full text-xs text-error font-medium">Failed to load revenue trend</div>`;
+    }
+  }
 }
 
 // 3. Renewal Forecast
@@ -872,6 +886,7 @@ async function loadRenewalForecast() {
 async function loadChurnAnalytics() {
   try {
     const res = await window.api.fetch('/analytics/churn');
+    if (!res.ok) throw new Error('Failed to fetch churn analytics');
     const data = await res.json();
 
     document.getElementById('churn-rate-val').innerText = pct(data.churnRate);
@@ -909,13 +924,20 @@ async function loadChurnAnalytics() {
     });
     });
     window._churnData = data;
-  } catch (err) { console.error('Churn analytics error:', err); }
+  } catch (err) {
+    console.error('Churn analytics error:', err);
+    const skeleton = document.getElementById('chart-churn-skeleton');
+    if (skeleton) {
+      skeleton.innerHTML = `<div class="flex items-center justify-center h-full text-xs text-error font-medium">Failed to load churn trend</div>`;
+    }
+  }
 }
 
 // 5. Member Segments
 async function loadMemberSegments() {
   try {
     const res = await window.api.fetch('/analytics/member-segments');
+    if (!res.ok) throw new Error('Failed to fetch member segments');
     const data = await res.json();
 
     const segCanvas = document.getElementById('chart-segmentation');
@@ -954,7 +976,13 @@ async function loadMemberSegments() {
         ${s.label} (${s.count})
       </div>`
     ).join('');
-  } catch (err) { console.error('Segments error:', err); }
+  } catch (err) {
+    console.error('Segments error:', err);
+    const skeleton = document.getElementById('chart-segmentation-skeleton');
+    if (skeleton) {
+      skeleton.innerHTML = `<span class="text-xs text-error font-medium text-center">Failed to load segments.</span>`;
+    }
+  }
 }
 
 // 6. VIP Members

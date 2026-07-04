@@ -35,7 +35,7 @@
 
 <!-- Main Content Canvas -->
 <main class="flex-1 pt-28 pb-24 md:pb-12 px-margin md:ml-[280px] max-w-[1600px] w-full mx-auto">
-<div class="px-4 md:px-8 pt-4"><a href="/settings" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>← Settings</span></a></div>
+<div class="px-4 md:px-8 pt-4"><a href="/settings" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>Settings</span></a></div>
 <!-- Header Section -->
 <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-stack-lg gap-stack-md border-b border-white/10 pb-stack-md">
 <div>
@@ -70,7 +70,42 @@
 </tr>
 </thead>
 <tbody id="equipment-tbody" class="font-body-md text-body-md">
-<tr><td colspan="5" class="py-8 text-center text-on-surface-variant">Loading equipment…</td></tr>
+<tr class="skeleton-row border-b border-white/5">
+  <td class="py-4 px-4">
+    <div class="space-y-1.5">
+      <div class="h-3.5 w-32 skeleton"></div>
+      <div class="h-2.5 w-16 skeleton"></div>
+    </div>
+  </td>
+  <td class="py-4 px-4"><div class="h-3.5 w-20 skeleton"></div></td>
+  <td class="py-4 px-4"><div class="h-5 w-16 rounded-full skeleton"></div></td>
+  <td class="py-4 px-4"><div class="h-3.5 w-24 skeleton"></div></td>
+  <td class="py-4 px-4 text-right"><div class="h-8 w-16 rounded-lg skeleton ml-auto"></div></td>
+</tr>
+<tr class="skeleton-row border-b border-white/5">
+  <td class="py-4 px-4">
+    <div class="space-y-1.5">
+      <div class="h-3.5 w-28 skeleton"></div>
+      <div class="h-2.5 w-12 skeleton"></div>
+    </div>
+  </td>
+  <td class="py-4 px-4"><div class="h-3.5 w-16 skeleton"></div></td>
+  <td class="py-4 px-4"><div class="h-5 w-16 rounded-full skeleton"></div></td>
+  <td class="py-4 px-4"><div class="h-3.5 w-24 skeleton"></div></td>
+  <td class="py-4 px-4 text-right"><div class="h-8 w-16 rounded-lg skeleton ml-auto"></div></td>
+</tr>
+<tr class="skeleton-row border-b border-white/5">
+  <td class="py-4 px-4">
+    <div class="space-y-1.5">
+      <div class="h-3.5 w-36 skeleton"></div>
+      <div class="h-2.5 w-20 skeleton"></div>
+    </div>
+  </td>
+  <td class="py-4 px-4"><div class="h-3.5 w-24 skeleton"></div></td>
+  <td class="py-4 px-4"><div class="h-5 w-16 rounded-full skeleton"></div></td>
+  <td class="py-4 px-4"><div class="h-3.5 w-24 skeleton"></div></td>
+  <td class="py-4 px-4 text-right"><div class="h-8 w-16 rounded-lg skeleton ml-auto"></div></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -151,7 +186,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const res = await window.api.fetch('/equipment');
     const items = res.ok ? await res.json() : [];
     if (!Array.isArray(items) || items.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-on-surface-variant">No equipment registered yet. Add your first asset to get started.</td></tr>`;
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="py-16 text-center">
+            <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
+              <div class="w-12 h-12 rounded-xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-4 shadow-sm">
+                <span class="material-symbols-outlined text-primary text-[24px]">fitness_center</span>
+              </div>
+              <h4 class="font-title-md text-title-md text-on-surface font-semibold mb-1">No equipment registered</h4>
+              <p class="text-on-surface-variant text-xs mb-4">Add your first asset to track inventory, health status, and maintenance schedules.</p>
+              <button onclick="Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Register Asset')).click()" class="bg-primary text-on-primary text-xs px-4 py-2 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1">
+                <span class="material-symbols-outlined text-[16px]">add</span> Register Asset
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
       return;
     }
     tbody.innerHTML = items.map(e => {

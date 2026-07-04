@@ -40,7 +40,7 @@
     </style>
 
 </head>
-<body class="bg-mesh min-h-screen flex items-center justify-center p-margin-mobile md:p-margin-desktop text-on-surface font-body-md antialiased selection:bg-primary/30 selection:text-primary md:pl-[280px]">
+<body class="bg-mesh min-h-screen flex items-center justify-center p-margin-mobile md:p-margin-desktop text-on-surface font-body-md antialiased selection:bg-primary/30 selection:text-primary">
 
 <!-- Atmospheric background light elements -->
 <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-surface-variant/20 rounded-full blur-[120px] pointer-events-none"></div>
@@ -96,9 +96,10 @@
 <a class="font-body-sm text-body-sm text-primary hover:text-primary-fixed-dim transition-colors hover:underline underline-offset-4" href="/forgot-password">Forgot Password?</a>
 </div>
 <!-- Primary Action -->
-<button class="w-full bg-primary text-on-primary py-4 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-primary-fixed-dim hover:shadow-primary/20 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/10 border border-primary-fixed/20 mt-2" type="submit">
-<span>SIGN IN</span>
-<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+<button id="loginSubmit" class="w-full bg-primary text-on-primary py-4 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-primary-fixed-dim hover:shadow-primary/20 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/10 border border-primary-fixed/20 mt-2" type="submit">
+<span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner>progress_activity</span>
+<span data-label>SIGN IN</span>
+<span class="material-symbols-outlined text-[18px]" data-arrow>arrow_forward</span>
 </button>
 </form>
 <!-- Divider -->
@@ -149,6 +150,19 @@ document.querySelector('form').addEventListener('submit', async (e) => {
 
     const remember = document.getElementById('remember').checked;
 
+  // Loading feedback: disable the button and swap the arrow for a spinner so a
+  // slow network never leaves the user unsure whether the tap registered.
+  const btn = document.getElementById('loginSubmit');
+  const setLoading = (on) => {
+    if (!btn) return;
+    btn.disabled = on;
+    btn.classList.toggle('btn-loading', on);
+    btn.querySelector('[data-spinner]').classList.toggle('hidden', !on);
+    btn.querySelector('[data-arrow]').classList.toggle('hidden', on);
+    btn.querySelector('[data-label]').textContent = on ? 'SIGNING IN' : 'SIGN IN';
+  };
+  setLoading(true);
+
   try {
     const response = await window.api.fetch('/auth/login', {
       method: 'POST',
@@ -158,12 +172,16 @@ document.querySelector('form').addEventListener('submit', async (e) => {
 
     const data = await response.json();
     if (response.ok) {
-      window.location.href = '/dashboard';
+      // The server decides the destination from the account's role(s):
+      // admin shell, member shell, or the role picker for multi-role accounts.
+      window.location.href = (data && data.redirect) || '/dashboard';
     } else {
+      setLoading(false);
       alert(data.error || 'Login failed.');
     }
   } catch (err) {
     console.error(err);
+    setLoading(false);
     alert('System authentication offline.');
   }
 });

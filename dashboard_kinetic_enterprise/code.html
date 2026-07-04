@@ -9,17 +9,13 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
+<script src="/assets/js/membershipEngine.js"></script>
 <script src="/assets/js/utils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <title>Gym Flow</title>
 <meta name="description" content="CEO-grade executive dashboard. Revenue intelligence, renewal forecasting, churn analytics, and business health monitoring.">
 <style>
   body { font-family: 'Inter', sans-serif; }
-  .glass-card {
-    background: linear-gradient(135deg, rgba(30,30,30,0.6) 0%, rgba(18,18,18,0.8) 100%);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.08);
-  }
   .kpi-card { transition: transform 0.2s, border-color 0.3s; }
   .kpi-card:hover { transform: translateY(-2px); border-color: rgba(181,196,255,0.3); }
   .health-gauge { background: conic-gradient(from 220deg, #ff897d 0%, #ffb95f 25%, #81c995 50%, #b5c4ff 75%, #d0bcff 100%); }
@@ -32,27 +28,18 @@
   .insight-card:nth-child(2) { animation-delay: 0.2s; }
   .insight-card:nth-child(3) { animation-delay: 0.3s; }
   .insight-card:nth-child(4) { animation-delay: 0.4s; }
+  .check-animate {
+    animation: check-bounce 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  @keyframes check-bounce {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); opacity: 1; }
+  }
 </style>
 </head>
 <body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
 <div id="jsb-header" data-page-title="Executive Dashboard"></div>
-
-
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- BUSINESS ALERTS ENGINE -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <div class="glass-card p-6 rounded-xl border border-outline-variant/30 flex flex-col mb-6">
-    <div class="flex justify-between items-center mb-6">
-      <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-error text-[24px]">notifications_active</span>
-        <h3 class="font-title-lg text-title-lg text-on-surface">Business Alerts</h3>
-      </div>
-      <span class="px-2 py-0.5 rounded-full bg-error/10 text-error border border-error/20 font-label-sm text-label-sm animate-pulse" id="alert-count-badge">0 Active</span>
-    </div>
-    <div class="flex flex-col gap-3" id="alerts-container">
-      <p class="font-body-md text-body-md text-on-surface-variant text-center py-4">Scanning business health...</p>
-    </div>
-  </div>
 
 <div id="jsb-sidebar"></div>
 
@@ -87,6 +74,25 @@
     </a>
   </div>
 
+  <!-- Onboarding Card Wrapper -->
+  <div id="onboarding-card-wrapper" class="hidden"></div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- BUSINESS ALERTS ENGINE -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="glass-card p-6 rounded-xl border border-outline-variant/30 flex flex-col mb-6">
+    <div class="flex justify-between items-center mb-6">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-error text-[24px]">notifications_active</span>
+        <h3 class="font-title-lg text-title-lg text-on-surface">Business Alerts</h3>
+      </div>
+      <span class="px-2 py-0.5 rounded-full bg-error/10 text-error border border-error/20 font-label-sm text-label-sm animate-pulse" id="alert-count-badge">0 Active</span>
+    </div>
+    <div class="flex flex-col gap-3" id="alerts-container">
+      <p class="font-body-md text-body-md text-on-surface-variant text-center py-4">Scanning business health...</p>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════════════════════ -->
   <!-- EXECUTIVE KPI GRID (Consolidated) -->
   <!-- ═══════════════════════════════════════════════════════ -->
@@ -99,14 +105,14 @@
           <span class="material-symbols-outlined text-secondary text-[20px]" style="font-variation-settings:'FILL' 1;">payments</span>
           <h3 class="font-title-md text-title-md text-on-surface">Revenue</h3>
         </div>
-        <div id="kpi-revenue-trend" class="text-xs text-secondary flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">trending_up</span>—</div>
+        <div id="kpi-revenue-trend" class="text-xs text-secondary flex items-center gap-1"><div class="skeleton h-3 w-16"></div></div>
       </div>
-      <div id="kpi-revenue" class="font-display-md text-display-md break-words min-w-0 text-secondary glow-text leading-none mb-2">—</div>
+      <div id="kpi-revenue" class="font-display-md text-display-md break-words min-w-0 text-secondary glow-text leading-none mb-2"><div class="skeleton h-9 w-36 inline-block"></div></div>
       <div class="grid grid-cols-2 gap-x-2 gap-y-2 mt-auto pt-3 border-t border-outline-variant/20">
-        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Collections</span><span id="intel-collections" class="font-label-md text-label-md text-[#81c995] font-bold">—</span></div>
-        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Outstanding</span><span id="intel-outstanding" class="font-label-md text-label-md text-tertiary font-bold">—</span></div>
-        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Forecast</span><span id="intel-forecast" class="font-label-md text-label-md text-on-surface font-bold">—</span></div>
-        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">ARPM</span><span id="intel-arpm" class="font-label-md text-label-md text-on-surface font-bold">—</span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Collections</span><span id="intel-collections" class="font-label-md text-label-md text-[#81c995] font-bold"><span class="skeleton h-4 w-12 inline-block"></span></span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Outstanding</span><span id="intel-outstanding" class="font-label-md text-label-md text-tertiary font-bold"><span class="skeleton h-4 w-12 inline-block"></span></span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Forecast</span><span id="intel-forecast" class="font-label-md text-label-md text-on-surface font-bold"><span class="skeleton h-4 w-12 inline-block"></span></span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">ARPM</span><span id="intel-arpm" class="font-label-md text-label-md text-on-surface font-bold"><span class="skeleton h-4 w-12 inline-block"></span></span></div>
       </div>
     </div>
     <!-- Membership -->
@@ -117,14 +123,14 @@
           <span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings:'FILL' 1;">groups</span>
           <h3 class="font-title-md text-title-md text-on-surface">Membership</h3>
         </div>
-        <div id="kpi-active-trend" class="text-xs text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">trending_up</span>—</div>
+        <div id="kpi-active-trend" class="text-xs text-primary flex items-center gap-1"><div class="skeleton h-3 w-16"></div></div>
       </div>
-      <div id="kpi-active-members" class="font-display-md text-display-md break-words min-w-0 text-primary leading-none mb-2">—</div>
+      <div id="kpi-active-members" class="font-display-md text-display-md break-words min-w-0 text-primary leading-none mb-2"><span class="skeleton h-9 w-24 inline-block"></span></div>
       <div class="grid grid-cols-2 gap-x-2 gap-y-2 mt-auto pt-3 border-t border-outline-variant/20">
-        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">New</span><span id="intel-new" class="font-label-md text-label-md text-[#81c995] font-bold">—</span></div>
-        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Lost</span><span id="intel-lost" class="font-label-md text-label-md text-error font-bold">—</span></div>
-        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Expiring</span><span id="intel-expiring" class="font-label-md text-label-md text-tertiary font-bold">—</span></div>
-        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Renewal Rate</span><span id="kpi-renewal" class="font-label-md text-label-md text-[#d0bcff] font-bold">—</span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">New</span><span id="intel-new" class="font-label-md text-label-md text-[#81c995] font-bold"><span class="skeleton h-4 w-12 inline-block"></span></span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Lost</span><span id="intel-lost" class="font-label-md text-label-md text-error font-bold"><span class="skeleton h-4 w-12 inline-block"></span></span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Expiring</span><span id="intel-expiring" class="font-label-md text-label-md text-tertiary font-bold"><span class="skeleton h-4 w-12 inline-block"></span></span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Renewal Rate</span><span id="kpi-renewal" class="font-label-md text-label-md text-[#d0bcff] font-bold"><span class="skeleton h-4 w-12 inline-block"></span></span></div>
       </div>
     </div>
     <!-- Leads -->
@@ -136,11 +142,11 @@
           <h3 class="font-title-md text-title-md text-on-surface">Leads Pipeline</h3>
         </div>
       </div>
-      <div id="intel-leads-total" class="font-display-md text-display-md break-words min-w-0 text-tertiary leading-none mb-2">—</div>
+      <div id="intel-leads-total" class="font-display-md text-display-md break-words min-w-0 text-tertiary leading-none mb-2"><span class="skeleton h-9 w-24 inline-block"></span></div>
       <div class="grid grid-cols-2 gap-x-2 gap-y-2 mt-auto pt-3 border-t border-outline-variant/20">
-        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Conv. Rate</span><span id="intel-leads-conv" class="font-label-md text-label-md text-[#81c995] font-bold">—</span></div>
-        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Pipeline</span><span id="intel-leads-pipeline" class="font-label-md text-label-md text-on-surface font-bold">—</span></div>
-        <div class="col-span-2"><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Top Channel</span><span id="intel-leads-channel" class="font-label-md text-label-md text-primary font-bold truncate block">—</span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Conv. Rate</span><span id="intel-leads-conv" class="font-label-md text-label-md text-[#81c995] font-bold"><span class="skeleton h-4 w-12 inline-block"></span></span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Pipeline</span><span id="intel-leads-pipeline" class="font-label-md text-label-md text-on-surface font-bold"><span class="skeleton h-4 w-16 inline-block"></span></span></div>
+        <div class="col-span-2"><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Top Channel</span><span id="intel-leads-channel" class="font-label-md text-label-md text-primary font-bold truncate block"><span class="skeleton h-4 w-28 inline-block"></span></span></div>
       </div>
     </div>
     <!-- Financial Health -->
@@ -151,17 +157,17 @@
           <span class="material-symbols-outlined text-[#81c995] text-[20px]" style="font-variation-settings:'FILL' 1;">health_and_safety</span>
           <h3 class="font-title-md text-title-md text-on-surface">Health Score</h3>
         </div>
-        <span id="health-grade" class="px-2 py-0.5 rounded font-label-sm text-label-sm border text-on-surface-variant border-outline-variant/30 bg-surface-container-low">—</span>
+        <span id="health-grade" class="px-2 py-0.5 rounded font-label-sm text-label-sm border text-on-surface-variant border-outline-variant/30 bg-surface-container-low"><span class="skeleton h-3 w-12 inline-block"></span></span>
       </div>
       <div class="flex items-baseline gap-2 mb-2">
-        <span id="health-score-val" class="font-display-md text-display-md break-words min-w-0 text-[#81c995] leading-none">—</span>
+        <span id="health-score-val" class="font-display-md text-display-md break-words min-w-0 text-[#81c995] leading-none"><span class="skeleton h-9 w-12 inline-block"></span></span>
         <span class="text-xs text-on-surface-variant">/ 100</span>
       </div>
       <div class="grid grid-cols-2 gap-x-2 gap-y-2 mt-auto pt-3 border-t border-outline-variant/20">
-        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">MoM Growth</span><span id="intel-growth" class="font-label-md text-label-md text-[#81c995] font-bold">—</span></div>
-        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Churn Rate</span><span id="kpi-churn" class="font-label-md text-label-md text-error font-bold">—</span></div>
-        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Unpaid Inv.</span><span id="intel-unpaid" class="font-label-md text-label-md text-tertiary font-bold">—</span></div>
-        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">At Risk</span><span id="kpi-atrisk-val" class="font-label-md text-label-md text-error font-bold">—</span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">MoM Growth</span><span id="intel-growth" class="font-label-md text-label-md text-[#81c995] font-bold"><span class="skeleton h-4 w-12 inline-block"></span></span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Churn Rate</span><span id="kpi-churn" class="font-label-md text-label-md text-error font-bold"><span class="skeleton h-4 w-12 inline-block"></span></span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Unpaid Inv.</span><span id="intel-unpaid" class="font-label-md text-label-md text-tertiary font-bold"><span class="skeleton h-4 w-12 inline-block"></span></span></div>
+        <div><span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">At Risk</span><span id="kpi-atrisk-val" class="font-label-md text-label-md text-error font-bold"><span class="skeleton h-4 w-12 inline-block"></span></span></div>
       </div>
     </div>
   </div>
@@ -177,7 +183,7 @@
         <span class="material-symbols-outlined text-[#d0bcff] text-[20px]" style="font-variation-settings:'FILL' 1;">how_to_reg</span>
         <h3 class="font-title-md text-title-md text-on-surface">Today's Checkins</h3>
       </div>
-      <div id="intel-present-today" class="font-display-md text-display-md break-words min-w-0 text-[#d0bcff] glow-text leading-none mb-2">—</div>
+      <div id="intel-present-today" class="font-display-md text-display-md break-words min-w-0 text-[#d0bcff] glow-text leading-none mb-2"><span class="skeleton h-9 w-20 inline-block"></span></div>
       <p class="text-xs text-on-surface-variant mt-auto">Total verified checkins for today</p>
     </div>
     <!-- Peak Hours -->
@@ -187,7 +193,7 @@
         <span class="material-symbols-outlined text-[#ffb95f] text-[20px]" style="font-variation-settings:'FILL' 1;">schedule</span>
         <h3 class="font-title-md text-title-md text-on-surface">Peak Hour</h3>
       </div>
-      <div id="intel-peak-hour" class="font-display-md text-display-md break-words min-w-0 text-[#ffb95f] leading-none mb-2">—</div>
+      <div id="intel-peak-hour" class="font-display-md text-display-md break-words min-w-0 text-[#ffb95f] leading-none mb-2"><span class="skeleton h-9 w-28 inline-block"></span></div>
       <p class="text-xs text-on-surface-variant mt-auto">Most active time of the day</p>
     </div>
     <!-- Most Active Member -->
@@ -197,7 +203,7 @@
         <span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings:'FILL' 1;">stars</span>
         <h3 class="font-title-md text-title-md text-on-surface">Most Active Member</h3>
       </div>
-      <div id="intel-most-active" class="font-headline-md text-headline-md break-words min-w-0 text-primary leading-tight mb-2">—</div>
+      <div id="intel-most-active" class="font-headline-md text-headline-md break-words min-w-0 text-primary leading-tight mb-2"><span class="skeleton h-8 w-44 inline-block"></span></div>
       <p class="text-xs text-on-surface-variant mt-auto">Highest visits in last 30 days</p>
     </div>
   </div>
@@ -218,6 +224,31 @@
     </div>
     <div class="flex-grow min-h-[220px] relative">
       <canvas id="chart-revenue-trend"></canvas>
+      <div id="chart-revenue-skeleton" class="absolute inset-0 flex flex-col gap-3 p-4 justify-end">
+        <div class="flex items-end gap-3 h-full pb-2 border-b border-outline-variant/20">
+          <div class="skeleton w-full" style="height: 40%"></div>
+          <div class="skeleton w-full" style="height: 60%"></div>
+          <div class="skeleton w-full" style="height: 35%"></div>
+          <div class="skeleton w-full" style="height: 70%"></div>
+          <div class="skeleton w-full" style="height: 50%"></div>
+          <div class="skeleton w-full" style="height: 85%"></div>
+        </div>
+        <div class="flex justify-between text-[10px] text-on-surface-variant/40">
+          <div class="skeleton h-2.5 w-8"></div>
+          <div class="skeleton h-2.5 w-8"></div>
+          <div class="skeleton h-2.5 w-8"></div>
+          <div class="skeleton h-2.5 w-8"></div>
+          <div class="skeleton h-2.5 w-8"></div>
+          <div class="skeleton h-2.5 w-8"></div>
+        </div>
+      </div>
+      <div id="revenueChart-empty" class="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-surface/30 backdrop-blur-sm hidden z-10">
+        <div class="w-12 h-12 rounded-xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-3 shadow-sm mx-auto">
+          <span class="material-symbols-outlined text-primary text-[24px]">show_chart</span>
+        </div>
+        <h4 class="font-title-md text-title-md text-on-surface font-semibold mb-1">Not enough data yet</h4>
+        <p class="text-on-surface-variant text-xs max-w-xs mx-auto">As your gym grows, insights will appear here.</p>
+      </div>
     </div>
   </div>
 
@@ -234,32 +265,32 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div class="bg-surface-container-low rounded-xl p-4 border border-outline-variant/20">
           <p class="font-label-caps text-label-caps text-tertiary mb-2">Expiring 7 Days</p>
-          <div id="rf-7-count" class="font-headline-lg text-headline-lg text-on-surface mb-1">—</div>
-          <p id="rf-7-revenue" class="text-xs text-on-surface-variant">Revenue at risk: —</p>
+          <div id="rf-7-count" class="font-headline-lg text-headline-lg text-on-surface mb-1"><span class="skeleton h-8 w-16 inline-block"></span></div>
+          <p id="rf-7-revenue" class="text-xs text-on-surface-variant">Revenue at risk: <span class="skeleton h-3 w-16 inline-block"></span></p>
         </div>
         <div class="bg-surface-container-low rounded-xl p-4 border border-outline-variant/20">
           <p class="font-label-caps text-label-caps text-[#ffb95f] mb-2">Expiring 30 Days</p>
-          <div id="rf-30-count" class="font-headline-lg text-headline-lg text-on-surface mb-1">—</div>
-          <p id="rf-30-revenue" class="text-xs text-on-surface-variant">Revenue at risk: —</p>
+          <div id="rf-30-count" class="font-headline-lg text-headline-lg text-on-surface mb-1"><span class="skeleton h-8 w-16 inline-block"></span></div>
+          <p id="rf-30-revenue" class="text-xs text-on-surface-variant">Revenue at risk: <span class="skeleton h-3 w-16 inline-block"></span></p>
         </div>
         <div class="bg-surface-container-low rounded-xl p-4 border border-outline-variant/20">
           <p class="font-label-caps text-label-caps text-on-surface-variant mb-2">Expiring 60 Days</p>
-          <div id="rf-60-count" class="font-headline-lg text-headline-lg text-on-surface mb-1">—</div>
-          <p id="rf-60-revenue" class="text-xs text-on-surface-variant">Revenue at risk: —</p>
+          <div id="rf-60-count" class="font-headline-lg text-headline-lg text-on-surface mb-1"><span class="skeleton h-8 w-16 inline-block"></span></div>
+          <p id="rf-60-revenue" class="text-xs text-on-surface-variant">Revenue at risk: <span class="skeleton h-3 w-16 inline-block"></span></p>
         </div>
       </div>
       <div class="flex flex-wrap gap-3">
         <div class="flex items-center gap-2 bg-[#81c995]/10 text-[#81c995] px-3 py-1.5 rounded-lg border border-[#81c995]/20 text-xs font-medium">
           <span class="material-symbols-outlined text-[16px]">check_circle</span>
-          Expected Renewals: <span id="rf-expected" class="font-bold">—</span>
+          Expected Renewals: <span id="rf-expected" class="font-bold"><span class="skeleton h-3 w-8 inline-block"></span></span>
         </div>
         <div class="flex items-center gap-2 bg-error/10 text-error px-3 py-1.5 rounded-lg border border-error/20 text-xs font-medium">
           <span class="material-symbols-outlined text-[16px]">cancel</span>
-          Expected Lost: <span id="rf-lost" class="font-bold">—</span>
+          Expected Lost: <span id="rf-lost" class="font-bold"><span class="skeleton h-3 w-8 inline-block"></span></span>
         </div>
         <div class="flex items-center gap-2 bg-surface-container text-on-surface-variant px-3 py-1.5 rounded-lg border border-outline-variant/20 text-xs font-medium">
           <span class="material-symbols-outlined text-[16px]">history</span>
-          Historical Rate: <span id="rf-rate" class="font-bold">—</span>
+          Historical Rate: <span id="rf-rate" class="font-bold"><span class="skeleton h-3 w-8 inline-block"></span></span>
         </div>
       </div>
     </div>
@@ -272,6 +303,11 @@
       </div>
       <div class="flex-grow flex items-center justify-center min-h-[220px] relative">
         <canvas id="chart-segmentation"></canvas>
+        <div id="chart-segmentation-skeleton" class="absolute inset-0 flex items-center justify-center">
+          <div class="w-32 h-32 rounded-full border-[12px] border-surface-container-high skeleton animate-pulse flex items-center justify-center">
+            <div class="w-20 h-20 rounded-full bg-[#171717] border border-outline-variant/10"></div>
+          </div>
+        </div>
       </div>
       <div id="segment-legend" class="flex flex-wrap gap-x-4 gap-y-2 mt-4 justify-center"></div>
     </div>
@@ -290,19 +326,37 @@
       <div class="flex items-center gap-4 mb-5">
         <div class="flex-1 bg-surface-container-low rounded-xl p-4 border border-outline-variant/20 text-center">
           <p class="font-label-caps text-label-caps text-on-surface-variant mb-1">Churn Rate</p>
-          <div id="churn-rate-val" class="font-headline-lg text-headline-lg text-error">—</div>
+          <div id="churn-rate-val" class="font-headline-lg text-headline-lg text-error"><span class="skeleton h-8 w-16 mx-auto inline-block"></span></div>
         </div>
         <div class="flex-1 bg-surface-container-low rounded-xl p-4 border border-outline-variant/20 text-center">
           <p class="font-label-caps text-label-caps text-on-surface-variant mb-1">At Risk</p>
-          <div id="churn-atrisk-val" class="font-headline-lg text-headline-lg text-tertiary">—</div>
+          <div id="churn-atrisk-val" class="font-headline-lg text-headline-lg text-tertiary"><span class="skeleton h-8 w-12 mx-auto inline-block"></span></div>
         </div>
         <div class="flex-1 bg-surface-container-low rounded-xl p-4 border border-outline-variant/20 text-center">
           <p class="font-label-caps text-label-caps text-on-surface-variant mb-1">Lost Revenue</p>
-          <div id="churn-lost-rev" class="font-headline-lg text-headline-lg text-on-surface">—</div>
+          <div id="churn-lost-rev" class="font-headline-lg text-headline-lg text-on-surface"><span class="skeleton h-8 w-20 mx-auto inline-block"></span></div>
         </div>
       </div>
-      <div class="h-[160px]">
+      <div class="h-[160px] relative">
         <canvas id="chart-churn-trend"></canvas>
+        <div id="chart-churn-skeleton" class="absolute inset-0 flex flex-col gap-2 p-2 justify-end">
+          <div class="flex items-end gap-2 h-full pb-1 border-b border-outline-variant/20">
+            <div class="skeleton w-full" style="height: 30%"></div>
+            <div class="skeleton w-full" style="height: 45%"></div>
+            <div class="skeleton w-full" style="height: 25%"></div>
+            <div class="skeleton w-full" style="height: 60%"></div>
+            <div class="skeleton w-full" style="height: 40%"></div>
+            <div class="skeleton w-full" style="height: 75%"></div>
+          </div>
+          <div class="flex justify-between text-[8px] text-on-surface-variant/40">
+            <div class="skeleton h-2 w-6"></div>
+            <div class="skeleton h-2 w-6"></div>
+            <div class="skeleton h-2 w-6"></div>
+            <div class="skeleton h-2 w-6"></div>
+            <div class="skeleton h-2 w-6"></div>
+            <div class="skeleton h-2 w-6"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -326,7 +380,48 @@
             </tr>
           </thead>
           <tbody id="vip-table-body" class="text-sm">
-            <tr><td colspan="4" class="py-8 text-center text-on-surface-variant">Loading high-value members…</td></tr>
+            <tr class="skeleton-row border-b border-outline-variant/10">
+              <td class="py-3 px-3">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full skeleton shrink-0"></div>
+                  <div class="space-y-1.5 flex-grow">
+                    <div class="h-3.5 w-24 skeleton"></div>
+                    <div class="h-2.5 w-16 skeleton"></div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-3 px-3"><div class="h-3.5 w-16 skeleton"></div></td>
+              <td class="py-3 px-3"><div class="h-3.5 w-8 skeleton"></div></td>
+              <td class="py-3 px-3"><div class="h-5 w-12 rounded-full skeleton"></div></td>
+            </tr>
+            <tr class="skeleton-row border-b border-outline-variant/10">
+              <td class="py-3 px-3">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full skeleton shrink-0"></div>
+                  <div class="space-y-1.5 flex-grow">
+                    <div class="h-3.5 w-20 skeleton"></div>
+                    <div class="h-2.5 w-12 skeleton"></div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-3 px-3"><div class="h-3.5 w-12 skeleton"></div></td>
+              <td class="py-3 px-3"><div class="h-3.5 w-8 skeleton"></div></td>
+              <td class="py-3 px-3"><div class="h-5 w-12 rounded-full skeleton"></div></td>
+            </tr>
+            <tr class="skeleton-row border-b border-outline-variant/10">
+              <td class="py-3 px-3">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full skeleton shrink-0"></div>
+                  <div class="space-y-1.5 flex-grow">
+                    <div class="h-3.5 w-28 skeleton"></div>
+                    <div class="h-2.5 w-20 skeleton"></div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-3 px-3"><div class="h-3.5 w-16 skeleton"></div></td>
+              <td class="py-3 px-3"><div class="h-3.5 w-8 skeleton"></div></td>
+              <td class="py-3 px-3"><div class="h-5 w-12 rounded-full skeleton"></div></td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -353,6 +448,55 @@ const pct = v => (v != null && !Number.isNaN(Number(v))) ? v + '%' : '0%';
 const txt = v => (v == null || String(v) === 'undefined' || String(v) === 'NaN' || String(v) === 'null' || v === '') ? '--' : v;
 const num = v => (v == null || Number.isNaN(Number(v))) ? 0 : Number(v);
 
+// ─── Chart performance ─────────────────────────────────────────────
+// Cap canvas backing-store resolution (3x phone screens triple GPU
+// memory for no visible gain), shorten animations, honour
+// prefers-reduced-motion, and defer below-fold chart construction
+// until the canvas approaches the viewport.
+if (window.Chart) {
+  Chart.defaults.devicePixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  Chart.defaults.animation.duration =
+    matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 500;
+}
+
+const _chartBuildQueue = new Map();
+const _chartIO = ('IntersectionObserver' in window)
+  ? new IntersectionObserver(entries => {
+      entries.forEach(en => {
+        if (!en.isIntersecting) return;
+        const build = _chartBuildQueue.get(en.target);
+        if (build) {
+          _chartBuildQueue.delete(en.target);
+          _chartIO.unobserve(en.target);
+          build();
+        }
+      });
+    }, { rootMargin: '200px' })
+  : null;
+
+function buildWhenVisible(canvas, build) {
+  if (!canvas) return;
+  if (!_chartIO) return build();
+  const r = canvas.getBoundingClientRect();
+  if (r.top < window.innerHeight + 200 && r.bottom > -200) return build();
+  _chartBuildQueue.set(canvas, build); // newest data wins if range changes off-screen
+  _chartIO.observe(canvas);
+}
+
+function showReloadSkeletons() {
+  const revSkeleton = document.getElementById('chart-revenue-skeleton');
+  if (revSkeleton) revSkeleton.classList.remove('hidden');
+
+  const churnSkeleton = document.getElementById('chart-churn-skeleton');
+  if (churnSkeleton) churnSkeleton.classList.remove('hidden');
+
+  const kpiRevenue = document.getElementById('kpi-revenue');
+  if (kpiRevenue) kpiRevenue.innerHTML = '<div class="skeleton h-9 w-36 inline-block"></div>';
+
+  const forecast = document.getElementById('intel-forecast');
+  if (forecast) forecast.innerHTML = '<span class="skeleton h-4 w-12 inline-block"></span>';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Range buttons
   document.querySelectorAll('.range-btn').forEach(btn => {
@@ -362,6 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       btn.className = 'range-btn px-3 py-1.5 rounded font-label-caps text-label-caps bg-surface-container-highest text-primary shadow-sm';
       currentRange = parseInt(btn.dataset.range);
+      showReloadSkeletons();
       loadAllData();
     });
   });
@@ -380,7 +525,207 @@ async function loadAllData() {
     loadFinanceDashboard()
   ]);
   generateInsights();
+  await initOnboardingCard();
 }
+
+async function initOnboardingCard() {
+  const container = document.getElementById('onboarding-card-wrapper');
+  if (!container) return;
+
+  const isDismissed = localStorage.getItem('gymflow_onboarding_dismissed') === 'true';
+
+  try {
+    const [sessionRes, settings, plans, finance, staff] = await Promise.all([
+      window.api.fetch('/auth/session').then(r => r.json()).catch(() => ({})),
+      window.api.get('/settings').catch(() => ({})),
+      window.api.get('/plans').catch(() => ([])),
+      window.api.get('/finance/summary').catch(() => ({})),
+      window.api.get('/staff').catch(() => ([]))
+    ]);
+
+    const tenant = sessionRes?.tenant || {};
+    const totalMembers = window._execData?.totalMembers || 0;
+
+    // Evaluate Task States
+    const isProfileComplete = !!(settings.address?.trim() || settings.support_phone?.trim() || settings.support_email?.trim());
+    const isPlanCreated = plans && plans.length > 0;
+    const isMemberAdded = totalMembers > 0;
+    const isPaymentRecorded = finance && (finance.totalRevenue || 0) > 0;
+    const isStaffInvited = staff && staff.length > 0;
+
+    const tasks = [
+      {
+        id: 'profile',
+        title: 'Complete Gym Profile',
+        desc: 'Add your address, support details, and upload your gym logo.',
+        completed: isProfileComplete,
+        cta: 'Complete Profile',
+        href: '/settings#gym-profile',
+        icon: 'storefront'
+      },
+      {
+        id: 'plan',
+        title: 'Create First Membership Plan',
+        desc: 'Set up pricing plans for your members (e.g., Monthly, Annual, PT).',
+        completed: isPlanCreated,
+        cta: 'Create Plan',
+        href: '/settings#membership-plans',
+        icon: 'card_membership'
+      },
+      {
+        id: 'member',
+        title: 'Add First Member',
+        desc: 'Register a new member and assign them a membership plan.',
+        completed: isMemberAdded,
+        cta: 'Add Member',
+        href: '/add-member-step-1',
+        icon: 'person_add'
+      },
+      {
+        id: 'payment',
+        title: 'Record First Payment',
+        desc: 'Collect fees from a member and issue a receipt.',
+        completed: isPaymentRecorded,
+        cta: 'Collect Payment',
+        href: '/payment-center',
+        icon: 'payments'
+      }
+    ];
+
+    const completedCount = tasks.filter(t => t.completed).length;
+    const percentage = completedCount * 25;
+
+    // Check dismissal state. If it is < 100% but marked as dismissed, reset dismissal.
+    if (percentage < 100 && isDismissed) {
+      localStorage.removeItem('gymflow_onboarding_dismissed');
+    }
+
+    if (percentage === 100 && isDismissed) {
+      container.classList.add('hidden');
+      container.innerHTML = '';
+      return;
+    }
+
+    container.classList.remove('hidden');
+
+    if (percentage === 100) {
+      container.innerHTML = `
+        <div class="glass-card p-6 md:p-8 rounded-2xl border border-outline-variant/30 mb-6 flex flex-col gap-6 relative overflow-hidden" role="region" aria-label="Onboarding Complete">
+          <button id="btn-close-onboarding" type="button" class="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 w-8 h-8 rounded-full flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none" aria-label="Close onboarding guide">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+          
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-secondary/15 flex items-center justify-center text-secondary shrink-0 border border-secondary/20 shadow-sm">
+              <span class="material-symbols-outlined text-[28px]" style="font-variation-settings: 'FILL' 1;">celebration</span>
+            </div>
+            <div>
+              <h3 class="font-headline-md text-headline-md text-on-surface font-bold">🎉 Your gym is ready.</h3>
+              <p class="text-body-md text-on-surface-variant mt-1">All setup tasks are complete. Choose an action to begin operating.</p>
+            </div>
+          </div>
+          
+          <div class="flex flex-wrap gap-3 mt-2 border-t border-outline-variant/10 pt-4">
+            <a href="/add-member-step-1" class="flex items-center gap-2 bg-primary text-on-primary hover:opacity-90 px-5 py-2.5 rounded-lg font-label-md font-semibold transition-all shadow-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none" aria-label="Add Member">
+              <span class="material-symbols-outlined text-[18px]">person_add</span> Add Member
+            </a>
+            <a href="/payment-center" class="flex items-center gap-2 bg-surface-container text-on-surface hover:bg-surface-variant border border-outline-variant/30 px-5 py-2.5 rounded-lg font-label-md font-semibold transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none" aria-label="Collect Payment">
+              <span class="material-symbols-outlined text-[18px]">payments</span> Collect Payment
+            </a>
+            <button id="btn-dismiss-onboarding" type="button" class="flex items-center gap-2 bg-surface-container text-on-surface hover:bg-surface-variant border border-outline-variant/30 px-5 py-2.5 rounded-lg font-label-md font-semibold transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none" aria-label="Open Dashboard and close onboarding guide">
+              <span class="material-symbols-outlined text-[18px]">dashboard</span> Open Dashboard
+            </button>
+          </div>
+        </div>
+      `;
+      
+      const dismissHandler = () => {
+        localStorage.setItem('gymflow_onboarding_dismissed', 'true');
+        container.classList.add('hidden');
+        container.innerHTML = '';
+      };
+      
+      document.getElementById('btn-dismiss-onboarding').addEventListener('click', dismissHandler);
+      document.getElementById('btn-close-onboarding').addEventListener('click', dismissHandler);
+      return;
+    }
+
+    let tasksHtml = '';
+    tasks.forEach(t => {
+      const statusIcon = t.completed ? 'check_circle' : 'circle';
+      const statusColorClass = t.completed ? 'text-secondary' : 'text-on-surface-variant/30';
+      const iconBgClass = t.completed ? 'bg-secondary/10 text-secondary border-secondary/20' : 'bg-surface-container-highest text-primary border-outline-variant/10';
+      const titleStyle = t.completed ? 'line-through text-on-surface-variant/70' : 'text-on-surface';
+      const checkAnimateClass = t.completed ? 'check-animate' : '';
+
+      tasksHtml += `
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-outline-variant/10 bg-surface-container-low/20 gap-4 transition-all hover:bg-surface-container-low/40">
+          <div class="flex items-start gap-4">
+            <div class="w-10 h-10 rounded-lg border flex items-center justify-center shrink-0 ${iconBgClass}">
+              <span class="material-symbols-outlined text-[20px] ${checkAnimateClass}" style="font-variation-settings: 'FILL' 1;">${t.icon}</span>
+            </div>
+            <div>
+              <h4 class="font-title-md text-title-md font-semibold ${titleStyle}">
+                ${t.title}
+              </h4>
+              <p class="text-body-sm text-body-sm text-on-surface-variant mt-0.5">${t.desc}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 shrink-0 self-end sm:self-center">
+            ${t.completed 
+              ? `<span class="text-secondary font-semibold text-sm flex items-center gap-1"><span class="material-symbols-outlined ${statusColorClass} text-[20px] ${checkAnimateClass}">check_circle</span> Completed</span>`
+              : `<a href="${t.href}" class="bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none" aria-label="${t.cta}">${t.cta}</a>`
+            }
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = `
+      <div class="glass-card p-6 md:p-8 rounded-2xl border border-outline-variant/30 mb-6 flex flex-col gap-6 relative overflow-hidden" role="region" aria-label="Gym Onboarding Setup">
+        <button id="btn-close-onboarding" type="button" class="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 w-8 h-8 rounded-full flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none" aria-label="Close onboarding guide">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+        <div>
+          <h2 class="font-headline-md text-headline-md text-on-surface font-bold flex items-center gap-2">Welcome to Gym Flow 👋</h2>
+          <p class="text-body-md text-on-surface-variant mt-1">Let's prepare your gym in just a few minutes.</p>
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-2">
+            <span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Setup Progress</span>
+            <span class="font-headline-sm text-headline-sm text-primary font-bold transition-all duration-300">${percentage}%</span>
+          </div>
+          <div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+            <div id="onboarding-progress-bar" role="progressbar" aria-valuenow="${percentage}" aria-valuemin="0" aria-valuemax="100" aria-label="Setup progress" class="h-full bg-primary rounded-full transition-all duration-500 ease-out" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-3">
+          ${tasksHtml}
+        </div>
+      </div>
+    `;
+
+    const closeBtn = document.getElementById('btn-close-onboarding');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        localStorage.setItem('gymflow_onboarding_dismissed', 'true');
+        container.classList.add('hidden');
+        container.innerHTML = '';
+      });
+    }
+
+    setTimeout(() => {
+      const progressBar = document.getElementById('onboarding-progress-bar');
+      if (progressBar) progressBar.style.width = `${percentage}%`;
+    }, 100);
+
+  } catch (err) {
+    console.error('Error rendering onboarding card:', err);
+  }
+}
+
 
 // 1. Executive Summary (KPIs + Health Score)
 async function loadExecutiveSummary() {
@@ -446,8 +791,7 @@ async function loadRevenueTrend() {
     // Intel cards
     document.getElementById('intel-forecast').innerText = fmt(data.projected);
 
-    const ctx = document.getElementById('chart-revenue-trend').getContext('2d');
-    if (revenueChart) revenueChart.destroy();
+    const revCanvas = document.getElementById('chart-revenue-trend');
 
     const labels = data.trend.map(t => t.label);
     const values = data.trend.map(t => t.revenue);
@@ -464,7 +808,11 @@ async function loadRevenueTrend() {
     labels.push('Next');
     values.push(data.projected);
 
-    revenueChart = new Chart(ctx, {
+    buildWhenVisible(revCanvas, () => {
+      const skeleton = document.getElementById('chart-revenue-skeleton');
+      if (skeleton) skeleton.classList.add('hidden');
+      if (revenueChart) revenueChart.destroy();
+    revenueChart = new Chart(revCanvas.getContext('2d'), {
       type: 'line',
       data: {
         labels,
@@ -490,6 +838,7 @@ async function loadRevenueTrend() {
           y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#888', font: { size: 11 }, callback: v => '₹' + (v/1000).toFixed(0) + 'k' } }
         }
       }
+    });
     });
     window._revData = data;
   } catch (err) { console.error('Revenue trend error:', err); }
@@ -531,10 +880,12 @@ async function loadChurnAnalytics() {
     if (kpiAtRisk) kpiAtRisk.innerText = data.atRiskCount;
     document.getElementById('churn-lost-rev').innerText = fmt(data.lostRevenue);
 
-    const ctx = document.getElementById('chart-churn-trend').getContext('2d');
-    if (churnChart) churnChart.destroy();
-
-    churnChart = new Chart(ctx, {
+    const churnCanvas = document.getElementById('chart-churn-trend');
+    buildWhenVisible(churnCanvas, () => {
+      const skeleton = document.getElementById('chart-churn-skeleton');
+      if (skeleton) skeleton.classList.add('hidden');
+      if (churnChart) churnChart.destroy();
+    churnChart = new Chart(churnCanvas.getContext('2d'), {
       type: 'bar',
       data: {
         labels: data.churnTrend.map(c => c.label),
@@ -556,6 +907,7 @@ async function loadChurnAnalytics() {
         }
       }
     });
+    });
     window._churnData = data;
   } catch (err) { console.error('Churn analytics error:', err); }
 }
@@ -566,10 +918,12 @@ async function loadMemberSegments() {
     const res = await window.api.fetch('/analytics/member-segments');
     const data = await res.json();
 
-    const ctx = document.getElementById('chart-segmentation').getContext('2d');
-    if (segmentChart) segmentChart.destroy();
-
-    segmentChart = new Chart(ctx, {
+    const segCanvas = document.getElementById('chart-segmentation');
+    buildWhenVisible(segCanvas, () => {
+      const skeleton = document.getElementById('chart-segmentation-skeleton');
+      if (skeleton) skeleton.classList.add('hidden');
+      if (segmentChart) segmentChart.destroy();
+    segmentChart = new Chart(segCanvas.getContext('2d'), {
       type: 'doughnut',
       data: {
         labels: data.segments.map(s => s.label),
@@ -589,6 +943,7 @@ async function loadMemberSegments() {
           tooltip: { callbacks: { label: c => c.label + ': ' + c.raw + ' members' } }
         }
       }
+    });
     });
 
     // Legend
@@ -610,7 +965,19 @@ async function loadVIPMembers() {
     const tbody = document.getElementById('vip-table-body');
 
     if (!data.members || data.members.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center"><div class="flex flex-col items-center gap-2"><span class="material-symbols-outlined text-[36px] text-on-surface-variant">diamond</span><p class="text-on-surface-variant text-sm">No payment data available yet.<br>VIP members will appear after transactions are recorded.</p></div></td></tr>`;
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4" class="py-16 text-center">
+            <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
+              <div class="w-12 h-12 rounded-xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-4 shadow-sm">
+                <span class="material-symbols-outlined text-primary text-[24px]">diamond</span>
+              </div>
+              <h4 class="font-title-md text-title-md text-on-surface font-semibold mb-1">Not enough data yet</h4>
+              <p class="text-on-surface-variant text-xs">VIP members will appear here once billing activity begins.</p>
+            </div>
+          </td>
+        </tr>
+      `;
       return;
     }
 
@@ -777,15 +1144,14 @@ async function checkExpiryAlerts() {
     const in7 = [];
     const in30 = [];
     
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    
+    const engine = window.MembershipEngine;
+    const todayStr = engine && engine.todayStr();
+
     members.forEach(m => {
       let daysLeft = 0;
-      if (m.expiry_date) {
-        const [y, mo, d] = m.expiry_date.split('-');
-        const expDate = new Date(y, mo - 1, d);
-        daysLeft = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+      if (m.expiry_date && engine) {
+        // Centralized calendar math — same engine as the server.
+        daysLeft = engine.remainingDays(m.expiry_date, todayStr);
       } else {
         return;
       }
@@ -851,7 +1217,15 @@ document.addEventListener('DOMContentLoaded', () => {
     bodyEl.innerHTML = '<div class="text-center py-8 text-on-surface-variant">Loading…</div>';
     overlay.classList.remove('hidden');
   }
-  const empty = '<div class="text-center py-8 text-on-surface-variant">No data available yet.</div>';
+  const empty = `
+    <div class="py-12 flex flex-col items-center justify-center text-center max-w-sm mx-auto">
+      <div class="w-12 h-12 rounded-xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-4 shadow-sm mx-auto">
+        <span class="material-symbols-outlined text-primary text-[24px]">database</span>
+      </div>
+      <h4 class="font-title-md text-title-md text-on-surface font-semibold mb-1">No data available yet</h4>
+      <p class="text-on-surface-variant text-xs max-w-xs mx-auto">As your gym grows, insights will appear here.</p>
+    </div>
+  `;
   const barRow = (label, value, max, color, valTxt) => {
     const pct = max > 0 ? Math.round(Math.abs(value) / max * 100) : 0;
     return `<div class="py-2">
@@ -916,7 +1290,15 @@ document.addEventListener('DOMContentLoaded', () => {
           html += list.slice(0, 6).map(m => memberRow(m.full_name, 'Last visit: ' + (m.last_visit || 'Never'), `<a href="/member-profile?id=${esc(m.id)}" class="text-primary text-xs hover:underline">View</a>`, cls)).join('');
         }
       });
-      bodyEl.innerHTML = html || '<div class="text-center py-8 text-on-surface-variant">No at-risk members. Everyone is active! 🎉</div>';
+      bodyEl.innerHTML = html || `
+        <div class="py-12 flex flex-col items-center justify-center text-center max-w-sm mx-auto">
+          <div class="w-12 h-12 rounded-xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-4 shadow-sm mx-auto">
+            <span class="material-symbols-outlined text-[#81c995] text-[24px]">check_circle</span>
+          </div>
+          <h4 class="font-title-md text-title-md text-[#81c995] font-semibold mb-1">Everyone is active!</h4>
+          <p class="text-on-surface-variant text-xs max-w-xs mx-auto">No at-risk members. Keep up the great engagement! 🎉</p>
+        </div>
+      `;
     },
     async vip() {
       open('VIP Members', 'Highest lifetime value members', 'workspace_premium', 'tertiary');
@@ -924,7 +1306,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const arr = (data && data.members) || [];
       bodyEl.innerHTML = arr.length
         ? arr.map(m => memberRow(m.name, `${esc(m.status)} · ${m.renewals || 0} renewals`, money(m.lifetimeValue), 'bg-tertiary/10 text-tertiary')).join('')
-        : '<div class="text-center py-8 text-on-surface-variant">No payment data yet. VIP members appear after transactions.</div>';
+        : `
+          <div class="py-12 flex flex-col items-center justify-center text-center max-w-sm mx-auto">
+            <div class="w-12 h-12 rounded-xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-4 shadow-sm mx-auto">
+              <span class="material-symbols-outlined text-primary text-[24px]">diamond</span>
+            </div>
+            <h4 class="font-title-md text-title-md text-on-surface font-semibold mb-1">Not enough data yet</h4>
+            <p class="text-on-surface-variant text-xs max-w-xs mx-auto">VIP members will appear here once billing activity begins.</p>
+          </div>
+        `;
     },
     async renewal() {
       open('Renewal Forecast', 'Upcoming & expiring memberships', 'event_repeat', 'tertiary');

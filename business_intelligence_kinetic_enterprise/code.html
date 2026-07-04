@@ -319,32 +319,54 @@ document.addEventListener("DOMContentLoaded", () => {
       const forecastObj = (data.forecast && typeof data.forecast === 'object') ? data.forecast : {};
       const revLabels = Object.keys(forecastObj);
       const revValues = Object.values(forecastObj).map(num);
-      const revCtx = document.getElementById('chart-revenue-trend').getContext('2d');
+      const revCanvas = document.getElementById('chart-revenue-trend');
+      const revParent = revCanvas.parentElement;
       
-      if (revenueChart) revenueChart.destroy();
-      revenueChart = new Chart(revCtx, {
-        type: 'line',
-        data: {
-          labels: revLabels,
-          datasets: [{
-            data: revValues,
-            borderColor: '#b5c4ff',
-            backgroundColor: 'rgba(181,196,255,0.08)',
-            fill: true,
-            tension: 0.4,
-            borderWidth: 2
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { grid: { display: false }, ticks: { color: '#888', font: { size: 10 } } },
-            y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#888', font: { size: 10 }, callback: v => '₹' + (v/1000).toFixed(0) + 'k' } }
-          }
+      if (revValues.length === 0 || revValues.reduce((a,b) => a+b, 0) === 0) {
+        revCanvas.style.display = 'none';
+        let emptyEl = revParent.querySelector('.chart-empty-state');
+        if (!emptyEl) {
+          emptyEl = document.createElement('div');
+          emptyEl.className = 'chart-empty-state absolute inset-0 flex flex-col items-center justify-center text-center p-6';
+          revParent.appendChild(emptyEl);
         }
-      });
+        emptyEl.innerHTML = `
+          <div class="w-12 h-12 rounded-xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-3 shadow-sm">
+            <span class="material-symbols-outlined text-primary text-[24px]">show_chart</span>
+          </div>
+          <h4 class="font-title-md text-title-md text-on-surface font-semibold mb-1">Not enough data yet</h4>
+          <p class="text-on-surface-variant text-xs max-w-xs">As your gym grows, insights will appear here.</p>
+        `;
+      } else {
+        revCanvas.style.display = 'block';
+        const emptyEl = revParent.querySelector('.chart-empty-state');
+        if (emptyEl) emptyEl.remove();
+
+        if (revenueChart) revenueChart.destroy();
+        revenueChart = new Chart(revCanvas.getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: revLabels,
+            datasets: [{
+              data: revValues,
+              borderColor: '#b5c4ff',
+              backgroundColor: 'rgba(181,196,255,0.08)',
+              fill: true,
+              tension: 0.4,
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { display: false }, ticks: { color: '#888', font: { size: 10 } } },
+              y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#888', font: { size: 10 }, callback: v => '₹' + (v/1000).toFixed(0) + 'k' } }
+            }
+          }
+        });
+      }
 
       // Fetch member segments for donut chart
       const resSegments = await window.api.fetch('/analytics/member-segments');
@@ -354,27 +376,49 @@ document.addEventListener("DOMContentLoaded", () => {
       const segLabels = segArr.map(s => s.label);
       const segValues = segArr.map(s => Number(s.count) || 0);
       const segColors = segArr.map(s => s.color);
-      const segCtx = document.getElementById('chart-segments').getContext('2d');
+      const segCanvas = document.getElementById('chart-segments');
+      const segParent = segCanvas.parentElement;
 
-      if (segmentChart) segmentChart.destroy();
-      segmentChart = new Chart(segCtx, {
-        type: 'doughnut',
-        data: {
-          labels: segLabels,
-          datasets: [{
-            data: segValues,
-            backgroundColor: segColors,
-            borderWidth: 0,
-            hoverOffset: 4
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          cutout: '70%'
+      if (segArr.length === 0 || segValues.reduce((a,b) => a+b, 0) === 0) {
+        segCanvas.style.display = 'none';
+        let emptyEl = segParent.querySelector('.chart-empty-state');
+        if (!emptyEl) {
+          emptyEl = document.createElement('div');
+          emptyEl.className = 'chart-empty-state absolute inset-0 flex flex-col items-center justify-center text-center p-6';
+          segParent.appendChild(emptyEl);
         }
-      });
+        emptyEl.innerHTML = `
+          <div class="w-12 h-12 rounded-xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-3 shadow-sm">
+            <span class="material-symbols-outlined text-primary text-[24px]">pie_chart</span>
+          </div>
+          <h4 class="font-title-md text-title-md text-on-surface font-semibold mb-1">Not enough data yet</h4>
+          <p class="text-on-surface-variant text-xs max-w-xs">As your gym grows, insights will appear here.</p>
+        `;
+      } else {
+        segCanvas.style.display = 'block';
+        const emptyEl = segParent.querySelector('.chart-empty-state');
+        if (emptyEl) emptyEl.remove();
+
+        if (segmentChart) segmentChart.destroy();
+        segmentChart = new Chart(segCanvas.getContext('2d'), {
+          type: 'doughnut',
+          data: {
+            labels: segLabels,
+            datasets: [{
+              data: segValues,
+              backgroundColor: segColors,
+              borderWidth: 0,
+              hoverOffset: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            cutout: '70%'
+          }
+        });
+      }
 
       // Generate segments legend
       const legendContainer = document.getElementById('segments-legend');
@@ -402,7 +446,15 @@ document.addEventListener("DOMContentLoaded", () => {
       if (vipMembers.length === 0) {
         vipTableBody.innerHTML = `
           <tr>
-            <td colspan="5" class="py-4 text-center text-on-surface-variant">No VIP member data found.</td>
+            <td colspan="5" class="py-16 text-center">
+              <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
+                <div class="w-12 h-12 rounded-xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-4 shadow-sm">
+                  <span class="material-symbols-outlined text-primary text-[24px]">diamond</span>
+                </div>
+                <h4 class="font-title-md text-title-md text-on-surface font-semibold mb-1">Not enough data yet</h4>
+                <p class="text-on-surface-variant text-xs">As your gym grows, insights will appear here.</p>
+              </div>
+            </td>
           </tr>
         `;
       } else {

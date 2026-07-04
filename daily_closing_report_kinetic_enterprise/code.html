@@ -233,8 +233,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (approveBtn && !data.is_locked) {
       approveBtn.onclick = async (e) => {
         e.preventDefault();
-        const note = prompt("Enter manager's daily closing notes/comments:");
-        if (note === null) return; 
+        const note = await window.promptDialog("Add the manager's closing notes for today.", { title: 'Daily Closing Notes', placeholder: 'Notes / comments…', multiline: true, confirmText: 'Save Note' });
+        if (note === null) return;
 
         try {
           const lockRes = await window.api.fetch('/reports/closing/lock', {

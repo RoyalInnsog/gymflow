@@ -681,7 +681,19 @@
     if (!tbody) return;
     tbody.innerHTML = "";
     if (data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-on-surface-variant">No outbox message logs found.</td></tr>`;
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="py-16 text-center">
+            <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
+              <div class="w-12 h-12 rounded-xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-4 shadow-sm">
+                <span class="material-symbols-outlined text-primary text-[24px]">outbox</span>
+              </div>
+              <h4 class="font-title-md text-title-md text-on-surface font-semibold mb-1">No dispatched messages</h4>
+              <p class="text-on-surface-variant text-xs">When you send campaign broadcasts or member alerts, logs will appear here.</p>
+            </div>
+          </td>
+        </tr>
+      `;
       return;
     }
     data.forEach(log => {
@@ -730,7 +742,18 @@
       const campaigns = await res.json();
       list.innerHTML = "";
       if (campaigns.length === 0) {
-        list.innerHTML = `<p class="col-span-full text-center text-outline py-8">No campaigns sent yet.</p>`;
+        list.innerHTML = `
+          <div class="col-span-full py-16 flex flex-col items-center justify-center text-center max-w-md mx-auto">
+            <div class="w-16 h-16 rounded-2xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-6 shadow-sm">
+              <span class="material-symbols-outlined text-primary text-[32px]">campaign</span>
+            </div>
+            <h3 class="font-title-lg text-title-lg text-on-surface font-semibold mb-2">No campaigns yet</h3>
+            <p class="text-on-surface-variant text-sm mb-6 max-w-xs">Reach out to your members by launching your first broadcast campaign.</p>
+            <button onclick="document.getElementById('tab-creator-btn').click()" class="bg-primary text-on-primary font-label-md px-6 py-2.5 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2 mx-auto">
+              <span class="material-symbols-outlined text-[18px]">send</span> Create Campaign
+            </button>
+          </div>
+        `;
         return;
       }
       campaigns.forEach(c => {

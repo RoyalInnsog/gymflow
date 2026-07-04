@@ -334,9 +334,17 @@ document.addEventListener("DOMContentLoaded", () => {
       if (txs.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="6" class="py-12 text-center text-on-surface-variant">
-              <span class="material-symbols-outlined text-[48px] block mb-2 opacity-50">receipt_long</span>
-              No recent transactions found.
+            <td colspan="6" class="py-16 text-center">
+              <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
+                <div class="w-12 h-12 rounded-xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-4 shadow-sm">
+                  <span class="material-symbols-outlined text-primary text-[24px]">receipt_long</span>
+                </div>
+                <h4 class="font-title-md text-title-md text-on-surface font-semibold mb-1">No payments yet</h4>
+                <p class="text-on-surface-variant text-xs mb-4">Track invoices, collections, and outstanding dues here after recording payments.</p>
+                <button onclick="window.location.href='/member-directory'" class="bg-primary text-on-primary text-xs px-4 py-2 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[16px]">payments</span> Collect First Payment
+                </button>
+              </div>
             </td>
           </tr>
         `;

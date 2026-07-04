@@ -183,6 +183,69 @@ window.utils = {
         });
     };
 
+    // Promise-based replacement for window.prompt(). Resolves to the trimmed
+    // string, or null if cancelled. Styled to match confirmDialog so the app
+    // never falls back to the jarring native prompt on a premium dark UI.
+    // opts: { title, placeholder, defaultValue, confirmText, cancelText,
+    //         multiline, inputType, required }
+    window.promptDialog = function (message, opts) {
+        opts = opts || {};
+        return new Promise(function (resolve) {
+            var overlay = document.createElement('div');
+            overlay.className = 'jsb-modal-overlay';
+            var multiline = !!opts.multiline;
+            var control = multiline
+                ? '<textarea data-field rows="3" class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-3 py-2.5 text-body-md text-on-surface placeholder:text-on-surface-variant/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors resize-none" style="min-height:80px"></textarea>'
+                : '<input data-field type="' + (opts.inputType || 'text') + '" class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-3 py-2.5 text-body-md text-on-surface placeholder:text-on-surface-variant/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors">';
+            overlay.innerHTML =
+                '<div class="jsb-modal" role="dialog" aria-modal="true">' +
+                    (opts.title ? '<h3 class="text-title-lg font-bold text-on-surface mb-2"></h3>' : '') +
+                    (message ? '<p class="text-body-md text-on-surface-variant mb-4" style="line-height:1.5"></p>' : '') +
+                    control +
+                    '<div class="flex justify-end gap-3 mt-6">' +
+                        '<button type="button" data-act="cancel" class="px-4 py-2 rounded-lg text-body-md font-medium text-on-surface-variant hover:bg-white/5 transition-colors">' + (opts.cancelText || 'Cancel') + '</button>' +
+                        '<button type="button" data-act="ok" class="px-4 py-2 rounded-lg text-body-md font-semibold bg-primary text-on-primary hover:opacity-90 transition-colors">' + (opts.confirmText || 'Confirm') + '</button>' +
+                    '</div>' +
+                '</div>';
+            if (opts.title) overlay.querySelector('h3').textContent = String(opts.title);
+            if (message) overlay.querySelector('p').textContent = String(message);
+            var field = overlay.querySelector('[data-field]');
+            if (opts.placeholder) field.setAttribute('placeholder', String(opts.placeholder));
+            if (opts.defaultValue != null) field.value = String(opts.defaultValue);
+            (document.body || document.documentElement).appendChild(overlay);
+            requestAnimationFrame(function () { requestAnimationFrame(function () { overlay.classList.add('show'); }); });
+            setTimeout(function () { field.focus(); field.select && field.select(); }, 60);
+
+            function close(result) {
+                overlay.classList.remove('show');
+                setTimeout(function () { overlay.remove(); }, 200);
+                document.removeEventListener('keydown', onKey);
+                resolve(result);
+            }
+            function submit() {
+                var val = String(field.value == null ? '' : field.value).trim();
+                if (opts.required && !val) {
+                    field.classList.add('input-invalid');
+                    field.focus();
+                    return;
+                }
+                close(val);
+            }
+            function onKey(e) {
+                if (e.key === 'Escape') { e.preventDefault(); close(null); }
+                // Enter submits single-line; textarea keeps Enter for newlines (Ctrl/⌘+Enter submits).
+                else if (e.key === 'Enter' && (!multiline || e.ctrlKey || e.metaKey)) { e.preventDefault(); submit(); }
+            }
+            overlay.addEventListener('click', function (e) {
+                if (e.target === overlay) return close(null);
+                var act = e.target.closest('[data-act]');
+                if (act) { act.getAttribute('data-act') === 'ok' ? submit() : close(null); }
+            });
+            field.addEventListener('input', function () { field.classList.remove('input-invalid'); });
+            document.addEventListener('keydown', onKey);
+        });
+    };
+
     // ─── LEGACY alert() UPGRADE ──────────────────────────────────────────────
     // 100+ existing screens call alert() for terminal status messages (mostly
     // errors after an awaited request). Re-pointing alert() at toast() upgrades
@@ -273,14 +336,21 @@ window.addEventListener('DOMContentLoaded', async () => {
 
                 // Mobile header logo hydration is disabled to preserve hardcoded Gym Flow logo
             }
-            // Specialized element overrides
-            document.querySelectorAll('h1, h2, p, span, div').forEach(el => {
-                if (el.childNodes.length === 1 && el.childNodes[0].nodeType === 3) {
-                    if (el.innerText.includes(window.APP_CONFIG?.brand?.name || 'Gym Flow')) {
-                        el.innerText = el.innerText.replace(window.APP_CONFIG?.brand?.name || 'Gym Flow', gymName);
+            // Specialized element overrides.
+            // Perf: skipped entirely when the tenant name equals the default brand
+            // (nothing would change), and uses textContent — innerText forces a
+            // synchronous layout per element, which thrashed startup on big pages.
+            const defaultBrand = window.APP_CONFIG?.brand?.name || 'Gym Flow';
+            if (gymName !== defaultBrand) {
+                document.querySelectorAll('h1, h2, p, span, div').forEach(el => {
+                    if (el.childNodes.length === 1 && el.childNodes[0].nodeType === 3) {
+                        const txt = el.childNodes[0].nodeValue;
+                        if (txt && txt.includes(defaultBrand)) {
+                            el.childNodes[0].nodeValue = txt.replace(defaultBrand, gymName);
+                        }
                     }
-                }
-            });
+                });
+            }
 
             // NOTE: The full-screen premium "lock" overlay that covered /marketing,
             // /lead-crm and /bi for trial/basic plans was removed — it blocked
@@ -300,8 +370,351 @@ window.addEventListener('DOMContentLoaded', async () => {
 (function () {
     if (window.__gymAppShellInjected) return;
     window.__gymAppShellInjected = true;
+    // async=false preserves execution order for dynamically-injected scripts
+    // (defer does not) — the membership engine must evaluate before appShell
+    // so the badge/tour can rely on window.MembershipEngine.
+    var head = document.head || document.documentElement;
+    // Pages that compute dates inline include the engine via a static <script>
+    // tag (deterministic ordering); only inject it here when they didn't.
+    if (!window.MembershipEngine) {
+        var eng = document.createElement('script');
+        eng.src = '/assets/js/membershipEngine.js';
+        eng.async = false;
+        head.appendChild(eng);
+    }
     var s = document.createElement('script');
     s.src = '/assets/js/appShell.js';
-    s.defer = true;
-    (document.head || document.documentElement).appendChild(s);
+    s.async = false;
+    head.appendChild(s);
+})();
+
+// ─── FORM ENHANCEMENT ENGINE ──────────────────────────────────────────
+// Automatically enhances validation presentation, input states, phone formats,
+// password strength/Caps Lock indicators, double-submit prevention, and accessibility.
+(function () {
+    'use strict';
+
+    function initFormEnhancements() {
+        enhanceAllForms();
+        enhancePhoneFields();
+        enhancePasswordFields();
+    }
+
+    function findLabelFor(input) {
+        if (input.id) {
+            const label = document.querySelector(`label[for="${input.id}"]`);
+            if (label) return label;
+        }
+        let parent = input.parentElement;
+        while (parent) {
+            if (parent.tagName === 'LABEL') return parent;
+            if (parent.tagName === 'FORM') break;
+            parent = parent.parentElement;
+        }
+        return null;
+    }
+
+    function addCharacterCounter(input) {
+        const maxlen = parseInt(input.getAttribute('maxlength'));
+        let counterEl = document.createElement('div');
+        counterEl.className = 'text-on-surface-variant/60 text-xs mt-1 text-right form-char-counter';
+        counterEl.textContent = `${input.value.length}/${maxlen}`;
+        
+        let target = input;
+        if (input.parentElement && input.parentElement.classList.contains('relative')) {
+            target = input.parentElement;
+        }
+        target.insertAdjacentElement('afterend', counterEl);
+
+        input.addEventListener('input', () => {
+            counterEl.textContent = `${input.value.length}/${maxlen}`;
+        });
+    }
+
+    function showInputValidationState(input, isValid, errorMessage) {
+        let errorEl = document.getElementById(`error-${input.id || input.name}`);
+        if (!errorEl && !isValid) {
+            errorEl = document.createElement('div');
+            errorEl.id = `error-${input.id || input.name}`;
+            errorEl.className = 'text-error text-body-sm mt-1 flex items-center gap-1 font-medium form-error-msg';
+            let container = input;
+            if (input.parentElement && input.parentElement.classList.contains('relative')) {
+                container = input.parentElement;
+            }
+            container.insertAdjacentElement('afterend', errorEl);
+        }
+
+        if (isValid) {
+            if (errorEl) errorEl.remove();
+            input.classList.remove('border-error', 'ring-error', 'ring-1', 'focus:border-error', 'focus:ring-error');
+            if (input.value.trim() !== '') {
+                input.classList.add('border-secondary');
+                input.classList.remove('border-outline-variant/40');
+            } else {
+                input.classList.remove('border-secondary');
+                input.classList.add('border-outline-variant/40');
+            }
+            input.setAttribute('aria-invalid', 'false');
+            input.removeAttribute('aria-describedby');
+        } else {
+            input.classList.remove('border-secondary', 'border-outline-variant/40');
+            input.classList.add('border-error');
+            input.setAttribute('aria-invalid', 'true');
+            input.setAttribute('aria-describedby', errorEl.id);
+            errorEl.innerHTML = `<span class="material-symbols-outlined text-[16px] align-middle">error</span> <span class="align-middle">${errorMessage}</span>`;
+        }
+    }
+
+    function validateInput(input) {
+        if (input.type === 'hidden' || input.disabled || input.readOnly) return true;
+
+        let isValid = true;
+        let errorMessage = '';
+        const value = input.value.trim();
+
+        if (input.hasAttribute('required') && value === '') {
+            isValid = false;
+            errorMessage = 'This field is required.';
+        } else if (isValid && input.type === 'email' && value !== '') {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(value)) {
+                isValid = false;
+                errorMessage = 'Please enter a valid email address.';
+            }
+        } else if (isValid && input.hasAttribute('minlength')) {
+            const minlen = parseInt(input.getAttribute('minlength'));
+            if (value.length < minlen && value !== '') {
+                isValid = false;
+                errorMessage = `Must be at least ${minlen} characters.`;
+            }
+        } else if (isValid && input.id === 'confirm_password') {
+            const mainPassword = document.getElementById('password');
+            if (mainPassword && value !== mainPassword.value.trim()) {
+                isValid = false;
+                errorMessage = 'Passwords do not match.';
+            }
+        }
+
+        showInputValidationState(input, isValid, errorMessage);
+        return isValid;
+    }
+
+    function enhanceAllForms() {
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.addEventListener('submit', (e) => {
+                const inputs = form.querySelectorAll('input, textarea, select');
+                let firstInvalid = null;
+                let isValid = true;
+
+                inputs.forEach(input => {
+                    if (input.type !== 'password' && input.type !== 'file' && typeof input.value === 'string') {
+                        input.value = input.value.trim();
+                    }
+                    if (!validateInput(input)) {
+                        isValid = false;
+                        if (!firstInvalid) firstInvalid = input;
+                    }
+                });
+
+                if (!isValid) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    if (firstInvalid) {
+                        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        firstInvalid.focus();
+                    }
+                    return false;
+                }
+
+                const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('btn-loading');
+                }
+            }, true);
+
+            const inputs = form.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                if (input.hasAttribute('required')) {
+                    let label = findLabelFor(input);
+                    if (label && !label.querySelector('.required-asterisk')) {
+                        const asterisk = document.createElement('span');
+                        asterisk.className = 'text-error required-asterisk ml-0.5';
+                        asterisk.ariaHidden = 'true';
+                        asterisk.textContent = '*';
+                        label.appendChild(asterisk);
+                    }
+                }
+
+                if (input.hasAttribute('maxlength')) {
+                    addCharacterCounter(input);
+                }
+
+                let hasBlurred = false;
+                input.addEventListener('blur', () => {
+                    if (input.type !== 'password' && input.type !== 'file' && typeof input.value === 'string') {
+                        input.value = input.value.trim();
+                    }
+                    hasBlurred = true;
+                    validateInput(input);
+                });
+
+                input.addEventListener('input', () => {
+                    if (hasBlurred) {
+                        validateInput(input);
+                    }
+                });
+
+                if (!input.hasAttribute('autocomplete')) {
+                    if (input.type === 'email') input.setAttribute('autocomplete', 'email');
+                    else if (input.type === 'password') {
+                        if (input.id === 'confirm_password') input.setAttribute('autocomplete', 'new-password');
+                        else if (window.location.pathname.includes('/signup')) input.setAttribute('autocomplete', 'new-password');
+                        else input.setAttribute('autocomplete', 'current-password');
+                    }
+                    else if (input.name === 'phone' || input.type === 'tel') input.setAttribute('autocomplete', 'tel');
+                    else if (input.name === 'username' || input.name === 'email') input.setAttribute('autocomplete', 'username');
+                }
+            });
+        });
+    }
+
+    function enhancePhoneFields() {
+        const phoneFields = document.querySelectorAll('input[type="tel"], input[name*="phone"], input[id*="phone"]');
+        phoneFields.forEach(field => {
+            field.addEventListener('input', () => {
+                let selectionStart = field.selectionStart;
+                let originalLen = field.value.length;
+                let digits = field.value.replace(/\D/g, '');
+                let formatted = '';
+
+                if (digits.startsWith('91') && digits.length > 10) {
+                    formatted = '+91 ';
+                    let rest = digits.substring(2, 12);
+                    if (rest.length > 5) {
+                        formatted += rest.slice(0, 5) + ' ' + rest.slice(5);
+                    } else {
+                        formatted += rest;
+                    }
+                } else {
+                    let rest = digits.slice(0, 10);
+                    if (rest.length > 5) {
+                        formatted = rest.slice(0, 5) + ' ' + rest.slice(5);
+                    } else {
+                        formatted = rest;
+                    }
+                }
+
+                field.value = formatted;
+                let diff = formatted.length - originalLen;
+                field.setSelectionRange(selectionStart + diff, selectionStart + diff);
+            });
+        });
+    }
+
+    function enhancePasswordFields() {
+        const passwordFields = document.querySelectorAll('input[type="password"]');
+        passwordFields.forEach(field => {
+            let parent = field.parentElement;
+            if (parent && parent.classList.contains('relative')) {
+                let toggleBtn = parent.querySelector('button');
+                if (!toggleBtn) {
+                    toggleBtn = document.createElement('button');
+                    toggleBtn.type = 'button';
+                    toggleBtn.className = 'absolute right-4 text-on-surface-variant/70 hover:text-on-surface transition-colors focus:outline-none flex items-center justify-center';
+                    toggleBtn.innerHTML = '<span class="material-symbols-outlined text-[20px]">visibility</span>';
+                    parent.appendChild(toggleBtn);
+                    field.style.paddingRight = '3rem';
+                }
+
+                toggleBtn.removeAttribute('onclick');
+                toggleBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const isPassword = field.type === 'password';
+                    field.type = isPassword ? 'text' : 'password';
+                    toggleBtn.innerHTML = `<span class="material-symbols-outlined text-[20px]">${isPassword ? 'visibility_off' : 'visibility'}</span>`;
+                    toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+                });
+                toggleBtn.setAttribute('aria-label', 'Show password');
+            }
+
+            let capswarn = document.createElement('div');
+            capswarn.className = 'text-warning text-xs mt-1 hidden flex items-center gap-1 font-medium';
+            capswarn.innerHTML = '<span class="material-symbols-outlined text-[16px] align-middle">keyboard_capslock</span> <span class="align-middle">Caps Lock is ON</span>';
+            field.parentElement.insertAdjacentElement('afterend', capswarn);
+
+            field.addEventListener('keydown', (e) => {
+                if (e.getModifierState && e.getModifierState('CapsLock')) {
+                    capswarn.classList.remove('hidden');
+                } else {
+                    capswarn.classList.add('hidden');
+                }
+            });
+            field.addEventListener('blur', () => {
+                capswarn.classList.add('hidden');
+            });
+
+            if (field.id === 'password' && (window.location.pathname.includes('/signup') || window.location.pathname.includes('/reset-password'))) {
+                let strengthContainer = document.createElement('div');
+                strengthContainer.className = 'mt-2';
+                strengthContainer.innerHTML = `
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-on-surface-variant font-medium">Password Strength</span>
+                        <span class="text-xs font-semibold strength-label text-error"></span>
+                    </div>
+                    <div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden flex gap-0.5">
+                        <div class="h-full bg-error strength-bar-1 transition-all duration-300 w-0"></div>
+                        <div class="h-full bg-warning strength-bar-2 transition-all duration-300 w-0"></div>
+                        <div class="h-full bg-secondary strength-bar-3 transition-all duration-300 w-0"></div>
+                    </div>
+                `;
+                field.parentElement.parentElement.appendChild(strengthContainer);
+
+                const label = strengthContainer.querySelector('.strength-label');
+                const bar1 = strengthContainer.querySelector('.strength-bar-1');
+                const bar2 = strengthContainer.querySelector('.strength-bar-2');
+                const bar3 = strengthContainer.querySelector('.strength-bar-3');
+
+                field.addEventListener('input', () => {
+                    const val = field.value;
+                    let score = 0;
+                    if (val.length >= 8) score++;
+                    if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
+                    if (/[0-9]/.test(val) || /[^A-Za-z0-9]/.test(val)) score++;
+
+                    if (val.length === 0) {
+                        label.textContent = '';
+                        bar1.style.width = '0%';
+                        bar2.style.width = '0%';
+                        bar3.style.width = '0%';
+                    } else if (score <= 1) {
+                        label.textContent = 'Weak';
+                        label.className = 'text-xs font-semibold strength-label text-error';
+                        bar1.style.width = '33%';
+                        bar2.style.width = '0%';
+                        bar3.style.width = '0%';
+                    } else if (score === 2) {
+                        label.textContent = 'Medium';
+                        label.className = 'text-xs font-semibold strength-label text-warning';
+                        bar1.style.width = '33%';
+                        bar2.style.width = '33%';
+                        bar3.style.width = '0%';
+                    } else {
+                        label.textContent = 'Strong';
+                        label.className = 'text-xs font-semibold strength-label text-secondary';
+                        bar1.style.width = '33%';
+                        bar2.style.width = '33%';
+                        bar3.style.width = '34%';
+                    }
+                });
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initFormEnhancements);
+    } else {
+        initFormEnhancements();
+    }
 })();

@@ -43,7 +43,8 @@ const cookieOf = (sc) => { const m = /auth_token=([^;]+)/.exec(sc || ''); return
 
 async function provision(label) {
   const email = `suite_${label}_${Date.now()}${Math.floor(Math.random() * 1000)}@test.local`;
-  const s = await req('/api/v1/auth/signup', { method: 'POST', body: { full_name: `Suite ${label}`, email, password: PW }, origin: BASE });
+  const phone = '9' + Math.floor(100000000 + Math.random() * 800000000);
+  const s = await req('/api/v1/auth/signup', { method: 'POST', body: { full_name: `Suite ${label}`, email, phone, password: PW }, origin: BASE });
   if (![200, 201].includes(s.status)) throw new Error(`signup ${label} failed: ${s.status} ${JSON.stringify(s.body)}`);
   await dbRun('UPDATE users SET email_verified = 1 WHERE email = ?', [email]);
   const user = await dbGet('SELECT id, tenant_id FROM users WHERE email = ?', [email]);
@@ -102,7 +103,7 @@ async function provision(label) {
   // Fresh signup must be able to log in immediately when email delivery is not
   // configured (no permanent "verify your email" dead end).
   const freshEmail = `auth_${Date.now()}@test.local`;
-  const fresh = await req('/api/v1/auth/signup', { method: 'POST', origin: BASE, body: { full_name: 'Auth Flow', email: freshEmail, password: PW } });
+  const fresh = await req('/api/v1/auth/signup', { method: 'POST', origin: BASE, body: { full_name: 'Auth Flow', email: freshEmail, phone: '9' + Math.floor(100000000 + Math.random() * 800000000), password: PW } });
   check('Signup succeeds (201)', [200, 201].includes(fresh.status), String(fresh.status));
   const freshLogin = await req('/api/v1/auth/login', { method: 'POST', origin: BASE, body: { email: freshEmail, password: PW } });
   const freshCookie = cookieOf(freshLogin.setCookie);
@@ -129,7 +130,7 @@ async function provision(label) {
   await req('/api/v1/auth/logout', { method: 'POST', cookie: A.cookie, origin: BASE });
   const afterLogout = await req('/api/v1/dashboard/summary', { cookie: A.cookie });
   check('Logout revokes token (401 after logout)', afterLogout.status === 401, String(afterLogout.status));
-  const weak = await req('/api/v1/auth/signup', { method: 'POST', origin: BASE, body: { full_name: 'X', email: `w${Date.now()}@t.local`, password: 'short' } });
+  const weak = await req('/api/v1/auth/signup', { method: 'POST', origin: BASE, body: { full_name: 'X', email: `w${Date.now()}@t.local`, phone: '9123456780', password: 'short' } });
   check('Password policy rejects < 8 chars (400)', weak.status === 400, String(weak.status));
   let rl = 0; for (let i = 0; i < 13; i++) rl = (await req('/api/v1/auth/login', { method: 'POST', origin: BASE, body: { email: 'nobody@x.com', password: 'bad' } })).status;
   check('Rate limit kicks in on repeated bad logins (429)', rl === 429, String(rl));

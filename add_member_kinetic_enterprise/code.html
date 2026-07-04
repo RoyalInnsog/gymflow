@@ -10,6 +10,7 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
+<script src="/assets/js/membershipEngine.js"></script>
 <script src="/assets/js/utils.js"></script>
 <title>Gym Flow - Add Member</title>
 
@@ -40,7 +41,7 @@
 <!-- Task-Focused Header (Suppresses Global Nav Shell) -->
 
 <main class="max-w-2xl mx-auto px-margin-mobile mt-lg flex flex-col gap-lg pb-32">
-<div class="px-4 md:px-8 pt-4"><a href="/members" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>← Members</span></a></div>
+<div class="px-4 md:px-8 pt-4"><a href="/members" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>Members</span></a></div>
 <!-- Photo Upload Zone -->
 <section class="flex flex-col items-center justify-center">
 <div id="photoZone" class="relative w-32 h-32 rounded-full border-2 border-dashed border-outline-variant bg-surface-container-low flex flex-col items-center justify-center text-on-surface-variant hover:border-primary hover:text-primary transition-colors cursor-pointer overflow-hidden group">
@@ -143,6 +144,25 @@ document.addEventListener("DOMContentLoaded", () => {
     inputs[2].value = savedData.email || '';
   }
 
+  // ─── Draft persistence ──────────────────────────────────────────────────────
+  // Every entered value survives a refresh AND the "no plans → create plan in
+  // Settings → return" detour. Draft is cleared only on successful save.
+  const DRAFT_KEY = 'gf_add_member_draft';
+
+  function readDraft() {
+    try { return JSON.parse(sessionStorage.getItem(DRAFT_KEY)) || {}; }
+    catch (e) { return {}; }
+  }
+  function writeDraft(d) {
+    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d)); }
+    catch (e) {
+      // Quota (usually the base64 photo) — persist everything else.
+      try { const { photo, ...rest } = d; sessionStorage.setItem(DRAFT_KEY, JSON.stringify(rest)); }
+      catch (e2) { /* storage unavailable — non-fatal */ }
+    }
+  }
+  const draft = readDraft();
+
   // Calculate BMI dynamically
   const heightInput = document.querySelector('input[placeholder="0"]');
   const weightInput = document.querySelector('input[placeholder="0.0"]');
@@ -221,6 +241,16 @@ document.addEventListener("DOMContentLoaded", () => {
         planSelect.innerHTML = '<option disabled selected value="">No plans available</option>';
         planEmpty.classList.remove('hidden');
         planSelect.disabled = true;
+        // Auto-detour (once per session): persist the draft, then take the user
+        // to Settings → Membership Plans. After they create a plan, Settings
+        // sends them back here and the draft below restores every field.
+        if (!sessionStorage.getItem('gf_plan_redirect_done')) {
+          sessionStorage.setItem('gf_plan_redirect_done', '1');
+          sessionStorage.setItem('gf_return_to', '/add-member');
+          saveDraftNow();
+          window.toast && window.toast('No membership plans yet — taking you to create one.', 'info');
+          setTimeout(() => { window.location.href = '/settings#membership-plans'; }, 900);
+        }
         return;
       }
 
@@ -246,6 +276,17 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       planSelect.disabled = false;
+
+      // Restore a drafted plan choice (e.g. returning from the Settings detour).
+      if (draft.plan_id) {
+        for (const o of planSelect.options) {
+          if (o.value === draft.plan_id) {
+            planSelect.value = draft.plan_id;
+            recalcEndDate();
+            break;
+          }
+        }
+      }
 
     } catch (err) {
       console.error('Failed to load membership plans:', err);
@@ -293,6 +334,7 @@ document.addEventListener("DOMContentLoaded", () => {
         photoIcon.classList.add('hidden');
         photoLabel.textContent = 'Change';
         photoLabel.classList.add('relative', 'z-10', 'bg-black/50', 'px-2', 'rounded');
+        queueDraftSave(); // photo lands async — persist it once decoded
       };
       reader.readAsDataURL(file);
     });
@@ -303,23 +345,66 @@ document.addEventListener("DOMContentLoaded", () => {
   const endDateEl   = document.getElementById('endDate');
 
   function recalcEndDate() {
-    if (!startDateEl || !endDateEl) return;
+    if (!startDateEl || !endDateEl || !window.MembershipEngine) return;
     const opt = planSelect.options[planSelect.selectedIndex];
     const start = startDateEl.value;
     if (!start || !opt || !opt.value) return;
     const months = parseInt(opt.dataset.durationMonths || '0', 10);
     const days   = parseInt(opt.dataset.durationDays   || '0', 10);
     if (!months && !days) return;
-    const [y, m, d] = start.split('-').map(Number);
-    const end = new Date(y, m - 1, d);
-    if (months) end.setMonth(end.getMonth() + months);
-    if (days)   end.setDate(end.getDate() + days);
-    const pad = n => String(n).padStart(2, '0');
-    endDateEl.value = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`;
+    // Single source of truth — same engine the server uses (leap-year and
+    // month-end clamping handled centrally, zero drift between client/server).
+    endDateEl.value = window.MembershipEngine.computeEndDate(start, {
+      duration_months: months,
+      duration_days: days
+    });
   }
 
   if (planSelect)   planSelect.addEventListener('change', recalcEndDate);
   if (startDateEl)  startDateEl.addEventListener('change', recalcEndDate);
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // ─── Draft restore + autosave ────────────────────────────────────────────────
+  if (draft.full_name != null) inputs[0].value = draft.full_name;
+  if (draft.phone     != null) inputs[1].value = draft.phone;
+  if (draft.email     != null) inputs[2].value = draft.email;
+  if (draft.height) heightInput.value = draft.height;
+  if (draft.weight) weightInput.value = draft.weight;
+  if (draft.height || draft.weight) updateBMI();
+  if (draft.start) startDateEl.value = draft.start;
+  if (draft.end)   endDateEl.value   = draft.end;
+  if (draft.photo) {
+    uploadedPhoto = draft.photo;
+    photoPreview.src = uploadedPhoto;
+    photoPreview.classList.remove('hidden');
+    photoIcon.classList.add('hidden');
+    photoLabel.textContent = 'Change';
+    photoLabel.classList.add('relative', 'z-10', 'bg-black/50', 'px-2', 'rounded');
+  }
+
+  function collectDraft() {
+    return {
+      full_name: inputs[0].value,
+      phone:     inputs[1].value,
+      email:     inputs[2].value,
+      height:    heightInput.value,
+      weight:    weightInput.value,
+      plan_id:   planSelect.value || '',
+      start:     startDateEl.value,
+      end:       endDateEl.value,
+      photo:     uploadedPhoto || ''
+    };
+  }
+  function saveDraftNow() { writeDraft(collectDraft()); }
+  let draftTimer = null;
+  function queueDraftSave() {
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(saveDraftNow, 250);
+  }
+  // One delegated listener pair instead of one per field.
+  const mainEl = document.querySelector('main');
+  mainEl.addEventListener('input',  queueDraftSave);
+  mainEl.addEventListener('change', queueDraftSave);
   // ─────────────────────────────────────────────────────────────────────────────
 
   // Handle Save
@@ -402,6 +487,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (response.ok) {
           sessionStorage.removeItem('temp_member_onboarding');
+          sessionStorage.removeItem(DRAFT_KEY);
+          sessionStorage.removeItem('gf_return_to');
+          sessionStorage.removeItem('gf_plan_redirect_done');
           const newMemberId = resData.memberId || resData.member_id || '';
           window.location.href = `/payment-center?member_id=${newMemberId}`;
         } else if (response.status === 413) {

@@ -10,6 +10,7 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
+<script src="/assets/js/membershipEngine.js"></script>
 <script src="/assets/js/utils.js"></script>
 <title>Gym Flow - Member Profile</title>
 
@@ -38,7 +39,7 @@
   <div class="pt-4">
     <a href="/members" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group">
       <span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
-      <span>← Back to Members</span>
+      <span>Back to Members</span>
     </a>
   </div>
 
@@ -59,7 +60,7 @@
         <span id="member-plan-badge" class="bg-[#2A2A2A] text-[#c6c6c6] px-2 py-1 rounded border border-[#4c4546] font-label-caps text-label-caps flex items-center gap-1 min-w-[80px] h-6 animate-pulse"></span>
       </div>
       <p class="font-body-md text-body-md text-on-surface-variant flex items-center justify-center md:justify-start gap-2">
-        <span class="material-symbols-outlined text-[18px]">location_on</span> <span id="member-branch">Branch Loading...</span>
+        <span class="material-symbols-outlined text-[18px]">location_on</span> <span id="member-branch"><span class="skeleton h-4 w-28 inline-block align-middle"></span></span>
       </p>
       <div class="flex flex-wrap justify-center md:justify-start gap-sm mt-4">
         <button id="callProfileBtn" class="bg-[#1E1E1E] hover:bg-[#2A2A2A] text-on-surface px-4 py-2 rounded-lg border border-[#2A2A2A] flex items-center gap-2 font-body-sm text-body-sm transition-colors">
@@ -83,7 +84,7 @@
           <circle class="text-primary stroke-current progress-ring__circle" cx="50" cy="50" fill="transparent" r="40" stroke-dasharray="251.2" stroke-dashoffset="240" stroke-linecap="round" stroke-width="8"></circle>
         </svg>
         <div class="absolute inset-0 flex flex-col items-center justify-center">
-          <span class="font-headline-md text-headline-md font-bold text-on-surface" id="days-left-count">-</span>
+          <span class="font-headline-md text-headline-md font-bold text-on-surface" id="days-left-count"><span class="skeleton h-8 w-12 inline-block"></span></span>
         </div>
       </div>
       <span class="font-label-caps text-label-caps text-on-surface-variant mt-2 text-center">Days Remaining</span>
@@ -113,19 +114,19 @@
         <div class="space-y-4">
           <div>
             <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Phone</p>
-            <p class="font-body-md text-body-md text-on-surface font-mono" id="overview-phone">-</p>
+            <p class="font-body-md text-body-md text-on-surface font-mono" id="overview-phone"><span class="skeleton h-4 w-32 inline-block"></span></p>
           </div>
           <div>
             <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Email</p>
-            <p class="font-body-md text-body-md text-on-surface" id="overview-email">-</p>
+            <p class="font-body-md text-body-md text-on-surface" id="overview-email"><span class="skeleton h-4 w-48 inline-block"></span></p>
           </div>
           <div>
             <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Date of Birth</p>
-            <p class="font-body-md text-body-md text-on-surface" id="overview-dob">-</p>
+            <p class="font-body-md text-body-md text-on-surface" id="overview-dob"><span class="skeleton h-4 w-28 inline-block"></span></p>
           </div>
           <div>
             <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Gender</p>
-            <p class="font-body-md text-body-md text-on-surface" id="overview-gender">-</p>
+            <p class="font-body-md text-body-md text-on-surface" id="overview-gender"><span class="skeleton h-4 w-16 inline-block"></span></p>
           </div>
         </div>
       </div>
@@ -138,11 +139,11 @@
         <div class="space-y-4">
           <div>
             <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Contact Name</p>
-            <p class="font-body-md text-body-md text-on-surface" id="overview-emergency-name">-</p>
+            <p class="font-body-md text-body-md text-on-surface" id="overview-emergency-name"><span class="skeleton h-4 w-36 inline-block"></span></p>
           </div>
           <div>
             <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Contact Phone</p>
-            <p class="font-body-md text-body-md text-on-surface font-mono" id="overview-emergency-phone">-</p>
+            <p class="font-body-md text-body-md text-on-surface font-mono" id="overview-emergency-phone"><span class="skeleton h-4 w-32 inline-block"></span></p>
           </div>
         </div>
       </div>
@@ -623,14 +624,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         initialsSpan.innerText = initials;
       }
 
-      // Days Remaining Ring
+      // Days Remaining Ring — centralized calendar math (same engine as server).
       let daysLeft = 0;
-      if (membership && member.status === 'Active') {
-        const [year, month, day] = membership.end_date.split('-');
-        const endLocal = new Date(year, month - 1, day);
-        endLocal.setHours(23, 59, 59, 999);
-        const diff = endLocal - new Date();
-        daysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+      if (membership && member.status === 'Active' && window.MembershipEngine) {
+        daysLeft = Math.max(0, window.MembershipEngine.remainingDays(membership.end_date));
       }
       document.getElementById('days-left-count').innerText = daysLeft;
       const circle = document.querySelector('.progress-ring__circle');

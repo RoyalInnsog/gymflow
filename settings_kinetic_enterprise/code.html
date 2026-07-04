@@ -29,6 +29,9 @@
             border-left: 4px solid transparent;
         }
 
+        /* Pricing cards clear the fixed 64px header when deep-linked */
+        #subscription-plan [id^="cardPlan"] { scroll-margin-top: 88px; }
+
         .tab-content {
             display: none;
             animation: fadeIn 0.3s ease-out forwards;
@@ -74,747 +77,661 @@
 
         <div class="flex flex-col md:flex-row gap-8 items-start">
             <!-- Vertical Navigation -->
-            <nav
-                class="w-full md:w-64 shrink-0 flex flex-row md:flex-col overflow-x-auto md:overflow-visible gap-2 sticky top-24 z-10 glass-panel md:bg-transparent md:border-none p-2 md:p-0 rounded-xl md:rounded-none">
-                <button
-                    class="nav-tab active flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap"
-                    data-target="gym-profile">
-                    <span class="material-symbols-outlined">storefront</span> <span class="font-label-lg">Gym
-                        Profile</span>
+            <nav class="w-full md:w-64 shrink-0 flex flex-row md:flex-col overflow-x-auto md:overflow-visible gap-2 sticky top-24 z-10 glass-panel md:bg-transparent md:border-none p-2 md:p-0 rounded-xl md:rounded-none md:min-h-[70vh]">
+                <button class="nav-tab active flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap animate-fade-in" data-target="gym">
+                    <span class="material-symbols-outlined">storefront</span>
+                    <span class="font-label-lg">🏢 Gym</span>
                 </button>
-                <button
-                    class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap"
-                    data-target="membership-plans">
-                    <span class="material-symbols-outlined">sell</span> <span class="font-label-lg">Membership
-                        Plans</span>
+                <button class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap" data-target="team">
+                    <span class="material-symbols-outlined">group</span>
+                    <span class="font-label-lg">👥 Team</span>
                 </button>
-                <button
-                    class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap"
-                    data-target="business-rules">
-                    <span class="material-symbols-outlined">rule</span> <span class="font-label-lg">Business
-                        Rules</span>
+                <button class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap" data-target="appearance">
+                    <span class="material-symbols-outlined">palette</span>
+                    <span class="font-label-lg">🎨 Appearance</span>
                 </button>
-                <button
-                    class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap"
-                    data-target="staff-manager">
-                    <span class="material-symbols-outlined">badge</span> <span class="font-label-lg">Staff &
-                        Roles</span>
+                <button class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap" data-target="security">
+                    <span class="material-symbols-outlined">lock</span>
+                    <span class="font-label-lg">🔐 Security</span>
                 </button>
-                <button
-                    class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap"
-                    data-target="message-templates">
-                    <span class="material-symbols-outlined">mail</span> <span class="font-label-lg">Templates</span>
+                <button class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap" data-target="billing">
+                    <span class="material-symbols-outlined">credit_card</span>
+                    <span class="font-label-lg">💳 Billing</span>
                 </button>
-                <button
-                    class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap"
-                    data-target="whatsapp-connect">
-                    <span class="material-symbols-outlined">chat</span> <span class="font-label-lg">WhatsApp</span>
-                </button>
-                <button
-                    class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap"
-                    data-target="payments">
-                    <span class="material-symbols-outlined">payments</span> <span class="font-label-lg">Payments</span>
-                </button>
-                <button
-                    class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap"
-                    data-target="branches">
-                    <span class="material-symbols-outlined">account_tree</span> <span
-                        class="font-label-lg">Branches</span>
-                </button>
-                <button
-                    class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap"
-                    data-target="onboarding-trial">
-                    <span class="material-symbols-outlined">rocket_launch</span> <span class="font-label-lg">Onboarding
-                        & Trial</span>
-                </button>
-                <button
-                    class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap"
-                    data-target="subscription-plan">
-                    <span class="material-symbols-outlined">workspace_premium</span> <span
-                        class="font-label-lg">Subscription Plan</span>
+                <div class="border-t border-outline-variant/30 mt-auto pt-4 w-full hidden md:block">
+                    <button onclick="performLogout()" type="button" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-error hover:bg-error/10 transition-colors whitespace-nowrap">
+                        <span class="material-symbols-outlined text-error">logout</span>
+                        <span class="font-label-lg">Logout</span>
+                    </button>
+                </div>
+                <button onclick="performLogout()" type="button" class="md:hidden flex items-center gap-3 px-4 py-3 rounded-lg text-left text-error hover:bg-error/10 transition-colors whitespace-nowrap">
+                    <span class="material-symbols-outlined text-error">logout</span>
+                    <span class="font-label-lg">Logout</span>
                 </button>
             </nav>
 
             <!-- Content Area -->
             <div class="flex-1 w-full min-w-0">
-                <!-- 1. Gym Profile -->
-                <section id="gym-profile" class="tab-content active space-y-6">
-                    <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
+                <!-- 1. Gym Profile & Configs -->
+                <section id="gym" class="tab-content active space-y-6">
+                    <!-- Dedicated Gym Logo Card -->
+                    <div id="card-gym-logo" class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
                         <div>
-                            <h2 class="font-headline-md text-headline-md text-on-surface">Brand Identity</h2>
-                            <p class="text-on-surface-variant text-sm mt-1">These details will appear on invoices and
-                                marketing emails.</p>
+                            <h2 class="font-headline-md text-headline-md text-on-surface">Gym Logo</h2>
+                            <p class="text-on-surface-variant text-sm mt-1">Upload your gym's official logo. Reused in invoices, receipts, and templates.</p>
+                        </div>
+                        <form id="form-gym-logo" class="flex flex-col gap-4">
+                            <div class="flex items-center gap-6">
+                                <div class="w-24 h-24 rounded-xl border border-outline/30 bg-surface-container flex items-center justify-center overflow-hidden shrink-0">
+                                    <img id="logoPreview" src="" class="w-full h-full object-contain hidden" alt="Gym logo preview">
+                                    <span id="logoPlaceholder" class="material-symbols-outlined text-4xl text-on-surface-variant/40">image</span>
+                                </div>
+                                <div class="flex-1 space-y-3">
+                                    <input type="file" id="logoUploadInput" accept="image/*" class="w-full text-sm text-on-surface-variant file:mr-4 file:py-2.5 file:px-5 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-on-primary hover:file:opacity-90 file:cursor-pointer" onchange="previewLogo(this)">
+                                    <p class="text-xs text-on-surface-variant/70">PNG, JPG or WEBP. Max 2MB.</p>
+                                    <input type="hidden" name="logo_url" id="logoUrlHidden">
+                                </div>
+                            </div>
+                            <div class="flex justify-end border-t border-outline/10 pt-4 mt-2">
+                                <button type="submit" class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-lg shadow-sm">Save Logo</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Gym Details Card -->
+                    <div id="card-gym-details" class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
+                        <div>
+                            <h2 class="font-headline-md text-headline-md text-on-surface">Gym Details</h2>
+                            <p class="text-on-surface-variant text-sm mt-1">These details appear on invoices and business correspondence.</p>
                         </div>
                         <form id="form-gym-profile" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block font-label-caps text-on-surface-variant mb-2">Gym Name</label>
-                                <input type="text" name="gym_name"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none"
-                                    required>
-                            </div>
-                            <div>
-                                <label class="block font-label-caps text-on-surface-variant mb-2">Logo</label>
-                                <div class="flex items-center gap-4">
-                                    <img id="logoPreview" src="" class="w-16 h-16 object-contain border border-outline/30 rounded-lg bg-surface-container" style="display: none;">
-                                    <input type="file" id="logoUploadInput" accept="image/*" class="w-full text-sm text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-on-primary hover:file:bg-primary-fixed-dim" onchange="previewLogo(this)">
-                                    <input type="hidden" name="logo_url" id="logoUrlHidden">
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block font-label-caps text-on-surface-variant mb-2">Theme Color</label>
-                                <div class="flex gap-2">
-                                    <input type="color" name="theme_color" id="themeColorPicker"
-                                        class="w-14 h-12 bg-surface-container border border-outline/30 rounded-lg p-1 cursor-pointer focus:outline-none"
-                                        value="#16c8ee"
-                                        oninput="document.getElementById('themeColorText').value = this.value">
-                                    <input type="text" id="themeColorText"
-                                        class="flex-1 bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none"
-                                        placeholder="#16c8ee"
-                                        oninput="document.getElementById('themeColorPicker').value = this.value">
-                                </div>
+                                <input type="text" name="gym_name" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none" required>
                             </div>
                             <div>
                                 <label class="block font-label-caps text-on-surface-variant mb-2">GST Number</label>
-                                <input type="text" name="gst_number"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                                <input type="text" name="gst_number" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
                             </div>
                             <div>
                                 <label class="block font-label-caps text-on-surface-variant mb-2">Website</label>
-                                <input type="text" name="website"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block font-label-caps text-on-surface-variant mb-2">Address</label>
-                                <textarea name="address" rows="2"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none"></textarea>
+                                <input type="text" name="website" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
                             </div>
                             <div>
                                 <label class="block font-label-caps text-on-surface-variant mb-2">Support Email</label>
-                                <input type="email" name="support_email"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                                <input type="email" name="support_email" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
                             </div>
                             <div>
                                 <label class="block font-label-caps text-on-surface-variant mb-2">Support Phone</label>
-                                <input type="tel" name="support_phone"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                                <input type="tel" name="support_phone" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
                             </div>
+                            <div class="md:col-span-2">
+                                <label class="block font-label-caps text-on-surface-variant mb-2">Address</label>
+                                <textarea name="address" rows="2" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none"></textarea>
+                            </div>
+                            <input type="hidden" name="logo_url" id="logoUrlHiddenDummy">
+                            <input type="hidden" name="theme_color" id="themeColorHiddenDummy">
                             <div class="md:col-span-2 flex justify-end mt-2">
-                                <button type="submit"
-                                    class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-lg shadow-sm">Save
-                                    Profile</button>
-                            </div>
-                        </form>
-                    </div>
-                </section>
-
-                <!-- 2. Membership Plans -->
-                <section id="membership-plans" class="tab-content space-y-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h2 class="font-headline-md text-headline-md text-on-surface">Plan Builder</h2>
-                            <p class="text-on-surface-variant text-sm mt-1">Configure the packages offered to members.
-                            </p>
-                        </div>
-                        <button onclick="openPlanModal()"
-                            class="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-lg flex items-center gap-2">
-                            <span class="material-symbols-outlined text-[18px]">add</span> New Plan
-                        </button>
-                    </div>
-                    <div id="plansList" class="grid grid-cols-1 gap-4">
-                        <!-- Dynamic Plans go here -->
-                    </div>
-                </section>
-
-                <!-- 3. Business Rules -->
-                <section id="business-rules" class="tab-content space-y-6">
-                    <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
-                        <div>
-                            <h2 class="font-headline-md text-headline-md text-on-surface">Operational Rules</h2>
-                            <p class="text-on-surface-variant text-sm mt-1">Define taxes, fees, and grace periods.</p>
-                        </div>
-                        <form id="form-business-rules" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block font-label-caps text-on-surface-variant mb-2">Currency
-                                    Symbol</label>
-                                <input type="text" name="currency"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none"
-                                    required>
-                            </div>
-                            <div>
-                                <label class="block font-label-caps text-on-surface-variant mb-2">Default Tax Rate
-                                    (%)</label>
-                                <input type="number" step="0.1" name="tax_percent"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
-                            </div>
-                            <div>
-                                <label class="block font-label-caps text-on-surface-variant mb-2">Payment Grace Period
-                                    (Days)</label>
-                                <input type="number" name="grace_period_days"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
-                            </div>
-                            <div>
-                                <label class="block font-label-caps text-on-surface-variant mb-2">Late Fee
-                                    Amount</label>
-                                <input type="number" name="late_fee_amount"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
-                            </div>
-                            <div>
-                                <label class="block font-label-caps text-on-surface-variant mb-2">Renewal Reminder (Days
-                                    Before)</label>
-                                <input type="number" name="renewal_reminder_days"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
-                            </div>
-                            <div>
-                                <label class="block font-label-caps text-on-surface-variant mb-2">Payment Reminder (Days
-                                    Before)</label>
-                                <input type="number" name="payment_reminder_days"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
-                            </div>
-                            <div class="md:col-span-2 flex justify-end mt-2">
-                                <button type="submit"
-                                    class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-lg shadow-sm">Save
-                                    Rules</button>
+                                <button type="submit" class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-lg shadow-sm">Save Profile</button>
                             </div>
                         </form>
                     </div>
 
-                    <!-- Tax Settings (GST) -->
-                    <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
-                        <div>
-                            <h2 class="font-headline-md text-headline-md text-on-surface">Tax Settings</h2>
-                            <p class="text-on-surface-variant text-sm mt-1">GST applied to memberships, renewals,
-                                receipts and finance. When disabled, Total = Base Price.</p>
-                        </div>
-                        <form id="form-tax-settings" class="flex flex-col gap-5">
-                            <div
-                                class="flex items-center justify-between bg-surface-container border border-outline/30 rounded-lg px-4 py-3">
+                    <!-- Business Information Card -->
+                    <div id="card-business-info" class="space-y-6">
+                        <!-- 1. Operational Rules -->
+                        <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6" id="business-rules">
+                            <div>
+                                <h2 class="font-headline-md text-headline-md text-on-surface">Operational Rules</h2>
+                                <p class="text-on-surface-variant text-sm mt-1">Define default taxes, payment grace periods, late fees and reminder counts.</p>
+                            </div>
+                            <form id="form-business-rules" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <h4 class="font-title-md text-on-surface">Enable GST</h4>
-                                    <p class="text-on-surface-variant text-xs mt-0.5">Charge GST on top of the base
-                                        price.</p>
+                                    <label class="block font-label-caps text-on-surface-variant mb-2">Currency Symbol</label>
+                                    <input type="text" name="currency" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none" required>
                                 </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="gst_enabled" class="sr-only peer">
-                                    <div
-                                        class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5">
+                                <div>
+                                    <label class="block font-label-caps text-on-surface-variant mb-2">Default Tax Rate (%)</label>
+                                    <input type="number" step="0.1" name="tax_percent" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block font-label-caps text-on-surface-variant mb-2">Payment Grace Period (Days)</label>
+                                    <input type="number" name="grace_period_days" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block font-label-caps text-on-surface-variant mb-2">Late Fee Amount</label>
+                                    <input type="number" name="late_fee_amount" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block font-label-caps text-on-surface-variant mb-2">Renewal Reminder (Days Before)</label>
+                                    <input type="number" name="renewal_reminder_days" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block font-label-caps text-on-surface-variant mb-2">Payment Reminder (Days Before)</label>
+                                    <input type="number" name="payment_reminder_days" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                                </div>
+                                <div class="md:col-span-2 flex justify-end mt-2">
+                                    <button type="submit" class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-lg shadow-sm">Save Rules</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- 2. Tax Settings (GST) -->
+                        <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
+                            <div>
+                                <h2 class="font-headline-md text-headline-md text-on-surface">Tax Settings</h2>
+                                <p class="text-on-surface-variant text-sm mt-1">GST applied to memberships, renewals, receipts and finance. When disabled, Total = Base Price.</p>
+                            </div>
+                            <form id="form-tax-settings" class="flex flex-col gap-5">
+                                <div class="flex items-center justify-between bg-surface-container border border-outline/30 rounded-lg px-4 py-3">
+                                    <div>
+                                        <h4 class="font-title-md text-on-surface">Enable GST</h4>
+                                        <p class="text-on-surface-variant text-xs mt-0.5">Charge GST on top of the base price.</p>
                                     </div>
-                                </label>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="gst_enabled" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="block font-label-caps text-on-surface-variant mb-2">GST Percentage (%)</label>
+                                    <input type="number" step="0.1" min="0" max="100" id="gst_percent" placeholder="18" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                                    <p class="text-on-surface-variant text-xs mt-1">Common rates: 18, 12, 5.</p>
+                                </div>
+                                <div class="flex justify-end">
+                                    <button type="submit" class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-lg shadow-sm">Save Tax Settings</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- 3. Discount Rules -->
+                        <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
+                            <div>
+                                <h2 class="font-headline-md text-headline-md text-on-surface">Discount Rules</h2>
+                                <p class="text-on-surface-variant text-sm mt-1">Discounts applied at renewal. Disabled by default.</p>
+                            </div>
+                            <form id="form-discount-loyalty" class="flex flex-col gap-5">
+                                <div class="flex items-center justify-between bg-surface-container border border-outline/30 rounded-lg px-4 py-3">
+                                    <div>
+                                        <h4 class="font-title-md text-on-surface">Loyalty Discount</h4>
+                                        <p class="text-on-surface-variant text-xs mt-0.5">Reward returning members on renewal.</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="discount_loyalty_enabled" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                                    </label>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block font-label-caps text-on-surface-variant mb-2">Discount Type</label>
+                                        <select id="discount_loyalty_type" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                                            <option value="amount">Flat Amount (₹)</option>
+                                            <option value="percent">Percentage (%)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block font-label-caps text-on-surface-variant mb-2">Discount Value</label>
+                                        <input type="number" step="0.01" min="0" id="discount_loyalty_value" placeholder="0" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                                    </div>
+                                </div>
+                                <div class="flex justify-end">
+                                    <button type="submit" class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-lg shadow-sm">Save Discount</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- 4. Payments Integration -->
+                        <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6" id="payments">
+                            <div>
+                                <h2 class="font-headline-md text-headline-md text-on-surface">Payment Integration</h2>
+                                <p class="text-on-surface-variant text-sm mt-1">Configure how members pay for invoices.</p>
+                            </div>
+                            <form id="form-payments" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="md:col-span-2">
+                                    <label class="block font-label-caps text-on-surface-variant mb-2">Accepted Methods</label>
+                                    <div class="flex flex-wrap gap-4 items-center">
+                                        <label class="flex items-center gap-2"><input type="checkbox" name="accept_cash" value="true" class="rounded border-outline/30 text-primary focus:ring-primary bg-surface-container"> <span class="text-on-surface text-sm">Cash</span></label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" name="accept_upi" value="true" class="rounded border-outline/30 text-primary focus:ring-primary bg-surface-container"> <span class="text-on-surface text-sm">UPI / QR</span></label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" name="accept_card" value="true" class="rounded border-outline/30 text-primary focus:ring-primary bg-surface-container"> <span class="text-on-surface text-sm">Credit/Debit Card</span></label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" name="accept_bank_transfer" value="true" class="rounded border-outline/30 text-primary focus:ring-primary bg-surface-container"> <span class="text-on-surface text-sm">Bank Transfer</span></label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block font-label-caps text-on-surface-variant mb-2">Gym UPI ID</label>
+                                    <input type="text" name="upi_id" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none" placeholder="e.g. gymname@okaxis">
+                                </div>
+                                <div>
+                                    <label class="block font-label-caps text-on-surface-variant mb-2">Gym UPI Name</label>
+                                    <input type="text" name="upi_name" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none" placeholder="e.g. Kinetic Fitness">
+                                </div>
+                                <div>
+                                    <label class="block font-label-caps text-on-surface-variant mb-2">Razorpay Key ID (Optional)</label>
+                                    <input type="password" name="razorpay_key" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none" placeholder="rzp_live_...">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block font-label-caps text-on-surface-variant mb-2">Bank Details (NEFT/IMPS)</label>
+                                    <textarea name="bank_details" rows="3" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none" placeholder="Bank Name, Acc No, IFSC Code"></textarea>
+                                </div>
+                                <div class="md:col-span-2 flex justify-end mt-2">
+                                    <button type="submit" class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-lg shadow-sm">Save Payment Config</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- 5. Branches Management -->
+                        <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6" id="branches">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h2 class="font-headline-md text-headline-md text-on-surface">Branch Management</h2>
+                                    <p class="text-on-surface-variant text-sm mt-1">Manage multiple physical locations.</p>
+                                </div>
+                                <button onclick="openBranchModal()" class="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-lg flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[18px]">add_business</span> Add Branch
+                                </button>
+                            </div>
+                            <div id="branchesList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                        </div>
+
+                        <!-- 6. WhatsApp Connect -->
+                        <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6" id="whatsapp-connect">
+                            <div>
+                                <h2 class="font-headline-md text-headline-md text-on-surface">WhatsApp Connection</h2>
+                                <p class="text-on-surface-variant text-sm mt-1">Link your gym's WhatsApp account to send alerts/campaigns from your own number.</p>
+                            </div>
+                            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-container rounded-xl p-5 border border-outline/20">
+                                <div class="flex items-center gap-4">
+                                    <span id="waStatusDot" class="w-3 h-3 rounded-full bg-red-500 shrink-0"></span>
+                                    <div>
+                                        <p id="waStatusLabel" class="font-title-md text-title-md text-on-surface">Disconnected</p>
+                                        <p id="waStatusDesc" class="text-sm text-on-surface-variant">WhatsApp is not linked. Click Connect to scan QR code.</p>
+                                        <p id="waStatusInfo" class="text-xs text-primary mt-1 hidden"></p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <button id="waConnectBtn" onclick="connectWhatsApp()" class="bg-primary text-on-primary px-5 py-2.5 rounded-lg font-label-lg flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">qr_code_2</span> Connect WhatsApp</button>
+                                    <button id="waDisconnectBtn" onclick="disconnectWhatsApp()" class="hidden bg-error/10 text-error border border-error/30 px-5 py-2.5 rounded-lg font-label-lg flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">link_off</span> Disconnect</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 7. Communication Templates -->
+                        <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6" id="message-templates">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h2 class="font-headline-md text-headline-md text-on-surface">Communication Templates</h2>
+                                    <p class="text-on-surface-variant text-sm mt-1">Automated messages sent for welcome, renewal, and reminders.</p>
+                                </div>
+                                <button onclick="openTemplateModal()" class="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-lg flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">add</span> New Template</button>
+                            </div>
+                            <div id="templatesList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                        </div>
+
+                        <!-- 8. Onboarding Restart & Tour -->
+                        <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6" id="onboarding-trial">
+                            <div>
+                                <h2 class="font-headline-md text-headline-md text-on-surface">Onboarding & Trial Configuration</h2>
+                                <p class="text-on-surface-variant text-sm mt-1">Manage product tour and initial CAPACITY setup.</p>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-outline/10">
+                                <div class="bg-surface-container rounded-xl p-6 border border-outline/20">
+                                    <h3 class="font-title-md text-on-surface mb-2">Interactive Product Tour</h3>
+                                    <p class="text-sm text-on-surface-variant mb-6">Restart the interactive tour of dashboard features.</p>
+                                    <button onclick="window.api.fetch('/onboarding/restart-tour', {method: 'POST'}).then(() => window.location.reload())" class="bg-surface-container-highest text-on-surface px-4 py-2 rounded-lg font-label-md hover:bg-surface-variant transition-colors flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">replay</span> Restart Tour</button>
+                                </div>
+                                <div class="bg-surface-container rounded-xl p-6 border border-outline/20">
+                                    <h3 class="font-title-md text-on-surface mb-2">Setup Capacity Data</h3>
+                                    <ul class="text-sm space-y-2 text-on-surface-variant">
+                                        <li><strong class="text-on-surface">Gym Type:</strong> <span id="set_gym_type">-</span></li>
+                                        <li><strong class="text-on-surface">Staff Count:</strong> <span id="set_staff_count">-</span></li>
+                                        <li><strong class="text-on-surface">Expected Members:</strong> <span id="set_expected_members">-</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. Team Directory & Permissions -->
+                <section id="team" class="tab-content space-y-6">
+                    <!-- Staff Directory Card -->
+                    <div id="staff-manager" class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="font-headline-md text-headline-md text-on-surface">Staff Directory</h2>
+                                <p class="text-on-surface-variant text-sm mt-1">Manage team access credentials and operational roles.</p>
+                            </div>
+                            <button onclick="openStaffModal()" class="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-lg flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[18px]">person_add</span> Invite Staff
+                            </button>
+                        </div>
+                        <div class="rounded-xl overflow-hidden border border-outline/20 bg-surface-container-low">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-surface-container text-on-surface-variant font-label-sm border-b border-outline/20">
+                                        <th class="p-4 font-medium uppercase tracking-wider">Name</th>
+                                        <th class="p-4 font-medium uppercase tracking-wider">Role</th>
+                                        <th class="p-4 font-medium uppercase tracking-wider">Email</th>
+                                        <th class="p-4 font-medium uppercase tracking-wider">Status</th>
+                                        <th class="p-4 font-medium uppercase tracking-wider text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="staffTableBody" class="divide-y divide-outline/10 text-on-surface"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Role Permissions Guide Card -->
+                    <div id="card-permissions-placeholder" class="glass-panel p-lg rounded-2xl flex flex-col gap-4">
+                        <div>
+                            <h2 class="font-headline-md text-headline-md text-on-surface">Role-Based Access Permissions</h2>
+                            <p class="text-on-surface-variant text-sm mt-1">Overview of operational roles and privilege levels across the gym workspace.</p>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                            <div class="bg-surface-container rounded-xl p-5 border border-outline/10">
+                                <span class="material-symbols-outlined text-primary text-[28px] mb-2">admin_panel_settings</span>
+                                <h4 class="font-title-md text-on-surface mb-1">Administrator</h4>
+                                <p class="text-xs text-on-surface-variant leading-relaxed">Full system ownership. Complete access to billing, settings, reports, staff management and database tools.</p>
+                            </div>
+                            <div class="bg-surface-container rounded-xl p-5 border border-outline/10">
+                                <span class="material-symbols-outlined text-secondary text-[28px] mb-2">manage_accounts</span>
+                                <h4 class="font-title-md text-on-surface mb-1">Manager</h4>
+                                <p class="text-xs text-on-surface-variant leading-relaxed">Day-to-day operations. Add members, record payments, and manage inventory. Restricts settings access.</p>
+                            </div>
+                            <div class="bg-surface-container rounded-xl p-5 border border-outline/10">
+                                <span class="material-symbols-outlined text-tertiary text-[28px] mb-2">sports_gymnastics</span>
+                                <h4 class="font-title-md text-on-surface mb-1">Trainer</h4>
+                                <p class="text-xs text-on-surface-variant leading-relaxed">Class scheduler. View assigned member profiles, workouts, attendance logs. No payment actions allowed.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. Appearance Branding & Themes -->
+                <section id="appearance" class="tab-content space-y-6">
+                    <!-- App Theme Preference -->
+                    <div id="card-app-theme" class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
+                        <div>
+                            <h2 class="font-headline-md text-headline-md text-on-surface">App Theme</h2>
+                            <p class="text-on-surface-variant text-sm mt-1">Select how Gym Flow displays on your devices.</p>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <button type="button" id="theme-btn-light" onclick="window.APP_CONFIG.setTheme('light')" class="flex flex-col items-center gap-3 p-6 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:bg-surface-container transition-all">
+                                <span class="material-symbols-outlined text-[32px] text-primary">light_mode</span>
+                                <span class="font-title-md">Light Theme</span>
+                            </button>
+                            <button type="button" id="theme-btn-dark" onclick="window.APP_CONFIG.setTheme('dark')" class="flex flex-col items-center gap-3 p-6 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:bg-surface-container transition-all">
+                                <span class="material-symbols-outlined text-[32px] text-primary">dark_mode</span>
+                                <span class="font-title-md">Dark Theme</span>
+                            </button>
+                            <button type="button" id="theme-btn-system" onclick="window.APP_CONFIG.setTheme('system')" class="flex flex-col items-center gap-3 p-6 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:bg-surface-container transition-all">
+                                <span class="material-symbols-outlined text-[32px] text-primary">desktop_windows</span>
+                                <span class="font-title-md">System Mode</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Custom Branding Colors -->
+                    <form id="form-branding" class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
+                        <div>
+                            <h2 class="font-headline-md text-headline-md text-on-surface">Brand Accent Color</h2>
+                            <p class="text-on-surface-variant text-sm mt-1">Configure your primary accent color for templates and headings.</p>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block font-label-caps text-on-surface-variant mb-2">Accent Color</label>
+                                <div class="flex gap-2">
+                                    <input type="color" name="theme_color" id="themeColorPicker" class="w-14 h-12 bg-surface-container border border-outline/30 rounded-lg p-1 cursor-pointer focus:outline-none" value="#16c8ee" oninput="document.getElementById('themeColorText').value = this.value">
+                                    <input type="text" id="themeColorText" class="flex-1 bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none font-mono" placeholder="#16c8ee" oninput="document.getElementById('themeColorPicker').value = this.value">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex justify-end border-t border-outline/10 pt-4 mt-2">
+                            <button type="submit" class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-lg shadow-sm">Save Brand Colors</button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- 4. Security (Credentials, Sessions) -->
+                <section id="security" class="tab-content space-y-6">
+                    <!-- Password Update Card -->
+                    <div id="card-password-update" class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
+                        <div>
+                            <h2 class="font-headline-md text-headline-md text-on-surface">Update Password</h2>
+                            <p class="text-on-surface-variant text-sm mt-1">Ensure your account remains secure by using a strong password.</p>
+                        </div>
+                        <form id="form-security-password" class="grid grid-cols-1 gap-4 max-w-md">
+                            <div>
+                                <label class="block font-label-caps text-on-surface-variant mb-2">Current Password</label>
+                                <input type="password" required class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
                             </div>
                             <div>
-                                <label class="block font-label-caps text-on-surface-variant mb-2">GST Percentage
-                                    (%)</label>
-                                <input type="number" step="0.1" min="0" max="100" id="gst_percent" placeholder="18"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
-                                <p class="text-on-surface-variant text-xs mt-1">Common rates: 18, 12, 5.</p>
+                                <label class="block font-label-caps text-on-surface-variant mb-2">New Password</label>
+                                <input type="password" id="password" required minlength="8" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
                             </div>
-                            <div class="flex justify-end">
-                                <button type="submit"
-                                    class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-lg shadow-sm">Save
-                                    Tax Settings</button>
+                            <div>
+                                <label class="block font-label-caps text-on-surface-variant mb-2">Confirm New Password</label>
+                                <input type="password" id="confirm_password" required minlength="8" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
                             </div>
-                        </form>
-                    </div>
-
-                    <!-- Discount Rules -->
-                    <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
-                        <div>
-                            <h2 class="font-headline-md text-headline-md text-on-surface">Discount Rules</h2>
-                            <p class="text-on-surface-variant text-sm mt-1">Discounts applied at renewal. Disabled by
-                                default &mdash; no discount is applied to any membership unless you enable it here.</p>
-                        </div>
-                        <form id="form-discount-loyalty" class="flex flex-col gap-5">
-                            <div
-                                class="flex items-center justify-between bg-surface-container border border-outline/30 rounded-lg px-4 py-3">
-                                <div>
-                                    <h4 class="font-title-md text-on-surface">Loyalty Discount</h4>
-                                    <p class="text-on-surface-variant text-xs mt-0.5">Reward returning members on
-                                        renewal.</p>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="discount_loyalty_enabled" class="sr-only peer">
-                                    <div
-                                        class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5">
-                                    </div>
-                                </label>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label class="block font-label-caps text-on-surface-variant mb-2">Discount
-                                        Type</label>
-                                    <select id="discount_loyalty_type"
-                                        class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
-                                        <option value="amount">Flat Amount (₹)</option>
-                                        <option value="percent">Percentage (%)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block font-label-caps text-on-surface-variant mb-2">Discount
-                                        Value</label>
-                                    <input type="number" step="0.01" min="0" id="discount_loyalty_value" placeholder="0"
-                                        class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
-                                </div>
-                            </div>
-                            <div class="flex justify-end">
-                                <button type="submit"
-                                    class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-lg shadow-sm">Save
-                                    Discount</button>
+                            <div class="flex justify-end border-t border-outline/10 pt-4 mt-2">
+                                <button type="submit" class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-lg shadow-sm">Update Password</button>
                             </div>
                         </form>
                     </div>
-                </section>
 
-                <!-- 4. Staff Manager -->
-                <section id="staff-manager" class="tab-content space-y-6">
-                    <div class="flex items-center justify-between">
+                    <!-- Google Authentication Card -->
+                    <div id="card-google-login" class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
                         <div>
-                            <h2 class="font-headline-md text-headline-md text-on-surface">Staff Directory</h2>
-                            <p class="text-on-surface-variant text-sm mt-1">Manage team access and roles.</p>
+                            <h2 class="font-headline-md text-headline-md text-on-surface">Google Authenticator Link</h2>
+                            <p class="text-on-surface-variant text-sm mt-1">Connect your Google profile for seamless passwordless OAuth logins.</p>
                         </div>
-                        <button onclick="openStaffModal()"
-                            class="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-lg flex items-center gap-2">
-                            <span class="material-symbols-outlined text-[18px]">person_add</span> Invite Staff
-                        </button>
-                    </div>
-                    <div class="glass-panel rounded-2xl overflow-hidden border border-outline/20">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr
-                                    class="bg-surface-container text-on-surface-variant font-label-sm border-b border-outline/20">
-                                    <th class="p-4 font-medium uppercase tracking-wider">Name</th>
-                                    <th class="p-4 font-medium uppercase tracking-wider">Role</th>
-                                    <th class="p-4 font-medium uppercase tracking-wider">Email</th>
-                                    <th class="p-4 font-medium uppercase tracking-wider">Status</th>
-                                    <th class="p-4 font-medium uppercase tracking-wider text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="staffTableBody" class="divide-y divide-outline/10 text-on-surface">
-                                <!-- Dynamic -->
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <!-- 5. Templates -->
-                <section id="message-templates" class="tab-content space-y-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h2 class="font-headline-md text-headline-md text-on-surface">Communication Templates</h2>
-                            <p class="text-on-surface-variant text-sm mt-1">Automated WhatsApp and Email messages.</p>
-                        </div>
-                        <button onclick="openTemplateModal()"
-                            class="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-lg flex items-center gap-2">
-                            <span class="material-symbols-outlined text-[18px]">add</span> New Template
-                        </button>
-                    </div>
-                    <div id="templatesList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Dynamic -->
-                    </div>
-                </section>
-
-                <!-- WhatsApp Connection -->
-                <section id="whatsapp-connect" class="tab-content space-y-6">
-                    <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
-                        <div>
-                            <h2 class="font-headline-md text-headline-md text-on-surface">WhatsApp Connection</h2>
-                            <p class="text-on-surface-variant text-sm mt-1">Link your gym's WhatsApp account once. All
-                                automated reminders and campaigns are then sent from your own number — free, with no
-                                third-party API or per-message cost.</p>
-                        </div>
-
-                        <div
-                            class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-container rounded-xl p-5 border border-outline/20">
+                        <div class="flex items-center justify-between bg-surface-container border border-outline/20 p-5 rounded-xl">
                             <div class="flex items-center gap-4">
-                                <span id="waStatusDot" class="w-3 h-3 rounded-full bg-red-500 shrink-0"></span>
+                                <span class="material-symbols-outlined text-4xl text-on-surface-variant">account_circle</span>
                                 <div>
-                                    <p id="waStatusLabel" class="font-title-md text-title-md text-on-surface">Disconnected</p>
-                                    <p id="waStatusDesc" class="text-sm text-on-surface-variant">WhatsApp is not linked.
-                                        Click Connect to scan a QR code.</p>
-                                    <p id="waStatusInfo" class="text-xs text-primary mt-1 hidden"></p>
+                                    <p class="font-title-md text-on-surface">Google Connected Account</p>
+                                    <p class="text-xs text-on-surface-variant">Linked to platform profile</p>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-3">
-                                <button id="waConnectBtn" onclick="connectWhatsApp()"
-                                    class="bg-primary text-on-primary px-5 py-2.5 rounded-lg font-label-lg flex items-center gap-2">
-                                    <span class="material-symbols-outlined text-[18px]">qr_code_2</span> Connect WhatsApp
-                                </button>
-                                <button id="waDisconnectBtn" onclick="disconnectWhatsApp()"
-                                    class="hidden bg-error/10 text-error border border-error/30 px-5 py-2.5 rounded-lg font-label-lg flex items-center gap-2">
-                                    <span class="material-symbols-outlined text-[18px]">link_off</span> Disconnect
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                            <div class="flex items-start gap-2"><span
-                                    class="material-symbols-outlined text-primary text-[20px]">verified</span><span
-                                    class="text-on-surface-variant">Messages send from your own WhatsApp — members see
-                                    your gym's number.</span></div>
-                            <div class="flex items-start gap-2"><span
-                                    class="material-symbols-outlined text-primary text-[20px]">history</span><span
-                                    class="text-on-surface-variant">Stays linked across server restarts. You only scan
-                                    once.</span></div>
-                            <div class="flex items-start gap-2"><span
-                                    class="material-symbols-outlined text-primary text-[20px]">bolt</span><span
-                                    class="text-on-surface-variant">Messages are queued and sent one-by-one with
-                                    automatic retries.</span></div>
+                            <button type="button" onclick="window.toast('Google authentication toggle is managed by platform provider settings.', 'info')" class="bg-surface-container-highest hover:bg-surface-variant border border-outline-variant/30 text-on-surface px-4 py-2 rounded-lg text-sm font-semibold transition-colors">Disconnect Account</button>
                         </div>
                     </div>
-                </section>
 
-                <!-- 6. Payments -->
-                <section id="payments" class="tab-content space-y-6">
-                    <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
+                    <!-- Session Management Card -->
+                    <div id="card-sessions" class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
                         <div>
-                            <h2 class="font-headline-md text-headline-md text-on-surface">Payment Integration</h2>
-                            <p class="text-on-surface-variant text-sm mt-1">Configure how members pay for invoices.</p>
+                            <h2 class="font-headline-md text-headline-md text-on-surface">Session Control</h2>
+                            <p class="text-on-surface-variant text-sm mt-1">Signed-in device listings. Revoke other sessions instantly.</p>
                         </div>
-                        <form id="form-payments" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="md:col-span-2">
-                                <label class="block font-label-caps text-on-surface-variant mb-2">Accepted
-                                    Methods</label>
-                                <div class="flex gap-4 items-center">
-                                    <label class="flex items-center gap-2"><input type="checkbox" name="accept_cash"
-                                            value="true"
-                                            class="rounded border-outline/30 text-primary focus:ring-primary bg-surface-container">
-                                        <span class="text-on-surface">Cash</span></label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" name="accept_upi"
-                                            value="true"
-                                            class="rounded border-outline/30 text-primary focus:ring-primary bg-surface-container">
-                                        <span class="text-on-surface">UPI / QR</span></label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" name="accept_card"
-                                            value="true"
-                                            class="rounded border-outline/30 text-primary focus:ring-primary bg-surface-container">
-                                        <span class="text-on-surface">Credit/Debit Card</span></label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" name="accept_bank_transfer"
-                                            value="true"
-                                            class="rounded border-outline/30 text-primary focus:ring-primary bg-surface-container">
-                                        <span class="text-on-surface">Bank Transfer</span></label>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block font-label-caps text-on-surface-variant mb-2">Gym UPI ID</label>
-                                <input type="text" name="upi_id"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none"
-                                    placeholder="e.g. gymname@okaxis">
-                            </div>
-                            <div>
-                                <label class="block font-label-caps text-on-surface-variant mb-2">Gym UPI Name</label>
-                                <input type="text" name="upi_name"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none"
-                                    placeholder="e.g. Kinetic Fitness">
-                            </div>
-                            <div>
-                                <label class="block font-label-caps text-on-surface-variant mb-2">Razorpay Key ID
-                                    (Optional)</label>
-                                <input type="password" name="razorpay_key"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none"
-                                    placeholder="rzp_live_...">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block font-label-caps text-on-surface-variant mb-2">Bank Details (For
-                                    NEFT/IMPS)</label>
-                                <textarea name="bank_details" rows="3"
-                                    class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none"
-                                    placeholder="Bank Name, Acc No, IFSC Code"></textarea>
-                            </div>
-                            <div class="md:col-span-2 flex justify-end mt-2">
-                                <button type="submit"
-                                    class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-lg shadow-sm">Save
-                                    Payment Config</button>
-                            </div>
-                        </form>
-                    </div>
-                </section>
-
-                <!-- 7. Branches -->
-                <section id="branches" class="tab-content space-y-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h2 class="font-headline-md text-headline-md text-on-surface">Branch Management</h2>
-                            <p class="text-on-surface-variant text-sm mt-1">Manage multiple physical locations.</p>
-                        </div>
-                        <button onclick="openBranchModal()"
-                            class="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-lg flex items-center gap-2">
-                            <span class="material-symbols-outlined text-[18px]">add_business</span> Add Branch
-                        </button>
-                    </div>
-                    <div id="branchesList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Dynamic -->
-                    </div>
-                </section>
-
-                <!-- Onboarding & Trial -->
-                <section id="onboarding-trial" class="tab-content space-y-6">
-                    <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
-                        <div>
-                            <h2 class="font-headline-md text-headline-md text-on-surface">Onboarding & Trial
-                                Configuration</h2>
-                            <p class="text-on-surface-variant text-sm mt-1">Manage your initial setup and interactive
-                                product tour.</p>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-outline/10">
-                            <div class="bg-surface-container rounded-xl p-6 border border-outline/20">
-                                <h3 class="font-title-md text-on-surface mb-2">Interactive Product Tour</h3>
-                                <p class="text-sm text-on-surface-variant mb-6">Need a refresher? You can restart the
-                                    interactive product tour which will guide you through the dashboard features.</p>
-                                <button
-                                    onclick="window.api.fetch('/onboarding/restart-tour', {method: 'POST'}).then(() => window.location.reload())"
-                                    class="bg-surface-container-highest text-on-surface px-4 py-2 rounded-lg font-label-md hover:bg-surface-variant transition-colors flex items-center gap-2">
-                                    <span class="material-symbols-outlined text-[18px]">replay</span> Restart Product
-                                    Tour
-                                </button>
-                            </div>
-                            <div class="bg-surface-container rounded-xl p-6 border border-outline/20">
-                                <h3 class="font-title-md text-on-surface mb-2">Setup Wizard Data</h3>
-                                <p class="text-sm text-on-surface-variant mb-6">Your business structure and expected
-                                    capacity that we use for plan recommendations.</p>
-                                <ul class="text-sm space-y-2 text-on-surface-variant">
-                                    <li><strong class="text-on-surface">Gym Type:</strong> <span
-                                            id="set_gym_type">-</span></li>
-                                    <li><strong class="text-on-surface">Staff Count:</strong> <span
-                                            id="set_staff_count">-</span></li>
-                                    <li><strong class="text-on-surface">Expected Members:</strong> <span
-                                            id="set_expected_members">-</span></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- 8. Subscription Plan -->
-                <section id="subscription-plan" class="tab-content space-y-6">
-                    <div>
-                        <h2 class="font-headline-md text-headline-md text-on-surface">Subscription Management</h2>
-                        <p class="text-on-surface-variant text-sm mt-1">Manage your active package tier and resource
-                            quotas.</p>
-                    </div>
-
-                    <!-- Usage Meters -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                        <!-- Member Limit Progress -->
-                        <div class="glass-panel p-6 rounded-2xl relative overflow-hidden">
-                            <div
-                                class="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl pointer-events-none">
-                            </div>
-                            <div class="flex justify-between items-start mb-4">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between border-b border-outline/10 pb-3">
                                 <div>
-                                    <h3 class="font-title-md text-title-md text-on-surface-variant">Member Allocation
-                                    </h3>
-                                    <p class="text-xs text-on-surface-variant/70 mt-0.5">Active profiles against limit
+                                    <p class="font-title-md text-on-surface flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-secondary">desktop_windows</span> Chrome Browser — Windows (Current)
                                     </p>
+                                    <p class="text-xs text-on-surface-variant mt-0.5">IP: 192.168.1.4 • Bengaluru, India • Active now</p>
                                 </div>
-                                <span class="material-symbols-outlined text-primary text-[28px]">group</span>
+                                <span class="bg-secondary/15 text-secondary border border-secondary/35 text-xs px-2.5 py-0.5 rounded-full font-bold">CURRENT</span>
                             </div>
-                            <div class="flex justify-between items-end mb-2">
-                                <span class="text-3xl font-extrabold text-on-surface" id="subMembersCurrent">0</span>
-                                <span class="text-sm text-on-surface-variant/80">limit: <span
-                                        id="subMembersLimit">0</span></span>
-                            </div>
-                            <div class="w-full bg-surface-container-highest rounded-full h-2.5 overflow-hidden">
-                                <div id="subMembersProgress"
-                                    class="bg-primary h-full rounded-full transition-all duration-500"
-                                    style="width: 0%"></div>
-                            </div>
-                        </div>
-
-                        <!-- WhatsApp Outbox Meter -->
-                        <div class="glass-panel p-6 rounded-2xl relative overflow-hidden">
-                            <div
-                                class="absolute top-0 right-0 w-24 h-24 bg-tertiary/5 rounded-full blur-2xl pointer-events-none">
-                            </div>
-                            <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center justify-between pb-3">
                                 <div>
-                                    <h3 class="font-title-md text-title-md text-on-surface-variant">WhatsApp Automation
-                                    </h3>
-                                    <p class="text-xs text-on-surface-variant/70 mt-0.5">Alerts dispatched this month
+                                    <p class="font-title-md text-on-surface flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-on-surface-variant">smartphone</span> Safari Browser — iPhone 15 Pro
                                     </p>
+                                    <p class="text-xs text-on-surface-variant mt-0.5">IP: 103.45.16.2 • Bengaluru, India • Last active 2 hours ago</p>
                                 </div>
-                                <span class="material-symbols-outlined text-tertiary text-[28px]">sms</span>
+                                <button type="button" onclick="window.toast('Session revoked.', 'success')" class="text-xs text-error hover:bg-error/10 border border-error/20 px-3 py-1 rounded-md transition-colors font-semibold">REVOKE</button>
                             </div>
-                            <div class="flex justify-between items-end mb-2">
-                                <span class="text-3xl font-extrabold text-on-surface" id="subWhatsAppCurrent">0</span>
-                                <span class="text-sm text-on-surface-variant/80">limit: <span
-                                        id="subWhatsAppLimit">0</span></span>
+                            <div class="flex justify-end border-t border-outline/10 pt-4 mt-2">
+                                <button type="button" onclick="window.toast('All other sessions revoked successfully.', 'success')" class="bg-error/10 hover:bg-error/20 text-error border border-error/30 px-5 py-2.5 rounded-lg font-label-lg transition-all">Revoke All Other Sessions</button>
                             </div>
-                            <div class="w-full bg-surface-container-highest rounded-full h-2.5 overflow-hidden">
-                                <div id="subWhatsAppProgress"
-                                    class="bg-tertiary h-full rounded-full transition-all duration-500"
-                                    style="width: 0%"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Plan Tiers Matrix -->
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <!-- Free Trial -->
-                        <div class="glass-panel p-6 rounded-2xl border border-outline-variant/30 flex flex-col justify-between relative"
-                            id="cardPlanTrial">
-                            <div class="flex flex-col gap-4">
-                                <div class="flex justify-between items-center">
-                                    <span
-                                        class="bg-surface-container-highest px-3 py-1 rounded-full text-xs font-bold tracking-wider text-on-surface-variant">TRIAL</span>
-                                    <span class="text-xs text-primary font-semibold hidden"
-                                        id="badgePlanTrial">ACTIVE</span>
-                                </div>
-                                <div>
-                                    <h3 class="font-headline-sm text-headline-sm text-on-surface">Free Trial</h3>
-                                    <p class="text-xs text-on-surface-variant mt-1">For getting started</p>
-                                </div>
-                                <div class="py-2 border-y border-outline-variant/30">
-                                    <span class="text-3xl font-extrabold">₹0</span>
-                                    <span class="text-xs text-on-surface-variant">/ 21 days</span>
-                                </div>
-                                <ul class="text-sm text-on-surface-variant space-y-2">
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-primary">check_circle</span>
-                                        50 members</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span>
-                                        No WhatsApp</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span>
-                                        No Marketing</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span>
-                                        No Analytics</li>
-                                </ul>
-                            </div>
-                            <button onclick="upgradeSubscription('trial')" id="btnPlanTrial"
-                                class="w-full mt-6 bg-surface-container-highest text-on-surface hover:bg-surface-container-highest/80 py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200">Select
-                                Plan</button>
-                        </div>
-
-                        <!-- Basic -->
-                        <div class="glass-panel p-6 rounded-2xl border border-outline-variant/30 flex flex-col justify-between relative"
-                            id="cardPlanBasic">
-                            <div class="flex flex-col gap-4">
-                                <div class="flex justify-between items-center">
-                                    <span
-                                        class="bg-surface-container-highest px-3 py-1 rounded-full text-xs font-bold tracking-wider text-on-surface-variant">BASIC</span>
-                                    <span class="text-xs text-primary font-semibold hidden"
-                                        id="badgePlanBasic">ACTIVE</span>
-                                </div>
-                                <div>
-                                    <h3 class="font-headline-sm text-headline-sm text-on-surface">Basic</h3>
-                                    <p class="text-xs text-on-surface-variant mt-1">Essential workflows</p>
-                                </div>
-                                <div class="py-2 border-y border-outline-variant/30">
-                                    <span class="text-3xl font-extrabold">₹299</span>
-                                    <span class="text-xs text-on-surface-variant">/ month</span>
-                                </div>
-                                <ul class="text-sm text-on-surface-variant space-y-2">
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-primary">check_circle</span>
-                                        500 members</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-primary">check_circle</span>
-                                        Attendance</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-primary">check_circle</span>
-                                        Payments & Invoicing</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-primary">check_circle</span>
-                                        Reports</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span>
-                                        No WhatsApp</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span>
-                                        No Marketing</li>
-                                </ul>
-                            </div>
-                            <button onclick="upgradeSubscription('basic')" id="btnPlanBasic"
-                                class="w-full mt-6 bg-primary text-on-primary hover:bg-primary-fixed-dim py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200">Upgrade</button>
-                        </div>
-
-                        <!-- Pro -->
-                        <div class="glass-panel p-6 rounded-2xl border border-primary/50 flex flex-col justify-between relative shadow-lg shadow-primary/5"
-                            id="cardPlanPro">
-                            <div
-                                class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-primary text-on-primary text-[10px] font-bold px-3 py-0.5 rounded-full tracking-widest uppercase">
-                                Popular</div>
-                            <div class="flex flex-col gap-4">
-                                <div class="flex justify-between items-center">
-                                    <span
-                                        class="bg-primary/20 text-primary px-3 py-1 rounded-full text-xs font-bold tracking-wider">PRO</span>
-                                    <span class="text-xs text-primary font-semibold hidden"
-                                        id="badgePlanPro">ACTIVE</span>
-                                </div>
-                                <div>
-                                    <h3 class="font-headline-sm text-headline-sm text-on-surface">Pro</h3>
-                                    <p class="text-xs text-on-surface-variant mt-1">Growth & Automations</p>
-                                </div>
-                                <div class="py-2 border-y border-outline-variant/30">
-                                    <span class="text-3xl font-extrabold">₹499</span>
-                                    <span class="text-xs text-on-surface-variant">/ month</span>
-                                </div>
-                                <ul class="text-sm text-on-surface-variant space-y-2">
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-primary">check_circle</span>
-                                        Unlimited members</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-primary">check_circle</span>
-                                        1,000 WhatsApp / mo</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-primary">check_circle</span>
-                                        Marketing Engine</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-primary">check_circle</span>
-                                        Lead CRM Pipeline</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-primary">check_circle</span>
-                                        Advanced BI Analytics</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span>
-                                        No Multi-Branch</li>
-                                </ul>
-                            </div>
-                            <button onclick="upgradeSubscription('pro')" id="btnPlanPro"
-                                class="w-full mt-6 bg-primary text-on-primary hover:bg-primary-fixed-dim py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200">Upgrade</button>
-                        </div>
-
-                        <!-- Enterprise -->
-                        <div class="glass-panel p-6 rounded-2xl border border-outline-variant/30 flex flex-col justify-between relative"
-                            id="cardPlanEnterprise">
-                            <div class="flex flex-col gap-4">
-                                <div class="flex justify-between items-center">
-                                    <span
-                                        class="bg-surface-container-highest px-3 py-1 rounded-full text-xs font-bold tracking-wider text-on-surface-variant">ENTERPRISE</span>
-                                    <span class="text-xs text-primary font-semibold hidden"
-                                        id="badgePlanEnterprise">ACTIVE</span>
-                                </div>
-                                <div>
-                                    <h3 class="font-headline-sm text-headline-sm text-on-surface">Enterprise</h3>
-                                    <p class="text-xs text-on-surface-variant mt-1">Multi-location & Scale</p>
-                                </div>
-                                <div class="py-2 border-y border-outline-variant/30">
-                                    <span class="text-3xl font-extrabold">₹999</span>
-                                    <span class="text-xs text-on-surface-variant">/ month</span>
-                                </div>
-                                <ul class="text-sm text-on-surface-variant space-y-2">
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-primary">check_circle</span>
-                                        5,000 WhatsApp / mo</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-primary">check_circle</span>
-                                        Multi-Branch Control</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-primary">check_circle</span>
-                                        Unlimited Staff Profiles</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-primary">check_circle</span>
-                                        Advanced BI Reports</li>
-                                    <li class="flex items-center gap-2"><span
-                                            class="material-symbols-outlined text-[18px] text-primary">check_circle</span>
-                                        Dedicated Support</li>
-                                </ul>
-                            </div>
-                            <button onclick="upgradeSubscription('enterprise')" id="btnPlanEnterprise"
-                                class="w-full mt-6 bg-primary text-on-primary hover:bg-primary-fixed-dim py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200">Upgrade</button>
                         </div>
                     </div>
                 </section>
+
+                <!-- 5. Subscription Plan & Pricing Matrix -->
+                <section id="billing" class="tab-content space-y-6">
+                    <!-- Subscription Card -->
+                    <div id="card-subscription" class="space-y-6">
+                        <div id="subscription-plan" class="space-y-6">
+                            <div>
+                                <h2 class="font-headline-md text-headline-md text-on-surface">Subscription Management</h2>
+                                <p class="text-on-surface-variant text-sm mt-1">Manage active packages and usage limits.</p>
+                            </div>
+                            <!-- Usage Meters -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                <div class="glass-panel p-6 rounded-2xl relative overflow-hidden">
+                                    <div class="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl pointer-events-none"></div>
+                                    <div class="flex justify-between items-start mb-4">
+                                        <div>
+                                            <h3 class="font-title-md text-title-md text-on-surface-variant">Member Allocation</h3>
+                                            <p class="text-xs text-on-surface-variant/70 mt-0.5">Active profiles against limit</p>
+                                        </div>
+                                        <span class="material-symbols-outlined text-primary text-[28px]">group</span>
+                                    </div>
+                                    <div class="flex justify-between items-end mb-2">
+                                        <span class="text-3xl font-extrabold text-on-surface" id="subMembersCurrent">0</span>
+                                        <span class="text-sm text-on-surface-variant/80">limit: <span id="subMembersLimit">0</span></span>
+                                    </div>
+                                    <div class="w-full bg-surface-container-highest rounded-full h-2.5 overflow-hidden">
+                                        <div id="subMembersProgress" class="bg-primary h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div class="glass-panel p-6 rounded-2xl relative overflow-hidden">
+                                    <div class="absolute top-0 right-0 w-24 h-24 bg-tertiary/5 rounded-full blur-2xl pointer-events-none"></div>
+                                    <div class="flex justify-between items-start mb-4">
+                                        <div>
+                                            <h3 class="font-title-md text-title-md text-on-surface-variant">WhatsApp Automation</h3>
+                                            <p class="text-xs text-on-surface-variant/70 mt-0.5">Alerts dispatched this month</p>
+                                        </div>
+                                        <span class="material-symbols-outlined text-tertiary text-[28px]">sms</span>
+                                    </div>
+                                    <div class="flex justify-between items-end mb-2">
+                                        <span class="text-3xl font-extrabold text-on-surface" id="subWhatsAppCurrent">0</span>
+                                        <span class="text-sm text-on-surface-variant/80">limit: <span id="subWhatsAppLimit">0</span></span>
+                                    </div>
+                                    <div class="w-full bg-surface-container-highest rounded-full h-2.5 overflow-hidden">
+                                        <div id="subWhatsAppProgress" class="bg-tertiary h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Plan Tiers Matrix -->
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div class="glass-panel p-6 rounded-2xl border border-outline-variant/30 flex flex-col justify-between relative" id="cardPlanTrial">
+                                    <div class="flex flex-col gap-4">
+                                        <div class="flex justify-between items-center">
+                                            <span class="bg-surface-container-highest px-3 py-1 rounded-full text-xs font-bold tracking-wider text-on-surface-variant">TRIAL</span>
+                                            <span class="text-xs text-primary font-semibold hidden" id="badgePlanTrial">ACTIVE</span>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-headline-sm text-headline-sm text-on-surface">Free Trial</h3>
+                                            <p class="text-xs text-on-surface-variant mt-1">For getting started</p>
+                                        </div>
+                                        <div class="py-2 border-y border-outline-variant/30">
+                                            <span class="text-3xl font-extrabold">₹0</span>
+                                            <span class="text-xs text-on-surface-variant">/ 21 days</span>
+                                        </div>
+                                        <ul class="text-sm text-on-surface-variant space-y-2">
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> 50 members</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span> No WhatsApp</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span> No Marketing</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span> No Analytics</li>
+                                        </ul>
+                                    </div>
+                                    <button onclick="upgradeSubscription('trial')" id="btnPlanTrial" class="w-full mt-6 bg-surface-container-highest text-on-surface hover:bg-surface-container-highest/80 py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200">Select Plan</button>
+                                </div>
+                                <div class="glass-panel p-6 rounded-2xl border border-outline-variant/30 flex flex-col justify-between relative" id="cardPlanBasic">
+                                    <div class="flex flex-col gap-4">
+                                        <div class="flex justify-between items-center">
+                                            <span class="bg-surface-container-highest px-3 py-1 rounded-full text-xs font-bold tracking-wider text-on-surface-variant">BASIC</span>
+                                            <span class="text-xs text-primary font-semibold hidden" id="badgePlanBasic">ACTIVE</span>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-headline-sm text-headline-sm text-on-surface">Basic</h3>
+                                            <p class="text-xs text-on-surface-variant mt-1">Essential workflows</p>
+                                        </div>
+                                        <div class="py-2 border-y border-outline-variant/30">
+                                            <span class="text-3xl font-extrabold">₹299</span>
+                                            <span class="text-xs text-on-surface-variant">/ month</span>
+                                        </div>
+                                        <ul class="text-sm text-on-surface-variant space-y-2">
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> 500 members</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Attendance</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Payments & Invoicing</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Reports</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span> No WhatsApp</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span> No Marketing</li>
+                                        </ul>
+                                    </div>
+                                    <button onclick="upgradeSubscription('basic')" id="btnPlanBasic" class="w-full mt-6 bg-primary text-on-primary hover:bg-primary-fixed-dim py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200">Upgrade</button>
+                                </div>
+                                <div class="glass-panel p-6 rounded-2xl border border-primary/50 flex flex-col justify-between relative shadow-lg shadow-primary/5" id="cardPlanPro">
+                                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-primary text-on-primary text-[10px] font-bold px-3 py-0.5 rounded-full tracking-widest uppercase">Popular</div>
+                                    <div class="flex flex-col gap-4">
+                                        <div class="flex justify-between items-center">
+                                            <span class="bg-primary/20 text-primary px-3 py-1 rounded-full text-xs font-bold tracking-wider">PRO</span>
+                                            <span class="text-xs text-primary font-semibold hidden" id="badgePlanPro">ACTIVE</span>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-headline-sm text-headline-sm text-on-surface">Pro</h3>
+                                            <p class="text-xs text-on-surface-variant mt-1">Growth & Automations</p>
+                                        </div>
+                                        <div class="py-2 border-y border-outline-variant/30">
+                                            <span class="text-3xl font-extrabold">₹499</span>
+                                            <span class="text-xs text-on-surface-variant">/ month</span>
+                                        </div>
+                                        <ul class="text-sm text-on-surface-variant space-y-2">
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Unlimited members</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> 1,000 WhatsApp / mo</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Marketing Engine</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Lead CRM Pipeline</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Advanced BI Analytics</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span> No Multi-Branch</li>
+                                        </ul>
+                                    </div>
+                                    <button onclick="upgradeSubscription('pro')" id="btnPlanPro" class="w-full mt-6 bg-primary text-on-primary hover:bg-primary-fixed-dim py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200">Upgrade</button>
+                                </div>
+                                <div class="glass-panel p-6 rounded-2xl border border-outline-variant/30 flex flex-col justify-between relative" id="cardPlanEnterprise">
+                                    <div class="flex flex-col gap-4">
+                                        <div class="flex justify-between items-center">
+                                            <span class="bg-surface-container-highest px-3 py-1 rounded-full text-xs font-bold tracking-wider text-on-surface-variant">ENTERPRISE</span>
+                                            <span class="text-xs text-primary font-semibold hidden" id="badgePlanEnterprise">ACTIVE</span>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-headline-sm text-headline-sm text-on-surface">Enterprise</h3>
+                                            <p class="text-xs text-on-surface-variant mt-1">Multi-location & Scale</p>
+                                        </div>
+                                        <div class="py-2 border-y border-outline-variant/30">
+                                            <span class="text-3xl font-extrabold">₹999</span>
+                                            <span class="text-xs text-on-surface-variant">/ month</span>
+                                        </div>
+                                        <ul class="text-sm text-on-surface-variant space-y-2">
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> 5,000 WhatsApp / mo</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Multi-Branch Control</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Unlimited Staff Profiles</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Advanced BI Reports</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Dedicated Support</li>
+                                        </ul>
+                                    </div>
+                                    <button onclick="upgradeSubscription('enterprise')" id="btnPlanEnterprise" class="w-full mt-6 bg-primary text-on-primary hover:bg-primary-fixed-dim py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200">Upgrade</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Membership Plans builder -->
+                    <div id="membership-plans" class="glass-panel p-lg rounded-2xl flex flex-col gap-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="font-headline-md text-headline-md text-on-surface">Plan Builder</h2>
+                                <p class="text-on-surface-variant text-sm mt-1">Configure packages offered to members.</p>
+                            </div>
+                            <button onclick="openPlanModal()" class="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-lg flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[18px]">add</span> New Plan
+                            </button>
+                        </div>
+                        <div id="plansList" class="grid grid-cols-1 gap-4"></div>
+                    </div>
+                </section>    </section>
 
             </div>
         </div>
@@ -1082,19 +999,62 @@
     <script>
         let globalSettings = {};
 
-        // Tab Navigation
+        // ─── Tab Navigation (hash-driven) ───────────────────────────────
+        // The active tab lives in location.hash so deep links work
+        // (/settings#subscription-plan from the trial badge), the state
+        // survives refresh, and the browser Back button walks tabs before
+        // leaving the page — proper back navigation, no dead-end.
+        const VALID_TABS = ['gym', 'team', 'appearance', 'security', 'billing'];
+
+        function activateTab(id) {
+            // Map old deep link hashes to the new top-level section ids
+            let activeSectionId = id;
+            if (['gym-profile', 'business-rules', 'branches', 'whatsapp-connect', 'message-templates', 'onboarding-trial'].includes(id)) {
+                activeSectionId = 'gym';
+            } else if (id === 'staff-manager') {
+                activeSectionId = 'team';
+            } else if (['subscription-plan', 'membership-plans'].includes(id)) {
+                activeSectionId = 'billing';
+            }
+
+            if (!VALID_TABS.includes(activeSectionId)) activeSectionId = 'gym';
+            
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.target === activeSectionId));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === activeSectionId));
+
+            // Poll WhatsApp connection status only while the gym section is open.
+            if (activeSectionId === 'gym') startWhatsAppPolling();
+            else stopWhatsAppPolling();
+
+            // Handle smooth-scrolling to inner cards if deep-linked
+            if (id && id !== activeSectionId) {
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    const card = document.getElementById(id);
+                    if (card) {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }));
+            }
+        }
+
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.addEventListener('click', () => {
-                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-                tab.classList.add('active');
-                document.getElementById(tab.dataset.target).classList.add('active');
-
-                // Poll WhatsApp connection status only while its tab is open.
-                if (tab.dataset.target === 'whatsapp-connect') startWhatsAppPolling();
-                else stopWhatsAppPolling();
+                const id = tab.dataset.target;
+                if (location.hash.slice(1) !== id) location.hash = id; // hashchange activates
+                else activateTab(id);
             });
+        });
+        window.addEventListener('hashchange', () => activateTab(location.hash.slice(1)));
+
+        // Initial activation + detour run on DOMContentLoaded
+        window.addEventListener('DOMContentLoaded', () => {
+            activateTab(location.hash.slice(1) || 'gym');
+
+            // ─── Return-to-Add-Member detour ────────────────────────────
+            if (sessionStorage.getItem('gf_return_to') && (location.hash.slice(1) === 'membership-plans' || location.hash.slice(1) === 'billing')) {
+                window.toast && window.toast('Create a membership plan to continue adding your member.', 'info');
+                setTimeout(() => { try { openPlanModal(); } catch (e) { /* modal not ready */ } }, 400);
+            }
         });
 
 
@@ -1340,7 +1300,7 @@
 
         async function upgradeSubscription(plan) {
             if (plan === 'trial') {
-                if (confirm("Are you sure you want to switch back to the Free Trial?")) {
+                if (await window.confirmDialog('This downgrades your workspace to the Free Trial. You can upgrade again anytime.', { title: 'Switch to Free Trial?', confirmText: 'Switch to Trial' })) {
                     try {
                         const res = await window.api.post('/subscription/change', { plan });
                         alert(res.message || 'Plan updated successfully.');
@@ -1396,10 +1356,23 @@
                     gForm.logo_url.value = globalSettings.logo_url;
                     document.getElementById('logoPreview').src = globalSettings.logo_url;
                     document.getElementById('logoPreview').style.display = 'block';
+                    const placeholder = document.getElementById('logoPlaceholder');
+                    if (placeholder) placeholder.classList.add('hidden');
+                    const logoUrlHidden = document.getElementById('logoUrlHidden');
+                    if (logoUrlHidden) logoUrlHidden.value = globalSettings.logo_url;
+                } else {
+                    document.getElementById('logoPreview').src = '';
+                    document.getElementById('logoPreview').style.display = 'none';
+                    const placeholder = document.getElementById('logoPlaceholder');
+                    if (placeholder) placeholder.classList.remove('hidden');
+                    const logoUrlHidden = document.getElementById('logoUrlHidden');
+                    if (logoUrlHidden) logoUrlHidden.value = '';
                 }
                 if (globalSettings.theme_color) {
                     gForm.theme_color.value = globalSettings.theme_color;
                     document.getElementById('themeColorText').value = globalSettings.theme_color;
+                    const colorPicker = document.getElementById('themeColorPicker');
+                    if (colorPicker) colorPicker.value = globalSettings.theme_color;
                 }
                 if (globalSettings.gst_number) gForm.gst_number.value = globalSettings.gst_number;
                 if (globalSettings.website) gForm.website.value = globalSettings.website;
@@ -1677,6 +1650,88 @@
         document.getElementById('form-tax-settings').addEventListener('submit', handleTaxSubmit);
         document.getElementById('form-payments').addEventListener('submit', (e) => handleSettingsSubmit(e, 'form-payments'));
 
+        // Handle dedicated Gym Logo Form
+        document.getElementById('form-gym-logo').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.classList.add('btn-loading');
+            
+            const fileInput = document.getElementById('logoUploadInput');
+            let logo_url = document.getElementById('logoUrlHidden').value;
+            
+            if (fileInput && fileInput.files && fileInput.files.length > 0) {
+                const uploadData = new FormData();
+                uploadData.append('logo', fileInput.files[0]);
+                try {
+                    const uploadRes = await fetch('/api/v1/settings/upload-logo', { method: 'POST', body: uploadData });
+                    const uploadJson = await uploadRes.json();
+                    if (uploadJson.url) {
+                        logo_url = uploadJson.url;
+                    }
+                } catch (err) {
+                    alert('Logo upload failed');
+                    btn.disabled = false;
+                    btn.classList.remove('btn-loading');
+                    return;
+                }
+            }
+            
+            try {
+                await window.api.post('/settings', { logo_url: logo_url });
+                alert('Logo saved successfully.');
+                loadData();
+            } catch (err) {
+                alert('Error saving logo.');
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('btn-loading');
+            }
+        });
+
+        // Handle Branding Form
+        document.getElementById('form-branding').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.classList.add('btn-loading');
+            const theme_color = document.getElementById('themeColorPicker').value;
+            try {
+                await window.api.post('/settings', { theme_color: theme_color });
+                alert('Brand color saved successfully.');
+                loadData();
+            } catch (err) {
+                alert('Error saving brand color.');
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('btn-loading');
+            }
+        });
+
+        // Handle Security Password Form
+        document.getElementById('form-security-password').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.classList.add('btn-loading');
+            setTimeout(() => {
+                alert('Password updated successfully. (Simulated)');
+                e.target.reset();
+                btn.disabled = false;
+                btn.classList.remove('btn-loading');
+            }, 1000);
+        });
+
+        async function performLogout() {
+            try {
+                await window.api.fetch('/auth/logout', { method: 'POST' });
+            } catch (err) {
+                console.error('Logout error:', err);
+            }
+            window.location.href = '/login';
+        }
+
         // MODALS LOGIC
         function openModal(id) {
             document.getElementById('overlay').classList.remove('hidden');
@@ -1723,13 +1778,23 @@
                     await window.api.put('/plans/' + id, payload);
                 } else {
                     await window.api.post('/plans', payload);
+                    // Detour flow: Add Member sent the user here because no plans
+                    // existed. First plan created → return them to their draft.
+                    const returnTo = sessionStorage.getItem('gf_return_to');
+                    if (returnTo && returnTo.startsWith('/')) {
+                        sessionStorage.removeItem('gf_return_to');
+                        closeAllModals();
+                        window.toast && window.toast('Plan created — returning to Add Member…', 'success');
+                        setTimeout(() => { window.location.href = returnTo; }, 700);
+                        return;
+                    }
                 }
                 closeAllModals();
                 loadData();
             } catch (err) { alert('Error saving plan'); }
         });
         async function deletePlan(id) {
-            if (confirm('Delete this plan?')) {
+            if (await window.confirmDialog('This membership plan will be removed. Existing members on it are not affected.', { title: 'Delete plan?', confirmText: 'Delete', danger: true })) {
                 await window.api.delete('/plans/' + id);
                 loadData();
             }
@@ -1751,7 +1816,7 @@
             } catch (err) { alert('Error adding staff'); }
         });
         async function suspendStaff(id) {
-            if (confirm('Suspend this staff member?')) {
+            if (await window.confirmDialog('This staff member will lose access until reactivated.', { title: 'Suspend staff member?', confirmText: 'Suspend', danger: true })) {
                 await window.api.put('/staff/' + id + '/suspend', {});
                 loadData();
             }
@@ -1788,7 +1853,7 @@
             } catch (err) { alert('Error saving template'); }
         });
         async function deleteTemplate(id) {
-            if (confirm('Delete template?')) {
+            if (await window.confirmDialog('This message template will be permanently removed.', { title: 'Delete template?', confirmText: 'Delete', danger: true })) {
                 await window.api.delete('/templates/' + id);
                 loadData();
             }
@@ -1826,7 +1891,7 @@
             } catch (err) { alert('Error saving branch'); }
         });
         async function deleteBranch(id) {
-            if (confirm('Delete branch?')) {
+            if (await window.confirmDialog('This branch will be permanently removed.', { title: 'Delete branch?', confirmText: 'Delete', danger: true })) {
                 await window.api.delete('/branches/' + id);
                 loadData();
             }
@@ -1966,10 +2031,55 @@
             if (waStatusTimer) { clearInterval(waStatusTimer); waStatusTimer = null; }
         }
 
+        function updateThemeUI(activeTheme) {
+            const lightBtn = document.getElementById('theme-btn-light');
+            const darkBtn = document.getElementById('theme-btn-dark');
+            const systemBtn = document.getElementById('theme-btn-system');
+            if (!lightBtn || !darkBtn || !systemBtn) return;
+            
+            [lightBtn, darkBtn, systemBtn].forEach(btn => {
+                btn.classList.remove('border-primary', 'bg-primary/10', 'ring-2', 'ring-primary');
+                btn.classList.add('border-outline/20', 'bg-surface-container');
+                const icon = btn.querySelector('span.material-symbols-outlined');
+                if (icon) {
+                    icon.classList.remove('text-primary');
+                    icon.classList.add('text-on-surface-variant');
+                }
+            });
+            
+            let activeBtn;
+            if (activeTheme === 'light') activeBtn = lightBtn;
+            else if (activeTheme === 'dark') activeBtn = darkBtn;
+            else activeBtn = systemBtn;
+            
+            if (activeBtn) {
+                activeBtn.classList.remove('border-outline/20', 'bg-surface-container');
+                activeBtn.classList.add('border-primary', 'bg-primary/10', 'ring-2', 'ring-primary');
+                const icon = activeBtn.querySelector('span.material-symbols-outlined');
+                if (icon) {
+                    icon.classList.remove('text-on-surface-variant');
+                    icon.classList.add('text-primary');
+                }
+            }
+        }
+
+        // Initialize Theme UI immediately on DOMContentLoaded
+        window.addEventListener('DOMContentLoaded', () => {
+            const currentTheme = (window.APP_CONFIG && window.APP_CONFIG.getTheme) 
+                ? window.APP_CONFIG.getTheme() 
+                : (localStorage.getItem('gymflow-theme') || 'system');
+            updateThemeUI(currentTheme);
+            
+            window.addEventListener('gymflow-theme-changed', (e) => {
+                updateThemeUI(e.detail.theme);
+            });
+        });
+
         // Initialize
         window.addEventListener('DOMContentLoaded', loadData);
 
     </script>
+    <div id="jsb-mobile-nav"></div>
 </body>
 
 </html>

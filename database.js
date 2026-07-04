@@ -225,6 +225,74 @@ async function initializeDatabase() {
     try { await runQuery(`ALTER TABLE users ADD COLUMN reset_token TEXT`); } catch (e) {}
     try { await runQuery(`ALTER TABLE users ADD COLUMN token_expiry DATETIME`); } catch (e) {}
     try { await runQuery(`ALTER TABLE users ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`); } catch (e) {}
+    // [ROLES] phone is captured at registration (and add-once via /auth/phone for
+    // older accounts). phone + email together are the linking key the FUTURE
+    // member-claim flow will use to match a login identity to a members row.
+    try { await runQuery(`ALTER TABLE users ADD COLUMN phone TEXT`); } catch (e) {}
+    // [IDENTITY] Account-level security state. password_set distinguishes a real
+    // password from the legacy random hash Google-provisioned accounts received;
+    // new Google-only accounts get password_hash = NULL + password_set = 0 and
+    // gain a password only through the explicit set-password flow.
+    try { await runQuery(`ALTER TABLE users ADD COLUMN phone_verified_at DATETIME`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE users ADD COLUMN password_set INTEGER DEFAULT 1`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE users ADD COLUMN password_changed_at DATETIME`); } catch (e) {}
+
+    // 2b. [ROLES] user_roles — one identity can hold MULTIPLE roles across
+    // tenants (e.g. Owner of gym A and Member of gym B), so role is a junction
+    // row, never a single global flag. users.role_id/users.tenant_id remain as
+    // the legacy primary role and are mirrored here by the backfill below.
+    // member_id stays NULL until the future member-claim flow links the identity
+    // to its members row for that tenant.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS user_roles (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        tenant_id TEXT NOT NULL,
+        role_id TEXT NOT NULL,
+        member_id TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (user_id, tenant_id, role_id),
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+        FOREIGN KEY (role_id) REFERENCES roles (id)
+      )
+    `);
+    // One-time repair: a user_roles created by an early build lacked ON DELETE
+    // CASCADE, which made user/tenant deletes fail against referencing role rows.
+    // Rebuild with the correct FKs, preserving rows. Runs once, only when needed.
+    try {
+      const urSql = await getQuery(`SELECT sql FROM sqlite_master WHERE type='table' AND name='user_roles'`);
+      if (urSql && !/ON DELETE CASCADE/i.test(urSql.sql)) {
+        console.log('[migration] Rebuilding user_roles with ON DELETE CASCADE.');
+        await runQuery('PRAGMA foreign_keys=OFF');
+        await runQuery('BEGIN');
+        await runQuery(`
+          CREATE TABLE user_roles_new (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            tenant_id TEXT NOT NULL,
+            role_id TEXT NOT NULL,
+            member_id TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (user_id, tenant_id, role_id),
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+            FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+            FOREIGN KEY (role_id) REFERENCES roles (id)
+          )
+        `);
+        await runQuery(`INSERT INTO user_roles_new (id, user_id, tenant_id, role_id, member_id, created_at)
+                        SELECT id, user_id, tenant_id, role_id, member_id, created_at FROM user_roles`);
+        await runQuery('DROP TABLE user_roles');
+        await runQuery('ALTER TABLE user_roles_new RENAME TO user_roles');
+        await runQuery('COMMIT');
+        await runQuery('PRAGMA foreign_keys=ON');
+      }
+    } catch (e) {
+      console.error('[migration] user_roles cascade migration failed:', e.message);
+      try { await runQuery('ROLLBACK'); } catch (_) {}
+    }
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id)`);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_user_roles_tenant ON user_roles(tenant_id)`);
 
     // 3. Staff table
     await runQuery(`
@@ -850,6 +918,151 @@ async function initializeDatabase() {
     `);
     await runQuery(`CREATE INDEX IF NOT EXISTS idx_email_logs_tenant ON email_logs(tenant_id, created_at DESC)`);
 
+    // ==========================================================
+    // [IDENTITY] Identity-platform tables (see IDENTITY_PLATFORM.md).
+    // All additive — existing logins/tokens keep working while the
+    // session/verification layer moves onto these.
+    // ==========================================================
+
+    // 20. Auth sessions — one row per login, refresh-rotated, revocable.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS auth_sessions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        refresh_hash TEXT,
+        refresh_prev_hash TEXT,
+        rotated_at DATETIME,
+        jti TEXT,
+        remember INTEGER DEFAULT 0,
+        scoped_tenant TEXT,
+        scoped_role TEXT,
+        browser TEXT,
+        os TEXT,
+        device_label TEXT,
+        ip TEXT,
+        user_agent TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_active DATETIME DEFAULT CURRENT_TIMESTAMP,
+        expires_at DATETIME NOT NULL,
+        revoked_at DATETIME,
+        revoke_reason TEXT,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id, revoked_at)`);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_auth_sessions_refresh ON auth_sessions(refresh_hash)`);
+
+    // 21. External login providers linked to an account (password is a flag on
+    // users, not a row here). UNIQUE(provider, provider_uid) is the global
+    // "one Google identity → one account" invariant.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS identity_providers (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        provider_uid TEXT NOT NULL,
+        email TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_used_at DATETIME,
+        UNIQUE (provider, provider_uid),
+        UNIQUE (user_id, provider),
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    `);
+
+    // 22. Email verification tokens (signup + change-email): hashed, expiring,
+    // single-use; a resend invalidates predecessors with an audit trail.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS email_verifications (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        email TEXT NOT NULL,
+        purpose TEXT NOT NULL DEFAULT 'signup',
+        token_hash TEXT NOT NULL,
+        expires_at DATETIME NOT NULL,
+        used_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_email_verifications_token ON email_verifications(token_hash)`);
+
+    // 23. Password reset tokens — off the users row so they are single-use and
+    // auditable, and a fresh request supersedes earlier ones.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        token_hash TEXT NOT NULL,
+        expires_at DATETIME NOT NULL,
+        used_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_password_reset_token ON password_reset_tokens(token_hash)`);
+
+    // 24. Phone OTP verifications — phone is a verification factor, never a login.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS phone_verifications (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        otp_hash TEXT NOT NULL,
+        attempts INTEGER DEFAULT 0,
+        expires_at DATETIME NOT NULL,
+        verified_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_phone_verifications_user ON phone_verifications(user_id, created_at DESC)`);
+
+    // 25. Trusted devices — long-lived device recognition for new-device alerts.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS trusted_devices (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        token_hash TEXT NOT NULL,
+        browser TEXT,
+        os TEXT,
+        first_ip TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+        revoked_at DATETIME,
+        UNIQUE (user_id, token_hash),
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    `);
+
+    // 26. Security events — audit trail; the (email, created_at) index backs the
+    // account-lockout window query (failures counted per email across IPs).
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS security_events (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        email TEXT,
+        event TEXT NOT NULL,
+        ip TEXT,
+        user_agent TEXT,
+        meta TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_security_events_user ON security_events(user_id, created_at DESC)`);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_security_events_email ON security_events(email, created_at DESC)`);
+
+    // 27. Password history — blocks reuse of recent passwords on change/reset.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS password_history (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    `);
+
     console.log('All tables and indexes created.');
 
     // Seed Roles
@@ -863,6 +1076,41 @@ async function initializeDatabase() {
       `);
       console.log('Seeded roles.');
     }
+
+    // [ROLES] Member role — seeded idempotently OUTSIDE the count===0 block so
+    // existing databases (already holding r1-r4) gain it too. Members hold only
+    // the self-service permission; the API-layer staff gate (requireStaffRole in
+    // server.js) rejects this role on every admin/tenant endpoint regardless.
+    await runQuery(`INSERT OR IGNORE INTO roles (id, name, permissions) VALUES ('r5', 'Member', '["member:self"]')`);
+
+    // [ROLES] Backfill: mirror every existing user's legacy primary role
+    // (users.role_id + users.tenant_id) into user_roles so multi-role lookups
+    // have one uniform source. Idempotent via deterministic id + UNIQUE.
+    // Guard the FK targets: legacy DBs contain orphan users whose tenant was
+    // deleted (old suite cleanups) — those rows cannot be mirrored.
+    const roleBackfill = await runQuery(`
+      INSERT OR IGNORE INTO user_roles (id, user_id, tenant_id, role_id)
+      SELECT 'ur_' || id || '_' || tenant_id || '_' || role_id, id, tenant_id, role_id
+      FROM users
+      WHERE tenant_id IS NOT NULL AND role_id IS NOT NULL
+        AND tenant_id IN (SELECT id FROM tenants)
+        AND role_id IN (SELECT id FROM roles)
+    `);
+    if (roleBackfill && roleBackfill.changes > 0) {
+      console.log(`[roles] Backfilled ${roleBackfill.changes} user role assignment(s) into user_roles.`);
+    }
+
+    // [IDENTITY] Normalize legacy emails to lowercase so lookups (which now
+    // normalize their input) always match and the password/Google paths can never
+    // fork one human into two accounts on letter case. Collision-guarded: two
+    // accounts differing only by case are left untouched and logged for review.
+    const mixedCaseEmails = await allQuery(`SELECT id, email FROM users WHERE email IS NOT NULL AND email <> lower(email)`);
+    for (const u of mixedCaseEmails) {
+      const clash = await getQuery(`SELECT id FROM users WHERE email = ? AND id <> ?`, [u.email.toLowerCase(), u.id]);
+      if (clash) { console.warn(`[identity] Email case collision left unmigrated: user ${u.id}`); continue; }
+      await runQuery(`UPDATE users SET email = lower(email) WHERE id = ?`, [u.id]);
+    }
+    if (mixedCaseEmails.length > 0) console.log(`[identity] Normalized ${mixedCaseEmails.length} legacy email(s) to lowercase.`);
 
     // [C4 FIX] No seeded human/admin accounts and no default passwords.
     // The first Owner account is created exclusively via the public signup flow
@@ -919,6 +1167,20 @@ async function initializeDatabase() {
     }
     if (tenantRows.length > 0) {
       console.log(`Backfilled settings + discount_rules for ${tenantRows.length} tenant(s).`);
+    }
+
+    // [MIGRATION] Grandfather operating gyms past the mandatory setup wizard.
+    // The legacy onboarding module never executed (dead DOMContentLoaded listener),
+    // so onboarding_completed stayed 0 even for long-established tenants. Any
+    // tenant that already has a membership plan is clearly past first-time setup —
+    // forcing the wizard on them would create duplicate plans. Idempotent.
+    const grandfathered = await runQuery(`
+      UPDATE tenants SET onboarding_completed = 1
+      WHERE onboarding_completed = 0
+        AND id IN (SELECT DISTINCT tenant_id FROM membership_plans WHERE tenant_id IS NOT NULL)
+    `);
+    if (grandfathered && grandfathered.changes > 0) {
+      console.log(`Grandfathered ${grandfathered.changes} tenant(s) past the setup wizard.`);
     }
 
     // Seed Templates with INSERT OR REPLACE to update existing ones

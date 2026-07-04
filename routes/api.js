@@ -3,6 +3,7 @@ const router = express.Router();
 const { getQuery, runQuery, allQuery } = require('../database');
 const { PLANS, isRazorpayConfigured, createOrder, verifyPaymentSignature, fetchOrder, cancelSubscription } = require('../lib/razorpay');
 const { getTodayString, getLastNDaysString, getNextNDaysString } = require('../lib/dateUtils');
+const engine = require('../lib/membershipEngine');
 const whatsappService = require('../services/whatsapp.service');
 const whatsappQueue = require('../services/whatsapp.queue');
 
@@ -748,14 +749,10 @@ async function runAutomationScans(tenantId, force = false) {
       WHERE ms.status = 'Active'
      AND ms.tenant_id = ? `, [tenantId]);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayForScan = getTodayString();
 
     for (const ms of activeMemberships) {
-      const end = new Date(ms.end_date);
-      end.setHours(0, 0, 0, 0);
-      const diffTime = end - today;
-      const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const daysLeft = engine.remainingDays(ms.end_date, todayForScan);
 
       if (daysLeft < 0) {
         // Expired membership: update status
@@ -1050,13 +1047,7 @@ router.get('/members', async (req, res) => {
     const augmented = members.map((m) => {
       let daysLeft = 0;
       if (m.end_date) {
-        // Date difference using local time mapping
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const [year, month, day] = m.end_date.split('-');
-        const end = new Date(year, month - 1, day);
-        const diffTime = end - today;
-        daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        daysLeft = engine.remainingDays(m.end_date, getTodayString());
         if (daysLeft < 0) daysLeft = 0;
       }
       return { ...m, daysLeft };
@@ -1284,24 +1275,17 @@ router.post('/members', async (req, res) => {
 
     const msId = uid('ms_');
 
-    // Use provided dates or calculate from plan duration
+    // Use provided dates or calculate from plan duration (via the shared
+    // MembershipEngine — pure calendar-day math, no UTC/local mixing).
     let membershipStart = start_date;
     let membershipEnd = end_date;
-    
+
     if (!membershipStart) {
-      const d = new Date();
-      membershipStart = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      membershipStart = getTodayString();
     }
-    
+
     if (!membershipEnd) {
-      const parts = membershipStart.split('-');
-      const endDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-      if (plan.duration_days && plan.duration_days > 0) {
-        endDate.setDate(endDate.getDate() + plan.duration_days);
-      } else {
-        endDate.setMonth(endDate.getMonth() + (plan.duration_months || 1));
-      }
-      membershipEnd = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+      membershipEnd = engine.computeEndDate(membershipStart, plan);
     }
 
     await runQuery(`
@@ -2497,20 +2481,12 @@ router.post('/memberships/renew', authorize('payments:write'), async (req, res) 
       return res.status(404).json({ error: 'Member or Plan not found.' });
     }
 
-    // Determine start/end using standard logic
+    // Determine start/end using the shared MembershipEngine (pure calendar-day
+    // math — chains onto the active membership's end date, or starts today if
+    // lapsed; honours day-based plans, e.g. 7-day trials, as well as month-based).
     const currentMs = await getQuery(`SELECT end_date FROM memberships WHERE member_id = ? AND tenant_id = ? AND status = 'Active' ORDER BY end_date DESC LIMIT 1`, [member_id, req.tenant_id]);
-    const startDateObj = currentMs && new Date(currentMs.end_date) >= new Date() 
-        ? new Date(new Date(currentMs.end_date).getTime() + 86400000) 
-        : new Date();
-    
-    // [M2 FIX] Honour day-based plans (e.g. 7-day trials) as well as month-based
-    // ones; the old code applied only duration_months and ignored duration_days.
-    const endDateObj = new Date(startDateObj);
-    if (plan.duration_days && plan.duration_days > 0) {
-      endDateObj.setDate(endDateObj.getDate() + plan.duration_days);
-    } else {
-      endDateObj.setMonth(endDateObj.getMonth() + (plan.duration_months || 0));
-    }
+    const startStr = engine.nextRenewalStart(currentMs && currentMs.end_date, getTodayString());
+    const endStr = engine.computeEndDate(startStr, plan);
 
     // [SEC] Discount is SERVER-AUTHORITATIVE: recomputed from the tenant's enabled
     // discount_rules (the 'loyalty' rule), NEVER trusted from the client body. The
@@ -2545,7 +2521,7 @@ router.post('/memberships/renew', authorize('payments:write'), async (req, res) 
     await runQuery(`
       INSERT INTO memberships (id, tenant_id, member_id, plan_id, start_date, end_date, status, renewal_count)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [msId, req.tenant_id, member_id, plan_id, startDateObj.toISOString().split('T')[0], endDateObj.toISOString().split('T')[0], initialStatus, renewalCount]);
+    `, [msId, req.tenant_id, member_id, plan_id, startStr, endStr, initialStatus, renewalCount]);
 
     // 2. Create Invoice (Unpaid or Paid)
     await runQuery(`
@@ -2621,6 +2597,47 @@ router.post('/memberships/renew/verify', authorize('payments:write'), async (req
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Verification failed.' });
+  }
+});
+
+// Extend an existing membership's end date by a number of months and/or days
+// (e.g. goodwill extension, freeze compensation) without going through the
+// full renewal/payment flow.
+router.post('/memberships/:id/extend', authorize('payments:write'), async (req, res) => {
+  const { id } = req.params;
+  const daysRaw = req.body && req.body.days;
+  const monthsRaw = req.body && req.body.months;
+
+  const days = daysRaw === undefined || daysRaw === null || daysRaw === '' ? 0 : Number(daysRaw);
+  const months = monthsRaw === undefined || monthsRaw === null || monthsRaw === '' ? 0 : Number(monthsRaw);
+
+  if (!Number.isInteger(days) || !Number.isInteger(months) ||
+      days < 0 || days > 366 || months < 0 || months > 24 ||
+      (days === 0 && months === 0)) {
+    return res.status(400).json({ error: 'Provide integer days (0-366) and/or months (0-24), with at least one greater than 0.' });
+  }
+
+  try {
+    const ms = await getQuery(`SELECT * FROM memberships WHERE id = ? AND tenant_id = ? `, [id, req.tenant_id]);
+    if (!ms) {
+      return res.status(404).json({ error: 'Membership not found.' });
+    }
+
+    const newEnd = engine.extendEnd(ms.end_date, { months, days });
+    await runQuery(`UPDATE memberships SET end_date = ? WHERE id = ? AND tenant_id = ? `, [newEnd, id, req.tenant_id]);
+
+    const remaining = engine.remainingDays(newEnd, getTodayString());
+    if (ms.status === 'Expired' && remaining >= 0) {
+      await runQuery(`UPDATE memberships SET status = 'Active' WHERE id = ? AND tenant_id = ? `, [id, req.tenant_id]);
+      await runQuery(`UPDATE members SET status = 'Active' WHERE id = ? AND tenant_id = ? `, [ms.member_id, req.tenant_id]);
+    }
+
+    await logActivity(req.user?.id || 'u1', req.tenant_id, 'UPDATE', 'memberships', id, { extended_days: days, extended_months: months });
+
+    res.json({ message: 'Membership extended successfully.', end_date: newEnd, remaining_days: remaining });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to extend membership.' });
   }
 });
 
@@ -3713,14 +3730,10 @@ router.get('/analytics/renewal-queue', async (req, res) => {
      AND ms.tenant_id = ? `, [req.tenant_id]);
 
     let totalRevenueAtRisk = 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayForQueue = getTodayString();
 
     const enriched = await Promise.all(memberships.map(async (m) => {
-      const end = new Date(m.end_date);
-      end.setHours(0, 0, 0, 0);
-      const diffTime = end - today;
-      const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const daysLeft = engine.remainingDays(m.end_date, todayForQueue);
 
       let probability = 'Low';
       const visits = await getQuery('SELECT COUNT(*) as count FROM attendance WHERE member_id = ? AND check_in >= date("now", "-30 days") AND tenant_id = ? ', [m.member_id, req.tenant_id]);

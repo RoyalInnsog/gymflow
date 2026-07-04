@@ -37,7 +37,7 @@
 </style>
 
 </head>
-<body class="bg-mesh min-h-screen flex items-center justify-center p-margin-mobile md:p-margin-desktop text-on-surface font-body-md antialiased selection:bg-primary/30 selection:text-primary md:pl-[280px]">
+<body class="bg-mesh min-h-screen flex items-center justify-center p-margin-mobile md:p-margin-desktop text-on-surface font-body-md antialiased selection:bg-primary/30 selection:text-primary">
 
 <!-- Atmospheric background light elements -->
 <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-surface-variant/20 rounded-full blur-[120px] pointer-events-none"></div>
@@ -79,6 +79,14 @@
 </div>
 
 <div class="flex flex-col gap-base">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest pl-1" for="phone">Phone Number</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-4 text-on-surface-variant/70 text-[20px] pointer-events-none">call</span>
+<input class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg py-3 pl-12 pr-4 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/30 focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all outline-none shadow-inner" id="phone" name="phone" placeholder="98765 43210" required="" inputmode="tel" autocomplete="tel" type="tel">
+</div>
+</div>
+
+<div class="flex flex-col gap-base">
 <label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest pl-1" for="password">Password</label>
 <div class="relative flex items-center">
 <span class="material-symbols-outlined absolute left-4 text-on-surface-variant/70 text-[20px] pointer-events-none">lock</span>
@@ -107,9 +115,10 @@
 </label>
 </div>
 
-<button class="w-full bg-primary text-on-primary py-4 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-primary-fixed-dim hover:scale-[0.98] active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/10 border border-primary-fixed/20 mt-2" type="submit">
-<span>CREATE ACCOUNT</span>
-<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+<button id="signupSubmit" class="w-full bg-primary text-on-primary py-4 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-primary-fixed-dim hover:shadow-primary/20 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/10 border border-primary-fixed/20 mt-2" type="submit">
+<span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner>progress_activity</span>
+<span data-label>CREATE ACCOUNT</span>
+<span class="material-symbols-outlined text-[18px]" data-arrow>arrow_forward</span>
 </button>
 </form>
 
@@ -132,30 +141,51 @@ document.querySelector('form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const full_name = document.getElementById('full_name').value;
   const email = document.getElementById('email').value;
+  const phone = document.getElementById('phone').value;
   const password = document.getElementById('password').value;
   const confirm_password = document.getElementById('confirm_password').value;
-  
+
   if (password !== confirm_password) {
       alert("Passwords do not match.");
       return;
   }
-  
+
+  // Mirror the server's rule (10-15 digits, optional +) so the user hears
+  // about a bad number before the round trip. The server re-validates.
+  if (!/^\+?[0-9]{10,15}$/.test(phone.replace(/[\s\-().]/g, ''))) {
+      alert("Please enter a valid phone number (10-15 digits).");
+      return;
+  }
+
+  const btn = document.getElementById('signupSubmit');
+  const setLoading = (on) => {
+    if (!btn) return;
+    btn.disabled = on;
+    btn.classList.toggle('btn-loading', on);
+    btn.querySelector('[data-spinner]').classList.toggle('hidden', !on);
+    btn.querySelector('[data-arrow]').classList.toggle('hidden', on);
+    btn.querySelector('[data-label]').textContent = on ? 'CREATING ACCOUNT' : 'CREATE ACCOUNT';
+  };
+  setLoading(true);
+
   try {
     const response = await window.api.fetch('/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ full_name, email, password })
+      body: JSON.stringify({ full_name, email, phone, password })
     });
-    
+
     const data = await response.json();
     if (response.ok) {
       alert("Account created! Please check your email to verify your account.");
       window.location.href = '/login';
     } else {
+      setLoading(false);
       alert(data.error || 'Signup failed.');
     }
   } catch (err) {
     console.error(err);
+    setLoading(false);
     alert('System authentication offline.');
   }
 });

@@ -236,6 +236,21 @@ document.addEventListener("DOMContentLoaded", () => {
       const listContainer = document.querySelector('.flex.flex-col.gap-2');
       if (listContainer) {
         listContainer.innerHTML = '';
+        if (logs.length === 0) {
+          listContainer.innerHTML = `
+            <div class="py-16 flex flex-col items-center justify-center text-center max-w-md mx-auto">
+              <div class="w-16 h-16 rounded-2xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-6 shadow-sm">
+                <span class="material-symbols-outlined text-primary text-[32px]">door_sensor</span>
+              </div>
+              <h3 class="font-title-lg text-title-lg text-on-surface font-semibold mb-2">No attendance recorded</h3>
+              <p class="text-on-surface-variant text-sm mb-6 max-w-xs">Check in members automatically via scanners or record check-ins manually here.</p>
+              <button onclick="document.querySelector('button.border-surface-container-high').click()" class="bg-primary text-on-primary font-label-md px-6 py-2.5 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px]">add</span> Start today's check-ins
+              </button>
+            </div>
+          `;
+          return;
+        }
         logs.forEach(log => {
           const photo = log.photo_url || 'https://via.placeholder.com/150';
           const row = document.createElement('div');
@@ -274,7 +289,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (manualBtn) {
     manualBtn.onclick = async (e) => {
       e.preventDefault();
-      const phoneInput = prompt('Enter Member Phone Number to Check-In (e.g. +91 98765 00003):');
+      const phoneInput = await window.promptDialog('Enter the member\'s phone number to check them in.', { title: 'Phone Check-In', placeholder: 'e.g. +91 98765 00003', inputType: 'tel', confirmText: 'Check In', required: true });
       if (!phoneInput) return;
       
       try {
@@ -304,7 +319,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (qrBtn) {
     qrBtn.onclick = async (e) => {
       e.preventDefault();
-      const memberId = prompt('Enter Member ID for QR Scan Check-In (e.g. m1, m2, m3):');
+      const memberId = await window.promptDialog('Enter the member ID to check in.', { title: 'QR / ID Check-In', placeholder: 'e.g. m1, m2, m3', confirmText: 'Check In', required: true });
       if (!memberId) return;
       
       try {

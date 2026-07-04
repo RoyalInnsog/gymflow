@@ -16,6 +16,10 @@
 <style>
         /* Hide scrollbar for clean UI */
         ::-webkit-scrollbar { display: none; }
+        /* Off-screen member cards skip layout/paint entirely — keeps large
+           rosters scrolling at 60fps. The intrinsic size reserves scrollbar
+           space so there is no jump when cards enter the viewport. */
+        .member-card { content-visibility: auto; contain-intrinsic-size: auto 190px; }
     </style>
 
 </head>
@@ -84,6 +88,37 @@ function getActiveStatus() {
   return activeChip ? activeChip.innerText.trim() : 'All';
 }
 
+// Card overflow menu: hover reveals it on desktop, but touch devices need an
+// explicit tap toggle. One menu open at a time; any outside tap closes it.
+function closeCardMenus() {
+  document.querySelectorAll('.card-menu[data-open="1"]').forEach(menu => {
+    menu.dataset.open = '';
+    menu.classList.add('opacity-0', 'pointer-events-none');
+  });
+}
+function toggleCardMenu(btn) {
+  const menu = btn.nextElementSibling;
+  if (!menu) return;
+  const wasOpen = menu.dataset.open === '1';
+  closeCardMenus();
+  if (!wasOpen) {
+    menu.dataset.open = '1';
+    menu.classList.remove('opacity-0', 'pointer-events-none');
+  }
+}
+document.addEventListener('click', closeCardMenus);
+
+// Reset chips + search back to the default roster view.
+function clearMemberFilters() {
+  chips.forEach((c, i) => {
+    c.className = i === 0
+      ? 'whitespace-nowrap px-4 py-1.5 rounded-full bg-primary/10 border border-primary/50 text-primary font-label-sm text-label-sm transition-all'
+      : 'whitespace-nowrap px-4 py-1.5 rounded-full bg-surface-container-high border border-white/10 text-on-surface-variant hover:bg-surface-container-highest font-label-sm text-label-sm transition-all';
+  });
+  if (searchInputEl) searchInputEl.value = '';
+  loadMembers();
+}
+
 // Shimmer placeholders so the grid shows structure instead of a blank flash
 // while the roster loads.
 function renderSkeletons(count = 6) {
@@ -138,19 +173,38 @@ async function loadMembers(status = 'All', search = '') {
     grid.innerHTML = ''; // clear mock cards
 
     if (members.length === 0) {
-      grid.innerHTML = `
-        <div class="col-span-full py-16 flex flex-col items-center justify-center text-center opacity-85">
-          <span class="material-symbols-outlined text-on-surface-variant/30 mb-4" style="font-size: 64px;">group_off</span>
-          <h3 class="font-headline-md text-on-surface mb-2 text-xl font-semibold">No Members Registered</h3>
-          <p class="text-on-surface-variant max-w-sm mb-6 text-sm">Welcome to <span class="dynamic-gym-name"></span>! Add your very first member to get started with the system onboarding.</p>
+      // A search / status filter with no hits is NOT the same as an empty
+      // roster — don't show first-run onboarding over a filter miss.
+      const isFiltered = (status && status !== 'All') || (search && search.trim());
+      grid.innerHTML = isFiltered ? `
+        <div class="col-span-full py-16 flex flex-col items-center justify-center text-center max-w-md mx-auto">
+          <div class="w-16 h-16 rounded-2xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-6 shadow-sm">
+            <span class="material-symbols-outlined text-primary text-[32px]">search_off</span>
+          </div>
+          <h3 class="font-title-lg text-title-lg text-on-surface font-semibold mb-2">No matches found</h3>
+          <p class="text-on-surface-variant text-sm mb-6 max-w-xs">No members match ${search && search.trim() ? '“' + esc(search.trim()) + '”' : 'this filter'}. Try a different name or phone number.</p>
+          <button onclick="clearMemberFilters()" class="bg-surface-container border border-outline text-on-surface font-label-md px-6 py-2 rounded-lg hover:bg-surface-container-high transition-colors flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px]">filter_alt_off</span> Clear Filters
+          </button>
+        </div>
+      ` : `
+        <div class="col-span-full py-16 flex flex-col items-center justify-center text-center max-w-md mx-auto">
+          <div class="w-16 h-16 rounded-2xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-6 shadow-sm">
+            <span class="material-symbols-outlined text-primary text-[32px]">groups</span>
+          </div>
+          <h3 class="font-title-lg text-title-lg text-on-surface font-semibold mb-2">No members yet</h3>
+          <p class="text-on-surface-variant text-sm mb-6 max-w-xs">Start building your gym by adding your first member.</p>
           <button onclick="window.location.href='/add-member-step-1'" class="bg-primary text-on-primary font-label-md px-6 py-2.5 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px]">add</span> Add First Member
+            <span class="material-symbols-outlined text-[18px]">add</span> Add Member
           </button>
         </div>
       `;
       return;
     }
 
+    // Batch all cards into one fragment → a single DOM insertion / layout pass
+    // instead of one per member.
+    const frag = document.createDocumentFragment();
     members.forEach(m => {
       let statusClass = 'status-active';
       let statusIcon = 'schedule';
@@ -162,6 +216,19 @@ async function loadMembers(status = 'All', search = '') {
         statusIcon = 'hourglass_empty';
       }
 
+      // "0 days left" on an expired plan reads like a bug — say what happened.
+      const daysNum = Number(m.daysLeft);
+      let daysText;
+      if (m.status === 'Expired') {
+        daysText = (Number.isFinite(daysNum) && daysNum < 0)
+          ? 'Expired ' + Math.abs(daysNum) + (Math.abs(daysNum) === 1 ? ' day ago' : ' days ago')
+          : 'Expired';
+      } else if (m.status === 'Pending') {
+        daysText = 'Not activated';
+      } else {
+        daysText = (m.daysLeft || 0) + ' days left';
+      }
+
       // Fall back to a clean initials avatar — never a random stock photo — when
       // a member has no uploaded picture.
       const initials = (window.utils && window.utils.getInitials(m.full_name)) || '?';
@@ -171,7 +238,7 @@ async function loadMembers(status = 'All', search = '') {
            <span class="hidden w-full h-full items-center justify-center text-body-lg font-bold bg-primary/10 text-primary">${esc(initials)}</span>`
         : `<span class="flex w-full h-full items-center justify-center text-body-lg font-bold bg-primary/10 text-primary">${esc(initials)}</span>`;
       const card = document.createElement('div');
-      card.className = `glass-card rounded-xl p-md flex flex-col gap-md transition-colors group cursor-pointer`;
+      card.className = `member-card glass-card rounded-xl p-md flex flex-col gap-md transition-colors group cursor-pointer`;
       card.onclick = () => window.location.href = `/member-profile?id=${m.id}`;
       card.innerHTML = `
         <div class="flex items-start justify-between">
@@ -185,24 +252,25 @@ async function loadMembers(status = 'All', search = '') {
             </div>
           </div>
           <div class="relative group/menu">
-            <button class="text-on-surface-variant/50 hover:text-on-surface-variant transition-colors p-1" onclick="event.stopPropagation();">
+            <button class="text-on-surface-variant/50 hover:text-on-surface-variant transition-colors p-2 -m-1" aria-label="Member actions" onclick="event.stopPropagation(); toggleCardMenu(this);">
               <span class="material-symbols-outlined pointer-events-none">more_vert</span>
             </button>
-            <div class="absolute right-0 mt-1 w-36 bg-surface-container-high border border-outline/20 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover/menu:opacity-100 group-hover/menu:pointer-events-auto transition-opacity z-10 overflow-hidden">
-              <button class="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-variant transition-colors" onclick="event.stopPropagation(); window.location.href='/member-profile?id=${m.id}'">View Profile</button>
-              <button class="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-variant transition-colors" onclick="event.stopPropagation(); window.location.href='/renew?id=${m.id}'">Renew Plan</button>
+            <div class="card-menu absolute right-0 mt-1 w-36 bg-surface-container-high border border-outline/20 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover/menu:opacity-100 group-hover/menu:pointer-events-auto transition-opacity z-10 overflow-hidden">
+              <button class="w-full text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-variant transition-colors" onclick="event.stopPropagation(); window.location.href='/member-profile?id=${m.id}'">View Profile</button>
+              <button class="w-full text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-variant transition-colors" onclick="event.stopPropagation(); window.location.href='/renew?id=${m.id}'">Renew Plan</button>
             </div>
           </div>
         </div>
-        <div class="flex items-center justify-between mt-auto pt-sm border-t border-white/10/50">
+        <div class="flex items-center justify-between mt-auto pt-sm border-t border-white/10">
           <span class="inline-flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${statusClass}">${esc(m.status)}</span>
           <span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
-            <span class="material-symbols-outlined text-[16px]">${statusIcon}</span> ${m.daysLeft || 0} days left
+            <span class="material-symbols-outlined text-[16px]">${statusIcon}</span> ${daysText}
           </span>
         </div>
       `;
-      grid.appendChild(card);
+      frag.appendChild(card);
     });
+    grid.appendChild(frag);
   } catch (err) {
     // AbortError is expected when a newer keystroke supersedes this request — ignore it.
     if (err && err.name === 'AbortError') return;

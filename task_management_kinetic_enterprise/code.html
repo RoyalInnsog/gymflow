@@ -178,7 +178,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (viewAll) viewAll.textContent = `View All ${(Array.isArray(tasks)?tasks:[]).length} Tasks`;
 
     if (!pending.length) {
-      list.innerHTML = `<p class="text-center text-sm text-on-surface-variant py-8">No pending tasks. You're all caught up!</p>`;
+      list.innerHTML = `
+        <div class="py-16 flex flex-col items-center justify-center text-center max-w-md mx-auto">
+          <div class="w-16 h-16 rounded-2xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-6 shadow-sm">
+            <span class="material-symbols-outlined text-primary text-[32px]">task_alt</span>
+          </div>
+          <h3 class="font-title-lg text-title-lg text-on-surface font-semibold mb-2">No active tasks</h3>
+          <p class="text-on-surface-variant text-sm mb-6 max-w-xs">Create tasks to assign to your gym staff or schedule operations.</p>
+          <button onclick="Array.from(document.querySelectorAll('button')).find(b => /New Task/.test(b.textContent)).click()" class="bg-primary text-on-primary font-label-md px-6 py-2.5 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px]">add_task</span> Create Task
+          </button>
+        </div>
+      `;
     } else {
       list.innerHTML = pending.map(t => {
         const pri = t.priority || 'Medium';
@@ -303,7 +314,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (manageRenewals) manageRenewals.onclick = () => window.location.href = '/payment-recovery';
   const newTaskBtn = Array.from(document.querySelectorAll('button')).find(b => /New Task/.test(b.textContent));
   if (newTaskBtn) newTaskBtn.onclick = async () => {
-    const title = prompt('New task title:');
+    const title = await window.promptDialog('What needs to get done?', { title: 'New Task', placeholder: 'Task title', confirmText: 'Create Task', required: true });
     if (!title) return;
     try {
       const r = await window.api.fetch('/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, priority: 'Medium' }) });

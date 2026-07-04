@@ -11,6 +11,38 @@
 (function () {
   'use strict';
 
+  // Apply theme immediately to prevent FOUC
+  (function initTheme() {
+    const savedTheme = localStorage.getItem('gymflow-theme') || 'system';
+    let themeToApply = savedTheme;
+    if (savedTheme === 'system') {
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      themeToApply = systemPrefersDark ? 'dark' : 'light';
+    }
+    const docEl = document.documentElement;
+    if (themeToApply === 'dark') {
+      docEl.classList.add('dark');
+      docEl.classList.remove('light');
+    } else {
+      docEl.classList.add('light');
+      docEl.classList.remove('dark');
+    }
+    
+    // Listen for OS preference changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      if ((localStorage.getItem('gymflow-theme') || 'system') === 'system') {
+        const applyDark = e.matches;
+        if (applyDark) {
+          docEl.classList.add('dark');
+          docEl.classList.remove('light');
+        } else {
+          docEl.classList.add('light');
+          docEl.classList.remove('dark');
+        }
+      }
+    });
+  })();
+
   // ─── BRAND CONFIG ──────────────────────────────────────
   const brand = {
     name: 'Gym Flow',
@@ -64,7 +96,7 @@
     { id: 'nav-dashboard',  label: 'Dashboard',           icon: 'dashboard',    href: '/dashboard',     mobileSlot: 1,  aliases: ['/'] },
     { id: 'nav-members',    label: 'Members',             icon: 'group',        href: '/members',       mobileSlot: 2,  aliases: ['/member-profile','/member-timeline','/member-communication','/member-qr','/add-member','/add-member-step-1'] },
     { id: 'nav-crm',        label: 'Lead CRM',            icon: 'person_add',   href: '/lead-crm',      mobileSlot: 0 },
-    { id: 'nav-finance',    label: 'Payments & Finance',  icon: 'payments',     href: '/finance',       mobileSlot: 3,  aliases: ['/payment-center','/renew','/receipt'] },
+    { id: 'nav-finance',    label: 'Payments & Finance',  mobileLabel: 'Finance', icon: 'payments',   href: '/finance',       mobileSlot: 3,  aliases: ['/payment-center','/renew','/receipt'] },
     { id: 'nav-closing',    label: 'Closing Reports',     icon: 'receipt_long',  href: '/daily-closing', mobileSlot: 0 },
     { id: 'nav-marketing',  label: 'Marketing Center',    icon: 'campaign',     href: '/marketing',     mobileSlot: 0 },
     { id: 'nav-tasks',      label: 'Tasks',               icon: 'assignment',   href: '/tasks',         mobileSlot: 4 },
@@ -78,54 +110,54 @@
     theme: {
       extend: {
         colors: {
-          'background':                '#111111',
-          'surface':                   '#141414',
-          'surface-dim':               '#111111',
-          'surface-bright':            '#3a3939',
-          'surface-container-lowest':  '#0d0d0d',
-          'surface-container-low':     '#171717',
-          'surface-container':         '#1f1f1f',
-          'surface-container-high':    '#292929',
-          'surface-container-highest': '#353535',
-          'surface-variant':           '#242424',
-          'surface-tint':              '#16c8ee',
-          'on-surface':                '#f1f1f1',
-          'on-surface-variant':        '#c8c8cf',
-          'on-background':             '#f1f1f1',
-          'outline':                   '#8e8e99',
-          'outline-variant':           '#33333a',
+          'background':                'var(--background)',
+          'surface':                   'var(--surface)',
+          'surface-dim':               'var(--surface-dim)',
+          'surface-bright':            'var(--surface-bright)',
+          'surface-container-lowest':  'var(--surface-container-lowest)',
+          'surface-container-low':     'var(--surface-container-low)',
+          'surface-container':         'var(--surface-container)',
+          'surface-container-high':    'var(--surface-container-high)',
+          'surface-container-highest': 'var(--surface-container-highest)',
+          'surface-variant':           'var(--surface-variant)',
+          'surface-tint':              'var(--surface-tint)',
+          'on-surface':                'var(--on-surface)',
+          'on-surface-variant':        'var(--on-surface-variant)',
+          'on-background':             'var(--on-background)',
+          'outline':                   'var(--outline)',
+          'outline-variant':           'var(--outline-variant)',
           'primary':                   'var(--color-primary, #16c8ee)',
           'primary-container':         'var(--color-primary-container, #0a3d4a)',
-          'primary-fixed':             '#b5c4ff',
-          'primary-fixed-dim':         '#8fa8ff',
-          'primary-strong':            '#2f6bff',
+          'primary-fixed':             'var(--color-primary-fixed, #b5c4ff)',
+          'primary-fixed-dim':         'var(--color-primary-fixed-dim, #8fa8ff)',
+          'primary-strong':            'var(--color-primary-strong, #2f6bff)',
           'on-primary':                'var(--color-on-primary, #041012)',
-          'on-primary-container':      '#c2efff',
-          'on-primary-fixed':          '#00164d',
-          'on-primary-fixed-variant':  '#003cac',
-          'inverse-primary':           '#006880',
-          'secondary':                 '#50e3a4',
-          'secondary-container':       '#00a572',
-          'secondary-fixed':           '#6ffbbe',
-          'secondary-fixed-dim':       '#4edea3',
-          'on-secondary':              '#003824',
-          'on-secondary-container':    '#c2ffe0',
-          'on-secondary-fixed':        '#002113',
-          'on-secondary-fixed-variant':'#005236',
-          'tertiary':                  '#ffbf62',
-          'tertiary-container':        '#a66900',
-          'tertiary-fixed':            '#ffddb8',
-          'tertiary-fixed-dim':        '#ffb95f',
-          'on-tertiary':               '#472a00',
-          'on-tertiary-container':     '#ffddb8',
-          'on-tertiary-fixed':         '#2a1700',
-          'on-tertiary-fixed-variant': '#653e00',
-          'error':                     '#ffaaa3',
-          'error-container':           '#93000a',
-          'on-error':                  '#690005',
-          'on-error-container':        '#ffdad6',
-          'inverse-surface':           '#e5e2e1',
-          'inverse-on-surface':        '#313030'
+          'on-primary-container':      'var(--color-on-primary-container, #c2efff)',
+          'on-primary-fixed':          'var(--color-on-primary-fixed, #00164d)',
+          'on-primary-fixed-variant':  'var(--color-on-primary-fixed-variant, #003cac)',
+          'inverse-primary':           'var(--color-inverse-primary, #006880)',
+          'secondary':                 'var(--color-secondary, #50e3a4)',
+          'secondary-container':       'var(--color-secondary-container, #00a572)',
+          'secondary-fixed':           'var(--color-secondary-fixed, #6ffbbe)',
+          'secondary-fixed-dim':       'var(--color-secondary-fixed-dim, #4edea3)',
+          'on-secondary':              'var(--color-on-secondary, #003824)',
+          'on-secondary-container':    'var(--color-on-secondary-container, #c2ffe0)',
+          'on-secondary-fixed':        'var(--color-on-secondary-fixed, #002113)',
+          'on-secondary-fixed-variant':'var(--color-on-secondary-fixed-variant, #005236)',
+          'tertiary':                  'var(--color-tertiary, #ffbf62)',
+          'tertiary-container':        'var(--color-tertiary-container, #a66900)',
+          'tertiary-fixed':            'var(--color-tertiary-fixed, #ffddb8)',
+          'tertiary-fixed-dim':        'var(--color-tertiary-fixed-dim, #ffb95f)',
+          'on-tertiary':               'var(--color-on-tertiary, #472a00)',
+          'on-tertiary-container':     'var(--color-on-tertiary-container, #ffddb8)',
+          'on-tertiary-fixed':         'var(--color-on-tertiary-fixed, #2a1700)',
+          'on-tertiary-fixed-variant': 'var(--color-on-tertiary-fixed-variant, #653e00)',
+          'error':                     'var(--color-error, #ffaaa3)',
+          'error-container':           'var(--color-error-container, #93000a)',
+          'on-error':                  'var(--color-on-error, #690005)',
+          'on-error-container':        'var(--color-on-error-container, #ffdad6)',
+          'inverse-surface':           'var(--color-inverse-surface, #e5e2e1)',
+          'inverse-on-surface':        'var(--color-inverse-on-surface, #313030)'
         },
         borderRadius: {
           DEFAULT: '0.5rem',
@@ -158,15 +190,23 @@
         fontSize: {
           'headline-xl':  ['36px', { lineHeight: '44px', letterSpacing: '-0.022em', fontWeight: '800' }],
           'headline-lg':  ['30px', { lineHeight: '38px', letterSpacing: '-0.019em', fontWeight: '800' }],
+          // Mobile-sized page title. Screens pair it as:
+          // class="text-headline-lg-mobile md:text-headline-lg"
+          'headline-lg-mobile': ['24px', { lineHeight: '32px', letterSpacing: '-0.015em', fontWeight: '800' }],
           'headline-md':  ['24px', { lineHeight: '32px', letterSpacing: '-0.015em', fontWeight: '700' }],
+          'headline-sm':  ['20px', { lineHeight: '28px', letterSpacing: '-0.012em', fontWeight: '700' }],
           'title-lg':     ['18px', { lineHeight: '26px', letterSpacing: '-0.01em',  fontWeight: '700' }],
+          'title-md':     ['16px', { lineHeight: '24px', letterSpacing: '-0.006em', fontWeight: '600' }],
           'body-lg':      ['16px', { lineHeight: '24px', letterSpacing: '0',        fontWeight: '400' }],
           'body-md':      ['14px', { lineHeight: '22px', letterSpacing: '0',        fontWeight: '400' }],
           'body-sm':      ['13px', { lineHeight: '19px', letterSpacing: '0',        fontWeight: '400' }],
           'label-md':     ['12px', { lineHeight: '16px', letterSpacing: '0',        fontWeight: '600' }],
           'label-caps':   ['11px', { lineHeight: '16px', letterSpacing: '0.05em',   fontWeight: '600' }],
           'label-sm':     ['12px', { lineHeight: '16px', letterSpacing: '0',        fontWeight: '500' }],
-          'display-lg':   ['48px', { lineHeight: '56px', letterSpacing: '-0.02em', fontWeight: '700' }]
+          'display-lg':   ['48px', { lineHeight: '56px', letterSpacing: '-0.02em', fontWeight: '700' }],
+          // KPI / stat values (dashboard cards). Sized to survive
+          // ₹-lakh figures inside a ~340px card on phones.
+          'display-md':   ['40px', { lineHeight: '48px', letterSpacing: '-0.02em', fontWeight: '800' }]
         },
         boxShadow: {
           panel: '0 20px 70px rgba(0, 0, 0, 0.32)'
@@ -212,10 +252,12 @@
 
     return '<nav class="desktop-sidebar bg-surface-container-low h-full w-[280px] fixed left-0 top-0 z-[60] border-r border-white/10 shadow-2xl flex-col py-6 hidden md:flex">'
       + '<div class="flex items-center justify-between px-6 mb-8 logo-container">'
-      +   '<div class="flex items-center gap-3 cursor-pointer" onclick="window.APP_CONFIG.toggleSidebar()">'
+      // Brand mark is a HOME affordance: always navigates to Dashboard.
+      // Sidebar collapse stays on the dedicated button beside it.
+      +   '<a href="/dashboard" aria-label="Go to Dashboard" class="flex items-center gap-3">'
       +     '<span class="material-symbols-outlined text-primary text-[28px]">' + brand.icon + '</span>'
       +     '<span class="font-headline text-headline-md font-bold text-primary tracking-tight logo-text">' + brand.name + '</span>'
-      +   '</div>'
+      +   '</a>'
       +   '<button onclick="window.APP_CONFIG.toggleSidebar()" class="text-on-surface-variant hover:text-primary transition-colors hidden md:block" id="sidebar-collapse-btn">'
       +     '<span class="material-symbols-outlined" id="collapse-icon">menu_open</span>'
       +   '</button>'
@@ -265,7 +307,7 @@
         var fillStyle = isActive ? "font-variation-settings: 'FILL' 1;" : "font-variation-settings: 'FILL' 0;";
         barHtml += '<a class="flex flex-col items-center justify-center ' + activeClass + ' hover:bg-white/5 active:scale-90 transition-all w-16 h-full" href="' + item.href + '">'
           + '<span class="material-symbols-outlined text-[22px]" style="' + fillStyle + '">' + item.icon + '</span>'
-          + '<span class="text-[10px] mt-0.5 font-medium">' + item.label + '</span>'
+          + '<span class="text-[10px] mt-0.5 font-medium whitespace-nowrap">' + (item.mobileLabel || item.label) + '</span>'
           + '</a>';
         // Check if any overflow item is active
         var overflowActive = false;
@@ -283,7 +325,7 @@
         var fillStyle2 = isActive2 ? "font-variation-settings: 'FILL' 1;" : "font-variation-settings: 'FILL' 0;";
         barHtml += '<a class="flex flex-col items-center justify-center ' + activeClass2 + ' hover:bg-white/5 active:scale-90 transition-all w-16 h-full" href="' + item.href + '">'
           + '<span class="material-symbols-outlined text-[22px]" style="' + fillStyle2 + '">' + item.icon + '</span>'
-          + '<span class="text-[10px] mt-0.5 font-medium">' + item.label + '</span>'
+          + '<span class="text-[10px] mt-0.5 font-medium whitespace-nowrap">' + (item.mobileLabel || item.label) + '</span>'
           + '</a>';
       }
     }
@@ -318,10 +360,10 @@
 
   function renderHeader(pageTitle) {
     return '<header class="bg-background/70 backdrop-blur-xl fixed top-0 left-0 right-0 z-50 border-b border-white/10 shadow-sm flex justify-between items-center px-4 md:px-8 h-16 md:ml-[280px] transition-all duration-300">'
-      + '<div class="flex items-center gap-3 md:hidden">'
+      + '<a href="/dashboard" aria-label="Go to Dashboard" class="flex items-center gap-3 md:hidden">'
       +   '<img src="/assets/img/app_logo.png" class="h-8 w-8 object-contain rounded shrink-0" alt="Gym Flow Logo">'
       +   '<span class="text-headline-md font-bold text-primary tracking-tight">Gym Flow</span>'
-      + '</div>'
+      + '</a>'
       + '<div class="hidden md:block">'
       +   (pageTitle ? '<p class="text-body-md text-on-surface-variant">' + pageTitle + '</p>' : '')
       + '</div>'
@@ -359,6 +401,33 @@
     document.documentElement.classList.add('sidebar-collapsed-init');
   }
 
+  // ─── THEME CONFIG & APIs ───────────────────────────────
+  function getTheme() {
+    return localStorage.getItem('gymflow-theme') || 'system';
+  }
+
+  function setTheme(theme) {
+    localStorage.setItem('gymflow-theme', theme);
+    applyTheme(theme);
+    window.dispatchEvent(new CustomEvent('gymflow-theme-changed', { detail: { theme } }));
+  }
+
+  function applyTheme(theme) {
+    let themeToApply = theme;
+    if (theme === 'system') {
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      themeToApply = systemPrefersDark ? 'dark' : 'light';
+    }
+    const docEl = document.documentElement;
+    if (themeToApply === 'dark') {
+      docEl.classList.add('dark');
+      docEl.classList.remove('light');
+    } else {
+      docEl.classList.add('light');
+      docEl.classList.remove('dark');
+    }
+  }
+
   // ─── PUBLIC API ────────────────────────────────────────
   window.APP_CONFIG = {
     brand: brand,
@@ -371,7 +440,10 @@
     renderMobileBottomNav: renderMobileBottomNav,
     renderHeader: renderHeader,
     renderBackButton: renderBackButton,
-    getActiveNavId: getActiveNavId
+    getActiveNavId: getActiveNavId,
+    getTheme: getTheme,
+    setTheme: setTheme,
+    applyTheme: applyTheme
   };
 
   // ─── AUTO-INJECT NAVIGATION ────────────────────────────

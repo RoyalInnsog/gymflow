@@ -32,8 +32,8 @@
 <!-- TopAppBar -->
 
 <!-- Main Canvas -->
-<main class="flex-1 w-full max-w-container-max mx-auto px-margin pt-24 pb-32 md:pb-24 space-y-stack-lg">
-<div class="px-4 md:px-8 pt-4"><a href="/dashboard" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>← Dashboard</span></a></div>
+<main class="flex-1 w-full max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop pt-6 pb-32 md:pb-24 space-y-stack-lg">
+<div class="px-4 md:px-8 pt-4"><a href="/dashboard" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-body-md group"><span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span><span>Dashboard</span></a></div>
 <!-- Page Header & Analytics Bento Grid -->
 <div class="space-y-stack-md">
 <div>
@@ -50,7 +50,6 @@
 <span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Total Expiring (7 Days)</span>
 <div class="mt-stack-sm flex items-end gap-2">
 <span id="total-expiring-val" class="font-display-lg text-display-lg break-words min-w-0 text-on-surface">0</span>
-<span class="font-body-md text-body-md text-tertiary mb-2 flex items-center"><span class="material-symbols-outlined text-[16px]">trending_up</span> +12%</span>
 </div>
 </div>
 <!-- Stat 2 -->
@@ -61,12 +60,13 @@
 </div>
 </div>
 <!-- Stat 3 -->
-<div class="glass-panel rounded-xl p-stack-lg flex flex-col justify-between relative overflow-hidden">
-<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Avg. Renewal Rate</span>
-<div class="mt-stack-sm flex items-center justify-between">
-<span class="font-display-lg text-display-lg break-words min-w-0 text-secondary">78%</span>
-<!-- Circular Progress Pseudo -->
-<div class="w-12 h-12 rounded-full border-4 border-surface-variant border-t-secondary border-r-secondary transform rotate-45"></div>
+<div class="glass-panel rounded-xl p-stack-lg flex flex-col justify-between relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-6xl">event_busy</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Already Expired</span>
+<div class="mt-stack-sm flex items-end gap-2">
+<span id="expired-count-val" class="font-display-lg text-display-lg break-words min-w-0 text-error">0</span>
 </div>
 </div>
 </div>
@@ -132,17 +132,19 @@ document.addEventListener("DOMContentLoaded", function() {
     async function loadData() {
         try {
             const res = await window.api.fetch("/analytics/renewal-queue");
-            const data = await res.json();
-            membersList = data.queue;
-            
+            const data = res.ok ? await res.json() : {};
+            membersList = Array.isArray(data.queue) ? data.queue : [];
+
             const atRiskElem = document.getElementById('revenue-at-risk-val');
-            if(atRiskElem) atRiskElem.innerText = '₹ ' + data.totalRevenueAtRisk.toLocaleString();
-            
-            updateTabs();
-            renderCards();
+            if(atRiskElem) atRiskElem.innerText = '₹ ' + Number(data.totalRevenueAtRisk || 0).toLocaleString('en-IN');
         } catch (err) {
             console.error(err);
+            membersList = [];
         }
+        // Always render — an error must show the empty state, never an
+        // eternal "Loading Queue..." spinner.
+        updateTabs();
+        renderCards();
     }
 
     function updateTabs() {
@@ -162,6 +164,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
         const expVal = document.getElementById('total-expiring-val');
         if (expVal) expVal.innerText = within7.length;
+        const expiredVal = document.getElementById('expired-count-val');
+        if (expiredVal) expiredVal.innerText = expired.length;
     }
 
     function renderCards() {
@@ -175,6 +179,16 @@ document.addEventListener("DOMContentLoaded", function() {
         else if (currentFilter === "30") filtered = membersList.filter(m => m.status === 'Active' && m.daysLeft <= 30 && m.daysLeft >= 0);
         else if (currentFilter === "Expired") filtered = membersList.filter(m => m.status === 'Expired');
 
+        if (filtered.length === 0) {
+            container.innerHTML = `
+                <div class="col-span-full py-16 flex flex-col items-center justify-center text-center opacity-85">
+                    <span class="material-symbols-outlined text-on-surface-variant/30 mb-4" style="font-size: 64px;">event_available</span>
+                    <h3 class="font-headline-md text-on-surface mb-2 text-xl font-semibold">Nothing in this window</h3>
+                    <p class="text-on-surface-variant max-w-sm text-sm">No memberships ${currentFilter === 'Expired' ? 'have expired' : 'expire within ' + currentFilter + ' days'}. Check a wider window or come back later.</p>
+                </div>`;
+            return;
+        }
+
         filtered.forEach(m => {
             const card = document.createElement("div");
             card.className = "glass-panel rounded-xl p-stack-md flex flex-col gap-stack-md relative overflow-hidden group hover:border-tertiary/40 transition-colors mt-4";
@@ -186,18 +200,24 @@ document.addEventListener("DOMContentLoaded", function() {
                 alertPulse = "";
             }
 
-            const photo = m.photo_url || "https://via.placeholder.com/150";
-            const planName = m.plan_name || "Pro Annual";
+            // Initials avatar when no photo — never an external placeholder image.
+            const initials = (window.utils && window.utils.getInitials(m.full_name)) || '?';
+            const hasPhoto = m.photo_url && String(m.photo_url).trim();
+            const avatarHtml = hasPhoto
+                ? `<img class="w-16 h-16 rounded-full object-cover border border-white/10 shadow-lg shrink-0" alt="" src="${safeUrl(m.photo_url)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
+                   <div class="w-16 h-16 rounded-full border border-white/10 bg-primary/10 text-primary font-bold text-title-lg items-center justify-center shrink-0 hidden">${esc(initials)}</div>`
+                : `<div class="w-16 h-16 rounded-full border border-white/10 bg-primary/10 text-primary font-bold text-title-lg flex items-center justify-center shrink-0">${esc(initials)}</div>`;
+            const planName = m.plan_name || "No Plan";
             const probColor = m.renewalProbability === 'High' ? 'text-secondary' : (m.renewalProbability === 'Medium' ? 'text-tertiary' : 'text-error');
 
             card.innerHTML = `
                 <div class="absolute top-0 left-0 w-1 h-full ${barColor}"></div>
                 <div class="flex items-center gap-stack-md pl-2">
-                    <img class="w-16 h-16 rounded-full object-cover border border-white/10 shadow-lg" src="${photo}"/>
+                    ${avatarHtml}
                     <div class="flex-1">
                         <h4 class="font-headline-md text-headline-md text-on-surface">${esc(m.full_name)}</h4>
                         <div class="flex items-center gap-2 mt-1">
-                            <span class="px-2 py-0.5 rounded bg-surface-variant text-on-surface-variant font-label-md text-label-md uppercase text-[10px]">${planName}</span>
+                            <span class="px-2 py-0.5 rounded bg-surface-variant text-on-surface-variant font-label-md text-label-md uppercase text-[10px]">${esc(planName)}</span>
                             <span class="px-2 py-0.5 rounded bg-tertiary-container/20 text-tertiary border border-tertiary/20 font-label-md text-label-md uppercase text-[10px] ${alertPulse}">${m.daysLeft < 0 ? Math.abs(m.daysLeft) + ' Days Ago' : m.daysLeft + ' Days Left'}</span>
                         </div>
                     </div>
@@ -214,11 +234,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 </div>
                 <div class="flex items-center gap-stack-sm pl-2">
                     <button class="flex-1 bg-primary/10 text-primary border border-primary/30 font-label-md text-label-md py-2.5 rounded-lg hover:bg-primary hover:text-on-primary transition-all duration-300 renew-btn" data-id="${m.member_id}">Renew</button>
-                    <button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-secondary hover:border-secondary/50 hover:bg-secondary/10 transition-colors" title="Call">
-                        <span class="material-symbols-outlined text-[20px]">call</span>
+                    <button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-secondary hover:border-secondary/50 hover:bg-secondary/10 transition-colors call-btn" title="Call" aria-label="Call ${esc(m.full_name)}">
+                        <span class="material-symbols-outlined text-[20px] pointer-events-none">call</span>
                     </button>
-                    <button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-secondary hover:border-secondary/50 hover:bg-secondary/10 transition-colors" title="WhatsApp">
-                        <span class="material-symbols-outlined text-[20px]">chat</span>
+                    <button class="w-10 h-10 flex items-center justify-center border border-white/10 rounded-lg text-on-surface-variant hover:text-secondary hover:border-secondary/50 hover:bg-secondary/10 transition-colors wa-btn" title="WhatsApp" aria-label="WhatsApp ${esc(m.full_name)}">
+                        <span class="material-symbols-outlined text-[20px] pointer-events-none">chat</span>
                     </button>
                 </div>
             `;
@@ -226,6 +246,19 @@ document.addEventListener("DOMContentLoaded", function() {
             card.querySelector(".renew-btn").onclick = () => {
                 window.location.href = `/renew?id=${m.member_id}`;
             };
+            const phoneDigits = String(m.phone || '').replace(/[^0-9]/g, '');
+            const callBtn = card.querySelector('.call-btn');
+            const waBtn = card.querySelector('.wa-btn');
+            if (phoneDigits) {
+                callBtn.onclick = () => { window.location.href = 'tel:' + phoneDigits; };
+                // wa.me needs a country code; default Indian numbers (10 digits) to +91.
+                const waNumber = phoneDigits.length === 10 ? '91' + phoneDigits : phoneDigits;
+                const waText = encodeURIComponent('Hi ' + m.full_name + ', your ' + planName + ' membership ' + (m.daysLeft < 0 ? 'expired ' + Math.abs(m.daysLeft) + ' days ago' : 'expires in ' + m.daysLeft + ' days') + '. Renew today to keep your streak going!');
+                waBtn.onclick = () => { window.open('https://wa.me/' + waNumber + '?text=' + waText, '_blank'); };
+            } else {
+                callBtn.disabled = true;
+                waBtn.disabled = true;
+            }
 
             container.appendChild(card);
         });
@@ -234,3 +267,5 @@ document.addEventListener("DOMContentLoaded", function() {
     loadData();
 });
 </script>
+<div id="jsb-mobile-nav"></div>
+</body></html>

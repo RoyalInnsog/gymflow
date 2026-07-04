@@ -25,6 +25,11 @@
     } catch (e) { return ''; }
   }
   function daysUntil(future) {
+    // Centralized calendar math when the shared engine is loaded (utils.js
+    // injects it ahead of this file); millisecond fallback keeps the badge
+    // working if the engine script ever fails to load.
+    var eng = window.MembershipEngine;
+    if (eng && eng.daysUntil) return eng.daysUntil(future);
     return Math.ceil((new Date(future).getTime() - Date.now()) / 86400000);
   }
 
@@ -35,7 +40,14 @@
       '@keyframes gfPulse{0%,100%{opacity:1}50%{opacity:.55}}' +
       '@keyframes gfRing{0%{box-shadow:0 0 0 0 rgba(140,170,255,.55)}70%{box-shadow:0 0 0 12px rgba(140,170,255,0)}100%{box-shadow:0 0 0 0 rgba(140,170,255,0)}}' +
       '#gf-tour-tip{font-family:inherit}' +
-      '@media (max-width:767px){#gf-tour-tip{left:12px!important;right:12px!important;width:auto!important;bottom:16px!important;top:auto!important}}';
+      '@media (max-width:767px){#gf-tour-tip{left:12px!important;right:12px!important;width:auto!important;bottom:16px!important;top:auto!important}}' +
+      // Badge sits to the LEFT of the header's notification bell (bell is
+      // ~40px wide at right:16 on mobile / right:32 on desktop) so the bell
+      // stays tappable. On phones the second line is dropped to keep the
+      // badge clear of the header logo.
+      '#gf-sub-badge{position:fixed;top:12px;right:64px;z-index:9500}' +
+      '@media (min-width:768px){#gf-sub-badge{right:80px;top:14px}}' +
+      '@media (max-width:520px){#gf-sub-badge .gf-badge-sub{display:none}}';
     document.head.appendChild(s);
   })();
 
@@ -50,7 +62,6 @@
       el.id = 'gf-sub-badge';
       el.setAttribute('role', 'status');
       el.setAttribute('aria-live', 'polite');
-      el.style.cssText = 'position:fixed;top:14px;right:16px;z-index:9500;';
       document.body.appendChild(el);
       this.el = el;
     },
@@ -79,8 +90,8 @@
       return '<div style="display:flex;align-items:center;gap:8px;background:rgba(20,22,30,.72);backdrop-filter:blur(10px);border:1px solid rgba(255,206,107,.35);border-radius:999px;padding:6px 14px 6px 10px;box-shadow:0 4px 18px rgba(0,0,0,.25)">'
         + '<span class="material-symbols-outlined" style="font-size:18px;color:#ffce6b;font-variation-settings:\'FILL\' 1">workspace_premium</span>'
         + '<span style="display:flex;flex-direction:column;line-height:1.15">'
-        +   '<span style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#ffce6b">Premium</span>'
-        +   '<span style="font-size:11px;color:#cfd2dc">Plan: ' + esc(label) + '</span>'
+        +   '<span style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#ffce6b">' + esc(label) + ' Plan</span>'
+        +   '<span class="gf-badge-sub" style="font-size:11px;color:#cfd2dc">Active</span>'
         + '</span></div>';
     },
     trial: function (s, status) {
@@ -106,7 +117,7 @@
         + '<span class="material-symbols-outlined" style="font-size:18px;color:' + c.fg + '">timer</span>'
         + '<span style="display:flex;flex-direction:column;line-height:1.15">'
         +   '<span style="font-size:11px;font-weight:800;color:' + c.fg + '">Trial • ' + left + ' ' + word + ' left</span>'
-        +   (s.trialEnd ? '<span style="font-size:10px;color:#aab2c4">Ends on ' + esc(fmtDate(s.trialEnd)) + '</span>' : '')
+        +   (s.trialEnd ? '<span class="gf-badge-sub" style="font-size:10px;color:#aab2c4">Ends on ' + esc(fmtDate(s.trialEnd)) + '</span>' : '')
         + '</span></a>';
     }
   };
@@ -169,12 +180,12 @@
       // Build 4 dark panes (the frame around the spotlight hole) + a pulsing ring.
       for (var i = 0; i < 4; i++) {
         var p = document.createElement('div');
-        p.style.cssText = 'position:fixed;z-index:9700;background:rgba(8,10,16,.74);backdrop-filter:blur(1.5px);transition:all .35s ease;';
+        p.style.cssText = 'position:fixed;z-index:9700;background:rgba(8,10,16,.74);backdrop-filter:blur(1.5px);transition:left .35s ease,top .35s ease,width .35s ease,height .35s ease;';
         document.body.appendChild(p);
         this.panes.push(p);
       }
       this.ring = document.createElement('div');
-      this.ring.style.cssText = 'position:fixed;z-index:9701;border:2px solid #8caaff;border-radius:12px;pointer-events:none;transition:all .35s ease;animation:gfRing 1.8s infinite;';
+      this.ring.style.cssText = 'position:fixed;z-index:9701;border:2px solid #8caaff;border-radius:12px;pointer-events:none;transition:left .35s ease,top .35s ease,width .35s ease,height .35s ease;animation:gfRing 1.8s infinite;';
       document.body.appendChild(this.ring);
 
       this.tip = document.createElement('div');
@@ -354,8 +365,16 @@
         var data = await r.json();
         var t = (data && data.tenant) || {};
         if (!t.tour_completed) {
-          // Auto-start (or resume) the guided tour for gyms that haven't finished it.
-          setTimeout(function () { Tour.start(t.tutorial_step || 0); }, 700);
+          if (t.onboarding_completed) {
+            // Auto-start (or resume) the guided tour for gyms that finished setup.
+            setTimeout(function () { Tour.start(t.tutorial_step || 0); }, 700);
+          } else {
+            // Setup wizard (onboarding.js) owns the screen until setup is done;
+            // start the tour only after it signals completion.
+            window.addEventListener('gf:onboarding-complete', function () {
+              setTimeout(function () { Tour.start(0); }, 500);
+            }, { once: true });
+          }
         }
       } catch (e) { /* no session / offline — skip tour */ }
     })();

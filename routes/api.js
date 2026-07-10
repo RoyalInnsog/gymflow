@@ -4,8 +4,13 @@ const { getQuery, runQuery, allQuery } = require('../database');
 const { PLANS, isRazorpayConfigured, createOrder, verifyPaymentSignature, fetchOrder, cancelSubscription } = require('../lib/razorpay');
 const { getTodayString, getLastNDaysString, getNextNDaysString } = require('../lib/dateUtils');
 const engine = require('../lib/membershipEngine');
-const whatsappService = require('../services/whatsapp.service');
-const whatsappQueue = require('../services/whatsapp.queue');
+// [WHATSAPP-CLOUD] The centralized Meta WhatsApp Cloud API is now the SINGLE
+// sender for the whole platform (replaces the old per-tenant whatsapp-web.js
+// service + outbound queue). `waSettings` holds each gym's automation toggles;
+// `waAutomations` runs the gym-configurable workers.
+const whatsappCloud = require('../services/whatsappCloud.service');
+const waSettings = require('../services/whatsappSettings');
+const waAutomations = require('../services/whatsappAutomations');
 
 // ==========================================
 // VALIDATION & SANITIZATION HELPERS
@@ -30,6 +35,27 @@ function authorize(...required) {
     if (perms.includes('all')) return next();
     if (required.length === 0 || required.some(p => perms.includes(p))) return next();
     return res.status(403).json({ error: 'You do not have permission to perform this action.' });
+  };
+}
+
+// ==========================================
+// [TIER GATE] SUBSCRIPTION FEATURE GATING (writes only)
+// ==========================================
+// Blocks a MUTATION when the tenant's plan lacks a capability, returning a
+// clear upgrade hint (never a hard block on GET reads — read-gating turned
+// premium pages into broken shells; see the checkSubscription note). The
+// client mirrors this with nav hiding + an upsell overlay (planGate.js), so
+// this is the authoritative server backstop against deep-linked writes.
+function requireFeature(flag, label) {
+  return (req, res, next) => {
+    const plan = (req.subscription && req.subscription.subscription_plan) || 'trial';
+    const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.trial;
+    if (limits[flag]) return next();
+    return res.status(403).json({
+      error: `${label} is available on the Pro plan. Upgrade in Settings to unlock it.`,
+      upgradeRequired: true,
+      feature: flag
+    });
   };
 }
 
@@ -112,48 +138,12 @@ async function nextInvoiceNumber(tenantId, prefix = 'RCPT') {
 // ==========================================
 // SAAS PLAN LIMITS & MIDDLEWARE
 // ==========================================
-const PLAN_LIMITS = {
-  trial: {
-    maxMembers: 50,
-    allowWhatsApp: false,
-    allowMarketing: false,
-    allowAdvancedAnalytics: false,
-    allowCRM: false,
-    allowMultiBranch: false,
-    allowStaffAccounts: false,
-    maxWhatsAppMessages: 0
-  },
-  basic: {
-    maxMembers: 500,
-    allowWhatsApp: false,
-    allowMarketing: false,
-    allowAdvancedAnalytics: false,
-    allowCRM: false,
-    allowMultiBranch: false,
-    allowStaffAccounts: false,
-    maxWhatsAppMessages: 0
-  },
-  pro: {
-    maxMembers: Infinity,
-    allowWhatsApp: true,
-    allowMarketing: true,
-    allowAdvancedAnalytics: true,
-    allowCRM: true,
-    allowMultiBranch: false,
-    allowStaffAccounts: false,
-    maxWhatsAppMessages: 1000
-  },
-  enterprise: {
-    maxMembers: Infinity,
-    allowWhatsApp: true,
-    allowMarketing: true,
-    allowAdvancedAnalytics: true,
-    allowCRM: true,
-    allowMultiBranch: true,
-    allowStaffAccounts: true,
-    maxWhatsAppMessages: 5000
-  }
-};
+// [BILLING] Plan tiers/prices/allowances now live in the single-source catalog
+// (lib/billingPlans.js). PLAN_LIMITS is the flat, back-compat view keyed by BOTH
+// canonical (basic/pro/enterprise_low/enterprise_high) and legacy (trial/
+// enterprise) names, so every existing PLAN_LIMITS[plan] lookup still resolves.
+const billing = require('../lib/billingState');
+const { PLAN_LIMITS, PLAN_PRICES, PURCHASABLE_PLANS, resolvePlan, getPlan } = require('../lib/billingPlans');
 
 async function checkSubscription(req, res, next) {
   try {
@@ -229,19 +219,34 @@ router.get('/subscription/status', async (req, res) => {
     const trialEnd = new Date(tenant.trial_end);
     const trialDaysLeft = Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)));
 
+    // [BILLING] Authoritative WhatsApp credit ledger (allowance/used/extra/remaining).
+    const state = await billing.getBillingState(req.tenant_id);
+
     res.json({
-      plan,
-      status: tenant.subscription_status || 'active',
+      plan: state.plan,
+      planLabel: state.planLabel,
+      status: tenant.subscription_status || state.status || 'active',
       trialEnd: tenant.trial_end,
       trialDaysLeft,
+      multiGym: state.multiGym,
+      // Authoritative credit ledger (preferred by the UI + dashboard modal).
+      whatsapp: {
+        allowance: state.allowance,
+        used: state.used,
+        extraCredits: state.extraCredits,
+        remaining: state.remaining,
+        topUpCap: state.topUpCap === Infinity ? null : state.topUpCap,
+        extraPurchasedThisCycle: state.extraPurchasedThisCycle
+      },
       usage: {
         members: {
           current: currentMembers,
           limit: limits.maxMembers
         },
+        // Back-compat shape: current = used this cycle, limit = allowance + top-ups.
         whatsapp: {
-          current: currentWhatsApp,
-          limit: limits.maxWhatsAppMessages
+          current: state.used,
+          limit: state.allowance + state.extraCredits
         }
       },
       limits,
@@ -429,11 +434,15 @@ router.post('/subscription/cancel', async (req, res) => {
 // through checkout.
 router.post('/subscription/change', async (req, res) => {
   const { plan } = req.body;
-  if (!['trial', 'basic', 'pro', 'enterprise'].includes(plan)) {
+  // Only FREE transitions are allowed here (downgrade to the free Basic tier). Any
+  // PAID tier (pro / enterprise_low / enterprise_high, or the legacy aliases) must
+  // go through signature-verified checkout — the client can never self-grant it.
+  const FREE_TARGETS = new Set(['basic', 'trial']);
+  const canonical = resolvePlan(plan);
+  if (!plan || (!FREE_TARGETS.has(plan) && !PURCHASABLE_PLANS.includes(canonical))) {
     return res.status(400).json({ error: 'Invalid plan selected.' });
   }
-
-  if (plan !== 'trial') {
+  if (!FREE_TARGETS.has(plan)) {
     return res.status(402).json({
       error: 'Paid plans must be activated through checkout. Start a payment to upgrade.',
       requiresPayment: true,
@@ -442,15 +451,10 @@ router.post('/subscription/change', async (req, res) => {
   }
 
   try {
-    // Downgrade / cancel to trial is allowed (no money involved).
-    const current = await getQuery("SELECT subscription_plan FROM tenants WHERE id = ?", [req.tenant_id]);
-    const oldPlan = current ? current.subscription_plan : 'trial';
-    await runQuery("UPDATE tenants SET subscription_plan = 'trial', subscription_status = 'trial' WHERE id = ?", [req.tenant_id]);
-    await runQuery(
-      `INSERT INTO subscription_history (id, tenant_id, from_plan, to_plan, action, notes)
-       VALUES (?, ?, ?, 'trial', 'downgrade', 'Self-service downgrade to trial.')`,
-      [uid('sub_hist_'), req.tenant_id, oldPlan]);
-    res.json({ message: 'Subscription moved to trial.', plan: 'trial' });
+    // Downgrade to the free Basic tier — routes through the billing ledger so the
+    // WhatsApp allowance drops to 0 and multi-gym is revoked.
+    await billing.downgradeToBasic(req.tenant_id, 'Self-service downgrade to Basic.');
+    res.json({ message: 'Subscription moved to the free Basic plan.', plan: 'basic' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to change subscription plan.' });
@@ -709,25 +713,78 @@ async function resolveTemplate(templateId, data, tenantId) {
   return msg;
 }
 
-// [WHATSAPP] Dispatch a message through the REAL whatsapp-web.js outbound queue.
-// Sends ONLY when the tenant's WhatsApp account is connected; otherwise the outbox
-// row is marked Failed with a clear reason (never a fake "Delivered"). The queue
-// serializes sends one-at-a-time, retries transient failures, and writes the final
-// delivery_status / failure_reason / retry_count itself.
-//   wait=true  -> await the terminal result (single, user-initiated sends)
-//   wait=false -> fire-and-forget (cron + bulk campaigns); status updates async
-async function dispatchWhatsApp(tenantId, normalizedPhone, message, notificationId, { wait = false } = {}) {
-  if (!whatsappService.isConnected(tenantId)) {
+// [WHATSAPP-CLOUD] Dispatch a message through the centralized Meta WhatsApp Cloud
+// API. There is no per-gym connection anymore: the platform is either configured
+// (ready for everyone) or not. On success the outbox row is marked Delivered and
+// the Cloud message id (wamid) stored; on failure it is marked Failed with a clear
+// reason (never a fake "Delivered").
+//   opts.wait  = true  -> await the terminal result (single, user-initiated sends)
+//   opts.wait  = false -> fire-and-forget (cron + bulk); the row updates async
+//   opts.media = { link, filename, caption } -> send a document (e.g. invoice PDF)
+async function dispatchWhatsApp(tenantId, normalizedPhone, message, notificationId, { wait = false, media = null } = {}) {
+  // [BILLING] Ledger-based quota enforced across every send path (manual, bulk,
+  // cron). remaining = max(0, allowance - used) + extra_credits. Basic has no
+  // WhatsApp at all; a paid gym at zero remaining is blocked with an out-of-credits
+  // signal the dashboard turns into the exhaustion modal.
+  try {
+    const state = await billing.getBillingState(tenantId);
+    if (!state.limits.allowWhatsApp || (state.allowance + state.extraCredits) <= 0) {
+      await runQuery(
+        `UPDATE notifications SET delivery_status = 'Failed', failure_reason = ? WHERE id = ? AND tenant_id = ?`,
+        ['WhatsApp messaging is a Pro feature. Upgrade your plan to enable it.', notificationId, tenantId]);
+      return { success: false, error: 'WhatsApp messaging is not available on your plan.' };
+    }
+    if (state.remaining <= 0) {
+      await runQuery(
+        `UPDATE notifications SET delivery_status = 'Failed', failure_reason = ? WHERE id = ? AND tenant_id = ?`,
+        ['Out of WhatsApp credits. Add wallet credits or upgrade your plan.', notificationId, tenantId]);
+      return { success: false, error: 'Out of WhatsApp credits. Add wallet credits or upgrade your plan.', outOfCredits: true };
+    }
+  } catch (e) { /* quota lookup failed — fall through to the configuration check */ }
+
+  if (!whatsappCloud.isConfigured()) {
     await runQuery(
       `UPDATE notifications SET delivery_status = 'Failed', failure_reason = ? WHERE id = ? AND tenant_id = ?`,
-      ['WhatsApp not connected. Link it in Settings → WhatsApp.', notificationId, tenantId]
+      ['WhatsApp service is not configured on the platform yet.', notificationId, tenantId]
     );
-    return { success: false, error: 'WhatsApp is not connected for this account.' };
+    return { success: false, error: 'WhatsApp service is not configured on the platform.' };
   }
-  const pending = whatsappQueue.enqueue(tenantId, { phone: normalizedPhone, message, notificationId });
-  if (wait) return pending;
+
+  // Perform the real send and write the terminal delivery state to the outbox row.
+  const doSend = async () => {
+    const result = (media && media.link)
+      ? await whatsappCloud.sendDocument(normalizedPhone, media.link, media.filename, media.caption || message)
+      : await whatsappCloud.sendText(normalizedPhone, message);
+    if (result.success) {
+      await runQuery(
+        `UPDATE notifications SET delivery_status = 'Delivered', provider_message_id = ?, failure_reason = NULL WHERE id = ? AND tenant_id = ?`,
+        [result.messageId || null, notificationId, tenantId]);
+      // [BILLING] Consume one message from the ledger (allowance first, then a
+      // purchased top-up credit). Best-effort — never fail a delivered send on it.
+      try { await billing.consumeWhatsAppCredit(tenantId, 1); } catch (e) { /* ledger best-effort */ }
+    } else {
+      await runQuery(
+        `UPDATE notifications SET delivery_status = 'Failed', failure_reason = ? WHERE id = ? AND tenant_id = ?`,
+        [result.error || 'Send failed.', notificationId, tenantId]);
+    }
+    return result;
+  };
+
+  if (wait) {
+    const r = await doSend();
+    return { success: r.success, messageId: r.messageId, error: r.error };
+  }
+  // Fire-and-forget: return immediately; the row updates when the send settles.
+  doSend().catch((e) => console.error('[whatsapp-cloud] async send error:', e && e.message));
   return { success: true, queued: true };
 }
+
+// [WHATSAPP-CLOUD] Give the automation workers the single dispatch path (plan
+// gating + outbox logging live here) and the public base URL for invoice PDFs.
+waAutomations.init({
+  dispatch: dispatchWhatsApp,
+  publicBaseUrl: () => process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL || ''
+});
 
 // [M6] Per-tenant throttle (the old single global `lastScanTime` let one tenant's
 // scan suppress every other tenant's scan for 10s — automations silently skipped).
@@ -739,6 +796,12 @@ async function runAutomationScans(tenantId, force = false) {
     return; // Throttle scans to every 10 seconds per tenant
   }
   lastScanByTenant.set(tenantId, now);
+
+  // [WHATSAPP-CLOUD] The "Fee Reminder" automation toggle gates every outbound
+  // WhatsApp fee/expiry/payment message for this gym. Internal admin alerts and
+  // follow-up tasks are ALWAYS created (they're not WhatsApp); only the member-
+  // facing WhatsApp send is skipped when the gym has fee reminders switched off.
+  const feeReminderOn = await waSettings.isFeatureEnabled(tenantId, 'fee_reminder');
 
   try {
     // 1. Membership Expiry Scan
@@ -768,11 +831,12 @@ async function runAutomationScans(tenantId, force = false) {
             VALUES (?, ?, 'Membership', 'Critical', 'Membership Expired', ?, 0)
           `, [ntId, tenantId, `Membership for ${ms.full_name} (${ms.member_id}) expired on ${ms.end_date}.`]);
 
-          // Automatically log WhatsApp outbox alert
+          // Automatically log WhatsApp outbox alert (only when Fee Reminders are ON)
+          if (feeReminderOn) {
           const whatsappMsg = await resolveTemplate('whatsapp_expiry', { member_name: ms.full_name, end_date: ms.end_date }, tenantId);
-          const normalizedPhone = whatsappService.validateAndNormalizePhone(ms.phone);
+          const normalizedPhone = whatsappCloud.validateAndNormalizePhone(ms.phone);
           const ntIdOutbox = 'nt_out' + Date.now() + Math.floor(Math.random() * 1000);
-          
+
           if (!normalizedPhone) {
             await runQuery(`
               INSERT INTO notifications (id, tenant_id, type, priority, title, message, is_read, recipient_name, recipient_phone, delivery_status, campaign_source)
@@ -784,6 +848,7 @@ async function runAutomationScans(tenantId, force = false) {
               VALUES (?, ?, 'Membership', 'Critical', 'WhatsApp: Membership Expired', ?, 1, ?, ?, 'Pending', 'Auto Expiry Reminder')
             `, [ntIdOutbox, tenantId, whatsappMsg, ms.full_name, normalizedPhone]);
             await dispatchWhatsApp(tenantId, normalizedPhone, whatsappMsg, ntIdOutbox);
+          }
           }
         }
 
@@ -824,11 +889,12 @@ async function runAutomationScans(tenantId, force = false) {
             VALUES (?, ?, 'Membership', ?, ?, ?, 0)
           `, [ntId, tenantId, priority, title, `Membership for ${ms.full_name} (${ms.member_id}) will expire on ${ms.end_date}.`]);
 
-          // Automatically log WhatsApp outbox reminder
+          // Automatically log WhatsApp outbox reminder (only when Fee Reminders are ON)
+          if (feeReminderOn) {
           const whatsappMsg = await resolveTemplate('whatsapp_expiry_reminder', { member_name: ms.full_name, days_left: daysLeft, end_date: ms.end_date }, tenantId);
-          const normalizedPhone = whatsappService.validateAndNormalizePhone(ms.phone);
+          const normalizedPhone = whatsappCloud.validateAndNormalizePhone(ms.phone);
           const ntIdOutbox = 'nt_out' + Date.now() + Math.floor(Math.random() * 1000);
-          
+
           if (!normalizedPhone) {
             await runQuery(`
               INSERT INTO notifications (id, tenant_id, type, priority, title, message, is_read, recipient_name, recipient_phone, delivery_status, campaign_source)
@@ -840,6 +906,7 @@ async function runAutomationScans(tenantId, force = false) {
               VALUES (?, ?, 'Membership', ?, ?, ?, 1, ?, ?, 'Pending', 'Auto Expiry Reminder')
             `, [ntIdOutbox, tenantId, priority, `WhatsApp: Expiry ${daysLeft}d`, whatsappMsg, ms.full_name, normalizedPhone]);
             await dispatchWhatsApp(tenantId, normalizedPhone, whatsappMsg, ntIdOutbox);
+          }
           }
         }
 
@@ -917,7 +984,7 @@ async function runAutomationScans(tenantId, force = false) {
 
           // Automatically log WhatsApp outbox warning
           const whatsappMsg = await resolveTemplate('whatsapp_retention', { member_name: m.full_name, absence_days: absenceDays }, tenantId);
-          const normalizedPhone = whatsappService.validateAndNormalizePhone(m.phone);
+          const normalizedPhone = whatsappCloud.validateAndNormalizePhone(m.phone);
           const ntIdOutbox = 'nt_out' + Date.now() + Math.floor(Math.random() * 1000);
           
           if (!normalizedPhone) {
@@ -969,11 +1036,12 @@ async function runAutomationScans(tenantId, force = false) {
             VALUES (?, ?, 'Payments', 'High', 'Overdue Payment', ?, 0)
           `, [ntId, tenantId, `Payment of ₹${inv.total_amount} is overdue from ${inv.full_name} (${inv.member_id}) for Invoice #${inv.invoice_number}.`]);
 
-          // Automatically log WhatsApp outbox overdue warning
+          // Automatically log WhatsApp outbox overdue warning (only when Fee Reminders are ON)
+          if (feeReminderOn) {
           const whatsappMsg = await resolveTemplate('whatsapp_payment_due', { member_name: inv.full_name, amount: inv.total_amount, invoice_number: inv.invoice_number }, tenantId);
-          const normalizedPhone = whatsappService.validateAndNormalizePhone(inv.phone);
+          const normalizedPhone = whatsappCloud.validateAndNormalizePhone(inv.phone);
           const ntIdOutbox = 'nt_out' + Date.now() + Math.floor(Math.random() * 1000);
-          
+
           if (!normalizedPhone) {
             await runQuery(`
               INSERT INTO notifications (id, tenant_id, type, priority, title, message, is_read, recipient_name, recipient_phone, delivery_status, campaign_source)
@@ -985,6 +1053,7 @@ async function runAutomationScans(tenantId, force = false) {
               VALUES (?, ?, 'Payments', 'High', 'WhatsApp: Overdue Payment', ?, 1, ?, ?, 'Pending', 'Auto Payment Collection')
             `, [ntIdOutbox, tenantId, whatsappMsg, inv.full_name, normalizedPhone]);
             await dispatchWhatsApp(tenantId, normalizedPhone, whatsappMsg, ntIdOutbox);
+          }
           }
         }
 
@@ -999,6 +1068,12 @@ async function runAutomationScans(tenantId, force = false) {
         }
       }
     }
+
+    // 4. [WHATSAPP-CLOUD] Gym-configurable automations. Each worker independently
+    // checks its own toggle in gym_whatsapp_settings and aborts if OFF:
+    //   • Health Check-in  — caring nudge when a member is absent 3–4 days
+    //   • Festival Greetings — broadcast on a calendar festival date
+    await waAutomations.runForTenant(tenantId);
   } catch (err) {
     console.error('Automation Scan Error:', err);
   }
@@ -1311,6 +1386,13 @@ router.post('/members', async (req, res) => {
 
     await runQuery('COMMIT');
 
+    // [WHATSAPP-CLOUD] New Member Onboarding: welcome message + invoice PDF.
+    // Fire-and-forget so it never delays or fails the member-creation response;
+    // the worker itself is a no-op unless the gym enabled the welcome_invoice
+    // toggle in gym_whatsapp_settings.
+    waAutomations.sendWelcomeInvoice(req.tenant_id, { memberId: id })
+      .catch((e) => console.error('[whatsapp-cloud] welcome-invoice failed:', e && e.message));
+
     res.status(201).json({ message: 'Member created successfully.', memberId: id });
   } catch (err) {
     await runQuery('ROLLBACK');
@@ -1470,7 +1552,7 @@ router.get('/attendance/logs', async (req, res) => {
 });
 
 // Log check-in
-router.post('/attendance/check-in', async (req, res) => {
+router.post('/attendance/check-in', billing.verifySubscriptionBilling('allowAttendance', 'Attendance tracking'), async (req, res) => {
   const { phone, member_id } = req.body;
   let member;
 
@@ -1501,6 +1583,182 @@ router.post('/attendance/check-in', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Check-in validation failure.' });
+  }
+});
+
+// ==========================================
+// [GEOFENCE] GPS COMPLIANCE ATTENDANCE
+// ==========================================
+// Server-authoritative geofencing. The client NEVER decides whether it is
+// "inside" — it only reports raw coordinates and the server recomputes the
+// great-circle (Haversine) distance to the gym and enforces the radius. This
+// is the anti-spoof boundary: a forged "isInside:true" flag is meaningless
+// because the client flag is ignored entirely.
+
+const FEET_PER_METER = 3.280839895;
+
+// Great-circle distance between two lat/lng points, in METERS.
+function haversineMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // Earth radius (m)
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+const isFiniteNum = (v) => typeof v === 'number' && isFinite(v);
+const inLatRange = (v) => isFiniteNum(v) && v >= -90 && v <= 90;
+const inLonRange = (v) => isFiniteNum(v) && v >= -180 && v <= 180;
+
+// Read the tenant's geofence configuration.
+router.get('/attendance/geofence', async (req, res) => {
+  try {
+    const t = await getQuery(
+      `SELECT latitude, longitude, geofence_radius, geofence_enabled, geofence_unit
+         FROM tenants WHERE id = ?`, [req.tenant_id]);
+    if (!t) return res.status(404).json({ error: 'Tenant not found.' });
+    const unit = t.geofence_unit === 'ft' ? 'ft' : 'm';
+    const radiusM = toNumeric(t.geofence_radius, 50);
+    res.json({
+      enabled: !!t.geofence_enabled,
+      latitude: t.latitude != null ? Number(t.latitude) : null,
+      longitude: t.longitude != null ? Number(t.longitude) : null,
+      radiusMeters: radiusM,
+      unit,
+      // Convenience: radius already expressed in the admin's chosen unit.
+      radiusDisplay: unit === 'ft' ? Math.round(radiusM * FEET_PER_METER) : Math.round(radiusM)
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load geofence configuration.' });
+  }
+});
+
+// Save the tenant's geofence configuration (owner / attendance-managers only).
+router.post('/attendance/geofence', authorize('attendance:write'), billing.verifySubscriptionBilling('allowGPS', 'GPS geofencing'), async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+    const enabled = req.body.enabled ? 1 : 0;
+    const unit = whitelist(req.body.unit, ['m', 'ft'], 'm');
+
+    const lat = toNumeric(latitude, NaN);
+    const lon = toNumeric(longitude, NaN);
+    if (!inLatRange(lat) || !inLonRange(lon)) {
+      return res.status(400).json({ error: 'Valid latitude (-90..90) and longitude (-180..180) are required.' });
+    }
+
+    // Radius is submitted in the chosen unit; persist canonically in metres.
+    const radiusInput = toNumeric(req.body.radius, NaN);
+    if (!isFiniteNum(radiusInput) || radiusInput <= 0) {
+      return res.status(400).json({ error: 'Radius must be a positive number.' });
+    }
+    let radiusMeters = unit === 'ft' ? radiusInput / FEET_PER_METER : radiusInput;
+    // Clamp to a sane band (5 m .. 5 km) to stop absurd or accidental values.
+    radiusMeters = Math.min(Math.max(radiusMeters, 5), 5000);
+
+    await runQuery(
+      `UPDATE tenants
+          SET latitude = ?, longitude = ?, geofence_radius = ?, geofence_enabled = ?, geofence_unit = ?
+        WHERE id = ?`,
+      [lat, lon, radiusMeters, enabled, unit, req.tenant_id]);
+
+    res.json({
+      message: 'Geofence configuration saved.',
+      enabled: !!enabled, latitude: lat, longitude: lon,
+      radiusMeters: Math.round(radiusMeters), unit,
+      radiusDisplay: unit === 'ft' ? Math.round(radiusMeters * FEET_PER_METER) : Math.round(radiusMeters)
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to save geofence configuration.' });
+  }
+});
+
+// Automated geofenced check-in. The client posts RAW coordinates only; the
+// server resolves the member, recomputes distance with Haversine and records
+// attendance only when genuinely within the perimeter. Idempotent per day.
+router.post('/attendance/geo-check-in', billing.verifySubscriptionBilling('allowGPS', 'GPS check-in'), async (req, res) => {
+  try {
+    const { phone, member_id, latitude, longitude, accuracy } = req.body;
+
+    const lat = toNumeric(latitude, NaN);
+    const lon = toNumeric(longitude, NaN);
+    if (!inLatRange(lat) || !inLonRange(lon)) {
+      return res.status(400).json({ error: 'Valid device coordinates are required.' });
+    }
+
+    const t = await getQuery(
+      `SELECT latitude, longitude, geofence_radius, geofence_enabled
+         FROM tenants WHERE id = ?`, [req.tenant_id]);
+    if (!t) return res.status(404).json({ error: 'Tenant not found.' });
+    if (!t.geofence_enabled) {
+      return res.status(409).json({ error: 'Geofenced check-in is not enabled for this gym.' });
+    }
+    if (!inLatRange(Number(t.latitude)) || !inLonRange(Number(t.longitude))) {
+      return res.status(409).json({ error: 'Gym location is not configured yet.' });
+    }
+
+    // Resolve member (same rules as manual check-in).
+    let member = null;
+    if (phone) {
+      member = await getQuery(`SELECT * FROM members WHERE phone = ? AND tenant_id = ?`, [phone, req.tenant_id]);
+    } else if (member_id) {
+      member = await getQuery(`SELECT * FROM members WHERE id = ? AND tenant_id = ?`, [member_id, req.tenant_id]);
+    }
+    if (!member) return res.status(404).json({ error: 'Member not found or unauthorized.' });
+    if (member.status === 'Expired') {
+      return res.status(403).json({ error: 'Access card restricted. Membership has expired.' });
+    }
+
+    // ── Anti-spoof core: server computes distance from raw coordinates. Any
+    //    client-side "inside" flag is intentionally never read.
+    const radiusMeters = toNumeric(t.geofence_radius, 50);
+    const distance = haversineMeters(Number(t.latitude), Number(t.longitude), lat, lon);
+    // Allow the reported GPS accuracy as slack (capped) so a legitimate member
+    // at the edge with a weak fix isn't wrongly rejected, without opening a
+    // large spoof window.
+    const slack = Math.min(Math.max(toNumeric(accuracy, 0), 0), 50);
+    const within = distance <= (radiusMeters + slack);
+
+    if (!within) {
+      return res.status(422).json({
+        error: 'You are outside the gym check-in zone.',
+        distanceMeters: Math.round(distance),
+        radiusMeters: Math.round(radiusMeters),
+        within: false
+      });
+    }
+
+    // Idempotent: one geofence check-in per member per day.
+    const existing = await getQuery(
+      `SELECT id FROM attendance
+        WHERE member_id = ? AND tenant_id = ? AND date(check_in) = ?`,
+      [member.id, req.tenant_id, getTodayString()]);
+    if (existing) {
+      return res.json({
+        message: `Already checked in today, ${member.full_name}.`,
+        within: true, duplicate: true, distanceMeters: Math.round(distance)
+      });
+    }
+
+    const checkInId = 'a' + Date.now();
+    await runQuery(
+      `INSERT INTO attendance (id, tenant_id, member_id, check_in, access_method)
+       VALUES (?, ?, ?, datetime('now', 'localtime'), 'Geofence')`,
+      [checkInId, req.tenant_id, member.id]);
+
+    res.json({
+      message: `Auto check-in confirmed. Welcome, ${member.full_name}.`,
+      within: true, duplicate: false,
+      distanceMeters: Math.round(distance), radiusMeters: Math.round(radiusMeters),
+      member: { id: member.id, full_name: member.full_name }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Geofenced check-in failure.' });
   }
 });
 
@@ -1590,6 +1848,10 @@ router.get('/finance/pending', async (req, res) => {
 // POS collect payment
 router.post('/finance/collect', authorize('payments:write'), async (req, res) => {
   const { invoice_id, method, amount } = req.body;
+  // Desk-confirmed collection (staff watched the member pay by cash or scan the
+  // UPI QR). These settle immediately as Successful — no online Razorpay order,
+  // so the invoice never gets stuck on a Pending baseline.
+  const manual = req.body.manual === true || req.body.manual === 'true';
 
   if (!invoice_id || !method) {
     return res.status(400).json({ error: 'Invoice ID and payment method are required.' });
@@ -1611,23 +1873,27 @@ router.post('/finance/collect', authorize('payments:write'), async (req, res) =>
       return res.status(400).json({ error: 'Partial payments are not supported. Full invoice amount is required.' });
     }
 
-    if (method === 'Card' || method === 'UPI') {
+    // Online gateway path ONLY for non-manual Card/UPI: creates a Pending order
+    // that a Razorpay webhook/verify flips to Successful.
+    if ((method === 'Card' || method === 'UPI') && !manual) {
       const order = await createOrder(payAmount, invoice.invoice_number);
       await runQuery(`
         INSERT INTO payments (id, tenant_id, invoice_id, member_id, amount, method, status)
         VALUES (?, ?, ?, ?, ?, ?, 'Pending')
       `, [payId, req.tenant_id, invoice_id, invoice.member_id, payAmount, method]);
 
-      return res.json({ 
-        message: 'Payment order created.', 
-        orderId: order.id, 
+      return res.json({
+        message: 'Payment order created.',
+        orderId: order.id,
         paymentId: payId,
         amount: payAmount,
         currency: order.currency,
         key_id: process.env.RAZORPAY_KEY_ID
       });
     } else {
-      const txnRef = 'CASH/' + Date.now();
+      // Cash, or a desk-confirmed manual UPI/Card collection → settle now.
+      const prefix = method === 'UPI' ? 'UPI' : method === 'Card' ? 'CARD' : 'CASH';
+      const txnRef = prefix + '/' + Date.now();
       await runQuery(`
         INSERT INTO payments (id, tenant_id, invoice_id, member_id, amount, method, transaction_reference, status)
         VALUES (?, ?, ?, ?, ?, ?, ?, 'Successful')
@@ -1640,7 +1906,7 @@ router.post('/finance/collect', authorize('payments:write'), async (req, res) =>
         await runQuery(`UPDATE members SET status = 'Active' WHERE id = ? AND tenant_id = ? `, [invoice.member_id, req.tenant_id]);
       }
 
-      return res.json({ message: 'Payment recorded successfully.', transactionReference: txnRef });
+      return res.json({ message: 'Payment recorded successfully.', transactionReference: txnRef, method: method, status: 'Successful' });
     }
   } catch (err) {
     console.error(err);
@@ -1696,7 +1962,7 @@ router.get('/crm/leads', async (req, res) => {
 });
 
 // Create new lead
-router.post('/crm/leads', async (req, res) => {
+router.post('/crm/leads', requireFeature('allowCRM', 'Leads CRM'), async (req, res) => {
   // Feature gating removed — the Lead CRM screen is available to all plans so the
   // page is fully functional (was: 403 for trial/basic, which broke the screen).
   const { full_name, phone, email, channel, note } = req.body;
@@ -2274,7 +2540,7 @@ router.post('/whatsapp/send', async (req, res) => {
       }
     }
 
-    const normalizedPhone = whatsappService.validateAndNormalizePhone(member.phone);
+    const normalizedPhone = whatsappCloud.validateAndNormalizePhone(member.phone);
     const ntId = 'nt' + Date.now() + Math.floor(Math.random() * 1000);
     
     if (!normalizedPhone) {
@@ -2335,6 +2601,7 @@ router.get('/plans', async (req, res) => {
               joining_fee, freeze_allowed, pt_included, description, is_active
        FROM membership_plans
        WHERE is_active = 1
+         AND (is_deleted = 0 OR is_deleted IS NULL)
          AND (tenant_id = ? OR tenant_id IS NULL)
        ORDER BY duration_months ASC, duration_days ASC`,
       [req.tenant_id]
@@ -2512,7 +2779,7 @@ router.post('/memberships/renew', authorize('payments:write'), async (req, res) 
     const paymentId = uid('pay_');
     const invoiceNum = await nextInvoiceNumber(req.tenant_id, 'RCPT');
 
-    const isOnline = (payment_method === 'Card' || payment_method === 'UPI');
+    const isOnline = (payment_method === 'Card');
     const initialStatus = isOnline ? 'Pending' : 'Active';
     const initialInvStatus = isOnline ? 'Unpaid' : 'Paid';
     const initialPayStatus = isOnline ? 'Pending' : 'Successful';
@@ -2546,7 +2813,7 @@ router.post('/memberships/renew', authorize('payments:write'), async (req, res) 
         key_id: process.env.RAZORPAY_KEY_ID
       });
     } else {
-      const txnRef = 'CASH/' + Date.now();
+      const txnRef = (payment_method || 'Cash').toUpperCase() + '/' + Date.now();
       await runQuery(`
         INSERT INTO payments (id, tenant_id, invoice_id, member_id, amount, method, transaction_reference, status)
         VALUES (?, ?, ?, ?, ?, ?, ?, 'Successful')
@@ -2555,7 +2822,7 @@ router.post('/memberships/renew', authorize('payments:write'), async (req, res) 
       await runQuery(`UPDATE members SET status = 'Active' WHERE id = ? AND tenant_id = ? `, [member_id, req.tenant_id]);
 
       return res.status(201).json({
-        message: 'Membership renewed successfully (Cash).',
+        message: `Membership renewed successfully (${payment_method || 'Cash'}).`,
         invoiceNumber: invoiceNum,
         totalAmount
       });
@@ -2825,9 +3092,7 @@ router.get('/campaigns', async (req, res) => {
   }
 });
 
-router.post('/campaigns', async (req, res) => {
-  // Feature gating removed — Marketing Center is available to all plans so the
-  // page is fully functional (was: 403 for trial/basic, which broke the screen).
+router.post('/campaigns', requireFeature('allowMarketing', 'Marketing campaigns'), async (req, res) => {
   const { name, channel, audience, message, poster_url, image_data } = req.body;
   const id = uid('cam_');
 
@@ -2859,17 +3124,18 @@ router.post('/campaigns', async (req, res) => {
 
     const sentCount = members.length;
 
-    // WhatsApp campaigns require a linked WhatsApp account — fail fast with a clear
-    // message instead of recording a campaign full of "Failed" rows.
-    if ((channel || 'WhatsApp').toLowerCase().includes('whatsapp') && !whatsappService.isConnected(req.tenant_id)) {
-      return res.status(409).json({ error: 'WhatsApp is not connected. Open Settings → WhatsApp and scan the QR before launching a WhatsApp campaign.' });
+    // WhatsApp campaigns need the centralized Cloud API to be configured on the
+    // platform — fail fast with a clear message instead of recording a campaign
+    // full of "Failed" rows.
+    if ((channel || 'WhatsApp').toLowerCase().includes('whatsapp') && !whatsappCloud.isConfigured()) {
+      return res.status(409).json({ error: 'WhatsApp messaging is not available yet — the platform WhatsApp service is being configured. Please try again later or contact support.' });
     }
 
     let actualSentCount = 0;
     for (const m of members) {
       const personalizedMsg = message.replace(/{name}/g, m.full_name);
       const ntIdOutbox = 'nt_out' + Date.now() + Math.floor(Math.random() * 10000);
-      const normalizedPhone = whatsappService.validateAndNormalizePhone(m.phone);
+      const normalizedPhone = whatsappCloud.validateAndNormalizePhone(m.phone);
       
       if (!normalizedPhone) {
         await runQuery(`
@@ -3355,15 +3621,27 @@ router.get('/analytics/revenue-trend', async (req, res) => {
       };
     });
 
-    // Simple projection: average of last 3 months
-    const lastThree = trend.slice(-3);
-    const avgGrowthRate = lastThree.length > 1 ?
-    lastThree.slice(1).reduce((sum, t) => sum + (t.growth || 0), 0) / (lastThree.length - 1) / 100 :
-    0.05;
-    const lastRevenue = trend.length > 0 ? trend[trend.length - 1].revenue : 0;
-    const projected = Math.round(lastRevenue * (1 + avgGrowthRate));
+    // [ANALYTICS] Projection guard — a naive month-over-month compounding rate
+    // computed from only 2-3 data points produces absurd forecasts (e.g. an
+    // "Avg growth 369%"). Require at least 6 months of real history before we
+    // surface any forward projection; below that, return nulls + a flag so the
+    // UI suppresses the projection badge entirely rather than showing noise.
+    const MIN_MONTHS_FOR_PROJECTION = 6;
+    const hasEnoughHistory = trend.length >= MIN_MONTHS_FOR_PROJECTION;
 
-    res.json({ trend, projected, avgGrowthRate: Math.round(avgGrowthRate * 100) });
+    let avgGrowthRate = null;
+    let projected = null;
+    if (hasEnoughHistory) {
+      const lastThree = trend.slice(-3);
+      const rate = lastThree.length > 1
+        ? lastThree.slice(1).reduce((sum, t) => sum + (t.growth || 0), 0) / (lastThree.length - 1) / 100
+        : 0.05;
+      const lastRevenue = trend[trend.length - 1].revenue || 0;
+      avgGrowthRate = Math.round(rate * 100);
+      projected = Math.round(lastRevenue * (1 + rate));
+    }
+
+    res.json({ trend, projected, avgGrowthRate, hasEnoughHistory, monthsOfData: trend.length });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to compute revenue trend.' });
@@ -3584,10 +3862,13 @@ router.get('/analytics/lead-intelligence', async (req, res) => {
     const stageFollowup = byStage.find((s) => s.stage === 'Follow-up');
     const stageClosed = byStage.find((s) => s.stage && (s.stage.includes('Closed') || s.stage.includes('Won')));
 
-    // Pipeline value estimate (avg plan price * active leads)
-    const avgPlanQ = await allQuery(`SELECT AVG(price) as avg FROM membership_plans WHERE tenant_id = ? `, [req.tenant_id]);
+    // Pipeline value estimate (avg plan price * active leads).
+    // [FIX] getQuery (single row) — allQuery returned an array, so avgPlanQ.avg
+    // was always undefined and the estimate silently fell back to ₹3000.
+    const avgPlanRow = await getQuery(`SELECT AVG(price) as avg FROM membership_plans WHERE tenant_id = ? AND (is_deleted = 0 OR is_deleted IS NULL)`, [req.tenant_id]);
+    const avgPlanPrice = (avgPlanRow && avgPlanRow.avg) || 3000;
     const activePipelineLeads = (totalLeads.count || 0) - (converted.count || 0);
-    const pipelineValue = Math.round((avgPlanQ.avg || 3000) * activePipelineLeads * 0.25);
+    const pipelineValue = Math.round(avgPlanPrice * activePipelineLeads * 0.25);
 
     // Conversion rate
     const conversionRate = totalLeads.count > 0 ? Math.round(converted.count / totalLeads.count * 100 * 10) / 10 : 0;
@@ -3869,6 +4150,233 @@ router.get('/analytics/alerts', async (req, res) => {
 });
 
 
+// ─── INTERACTIVE DRILL-DOWN ANALYTICS ENDPOINTS ───────────────────
+
+// 1. Revenue & Collections Drill-down
+router.get('/analytics/drilldown/revenue', async (req, res) => {
+  try {
+    const daily = await allQuery(`
+      SELECT date(created_at) as date, SUM(total_amount) as amount 
+      FROM invoices 
+      WHERE status = 'Paid' AND tenant_id = ? AND date(created_at) >= date('now', '-30 day')
+      GROUP BY date ORDER BY date ASC
+    `, [req.tenant_id]);
+
+    const paymentMethods = await allQuery(`
+      SELECT COALESCE(payment_method, 'Other') as label, SUM(total_amount) as amount 
+      FROM invoices 
+      WHERE status = 'Paid' AND tenant_id = ? 
+      GROUP BY label
+    `, [req.tenant_id]);
+
+    const topPaying = await allQuery(`
+      SELECT m.full_name as name, SUM(i.total_amount) as total_paid 
+      FROM invoices i 
+      JOIN members m ON i.member_id = m.id 
+      WHERE i.status = 'Paid' AND i.tenant_id = ? AND date(i.created_at) >= date('now', '-90 day')
+      GROUP BY m.id ORDER BY total_paid DESC LIMIT 5
+    `, [req.tenant_id]);
+
+    const outstandingDues = await allQuery(`
+      SELECT m.full_name as name, SUM(i.total_amount) as total_due 
+      FROM invoices i 
+      JOIN members m ON i.member_id = m.id 
+      WHERE i.status = 'Unpaid' AND i.tenant_id = ? 
+      GROUP BY m.id ORDER BY total_due DESC LIMIT 5
+    `, [req.tenant_id]);
+
+    res.json({ daily, paymentMethods, topPaying, outstandingDues });
+  } catch (err) {
+    console.error('[analytics/drilldown/revenue] error:', err);
+    res.status(500).json({ error: 'Failed to load revenue drilldown data.' });
+  }
+});
+
+// 2. Members & Growth Drill-down
+router.get('/analytics/drilldown/members', async (req, res) => {
+  try {
+    const dailyJoins = await allQuery(`
+      SELECT date(created_at) as date, COUNT(*) as count 
+      FROM members 
+      WHERE tenant_id = ? AND date(created_at) >= date('now', '-30 day')
+      GROUP BY date ORDER BY date ASC
+    `, [req.tenant_id]);
+
+    const genders = await allQuery(`
+      SELECT COALESCE(gender, 'Not Specified') as label, COUNT(*) as count 
+      FROM members 
+      WHERE tenant_id = ? 
+      GROUP BY gender
+    `, [req.tenant_id]);
+
+    const plans = await allQuery(`
+      SELECT COALESCE(p.name, 'No Active Plan') as label, COUNT(*) as count 
+      FROM members m 
+      LEFT JOIN memberships ms ON m.id = ms.member_id AND ms.status = 'Active'
+      LEFT JOIN plans p ON ms.plan_id = p.id 
+      WHERE m.tenant_id = ?
+      GROUP BY label
+    `, [req.tenant_id]);
+
+    const membersDob = await allQuery(`
+      SELECT dob FROM members WHERE tenant_id = ? AND dob IS NOT NULL AND dob != ''
+    `, [req.tenant_id]);
+    
+    const ageGroupsMap = { 'Under 18': 0, '18-25': 0, '26-35': 0, '36-45': 0, '46-60': 0, '60+': 0 };
+    const currentYear = new Date().getFullYear();
+    membersDob.forEach(m => {
+      const birthYear = new Date(m.dob).getFullYear();
+      if (!isNaN(birthYear)) {
+        const age = currentYear - birthYear;
+        if (age < 18) ageGroupsMap['Under 18']++;
+        else if (age <= 25) ageGroupsMap['18-25']++;
+        else if (age <= 35) ageGroupsMap['26-35']++;
+        else if (age <= 45) ageGroupsMap['36-45']++;
+        else if (age <= 60) ageGroupsMap['46-60']++;
+        else ageGroupsMap['60+']++;
+      }
+    });
+    const ageGroups = Object.keys(ageGroupsMap).map(k => ({ label: k, count: ageGroupsMap[k] }));
+
+    const expiredList = await allQuery(`
+      SELECT full_name as name, date(created_at) as date 
+      FROM members 
+      WHERE status = 'Expired' AND tenant_id = ? 
+      ORDER BY created_at DESC LIMIT 5
+    `, [req.tenant_id]);
+
+    res.json({ dailyJoins, genders, plans, ageGroups, expiredList });
+  } catch (err) {
+    console.error('[analytics/drilldown/members] error:', err);
+    res.status(500).json({ error: 'Failed to load member drilldown data.' });
+  }
+});
+
+// 3. Finance & Collections Drill-down
+router.get('/analytics/drilldown/finance', async (req, res) => {
+  try {
+    const transactions = await allQuery(`
+      SELECT i.invoice_number, i.total_amount, i.payment_method, date(i.created_at) as date, m.full_name as name 
+      FROM invoices i 
+      JOIN members m ON i.member_id = m.id 
+      WHERE i.status = 'Paid' AND i.tenant_id = ? 
+      ORDER BY i.created_at DESC LIMIT 10
+    `, [req.tenant_id]);
+
+    const pending = await allQuery(`
+      SELECT i.invoice_number, i.total_amount, date(i.due_date) as due_date, m.full_name as name 
+      FROM invoices i 
+      JOIN members m ON i.member_id = m.id 
+      WHERE i.status = 'Unpaid' AND i.tenant_id = ? 
+      ORDER BY i.due_date ASC LIMIT 10
+    `, [req.tenant_id]);
+
+    const collectionsByPlan = await allQuery(`
+      SELECT p.name as label, SUM(i.total_amount) as amount 
+      FROM invoices i 
+      JOIN memberships ms ON i.member_id = ms.member_id
+      JOIN plans p ON ms.plan_id = p.id
+      WHERE i.status = 'Paid' AND i.tenant_id = ? 
+      GROUP BY p.id
+    `, [req.tenant_id]);
+
+    res.json({ transactions, pending, collectionsByPlan });
+  } catch (err) {
+    console.error('[analytics/drilldown/finance] error:', err);
+    res.status(500).json({ error: 'Failed to load finance drilldown data.' });
+  }
+});
+
+// 4. Attendance Drill-down
+router.get('/analytics/drilldown/attendance', async (req, res) => {
+  try {
+    const hourly = await allQuery(`
+      SELECT strftime('%H', check_in) as hour, COUNT(*) as count 
+      FROM attendance 
+      WHERE tenant_id = ? 
+      GROUP BY hour ORDER BY hour ASC
+    `, [req.tenant_id]);
+
+    const heatmap = await allQuery(`
+      SELECT strftime('%w', check_in) as day_of_week, strftime('%H', check_in) as hour, COUNT(*) as count 
+      FROM attendance 
+      WHERE tenant_id = ? 
+      GROUP BY day_of_week, hour
+    `, [req.tenant_id]);
+
+    const absent = await allQuery(`
+      SELECT m.full_name as name, MAX(a.check_in) as last_seen 
+      FROM members m 
+      LEFT JOIN attendance a ON m.id = a.member_id 
+      WHERE m.status = 'Active' AND m.tenant_id = ? 
+      GROUP BY m.id 
+      HAVING last_seen IS NULL OR date(last_seen) < date('now', '-20 day') 
+      ORDER BY last_seen DESC LIMIT 5
+    `, [req.tenant_id]);
+
+    const frequent = await allQuery(`
+      SELECT m.full_name as name, COUNT(*) as visits 
+      FROM attendance a 
+      JOIN members m ON a.member_id = m.id 
+      WHERE a.tenant_id = ? AND date(a.check_in) >= date('now', '-30 day') 
+      GROUP BY m.id 
+      ORDER BY visits DESC LIMIT 5
+    `, [req.tenant_id]);
+
+    res.json({ hourly, heatmap, absent, frequent });
+  } catch (err) {
+    console.error('[analytics/drilldown/attendance] error:', err);
+    res.status(500).json({ error: 'Failed to load attendance drilldown data.' });
+  }
+});
+
+// 5. Tasks Drill-down
+router.get('/analytics/drilldown/tasks', async (req, res) => {
+  try {
+    const statusCounts = await allQuery(`
+      SELECT status as label, COUNT(*) as count 
+      FROM tasks 
+      WHERE tenant_id = ? 
+      GROUP BY status
+    `, [req.tenant_id]);
+
+    const overdueRes = await getQuery(`
+      SELECT COUNT(*) as count 
+      FROM tasks 
+      WHERE status != 'Completed' AND date(due_date) < date('now') AND tenant_id = ?
+    `, [req.tenant_id]);
+    const overdueCount = overdueRes.count || 0;
+
+    const priorities = await allQuery(`
+      SELECT priority as label, COUNT(*) as count 
+      FROM tasks 
+      WHERE tenant_id = ? 
+      GROUP BY priority
+    `, [req.tenant_id]);
+
+    const staffLoad = await allQuery(`
+      SELECT s.full_name as label, COUNT(*) as count 
+      FROM tasks t 
+      JOIN staff s ON t.assigned_to = s.id 
+      WHERE t.tenant_id = ? 
+      GROUP BY s.id
+    `, [req.tenant_id]);
+
+    const completedHistory = await allQuery(`
+      SELECT title, detail, date(updated_at) as completed_at 
+      FROM tasks 
+      WHERE status = 'Completed' AND tenant_id = ? 
+      ORDER BY updated_at DESC LIMIT 5
+    `, [req.tenant_id]);
+
+    res.json({ statusCounts, overdueCount, priorities, staffLoad, completedHistory });
+  } catch (err) {
+    console.error('[analytics/drilldown/tasks] error:', err);
+    res.status(500).json({ error: 'Failed to load tasks drilldown data.' });
+  }
+});
+
+
 // 6. Report Export System
 router.get('/export/:type', authorize('settings:write'), async (req, res) => {
   try {
@@ -4053,6 +4561,24 @@ router.post('/plans', async (req, res) => {
     return res.status(400).json({ error: 'Plan name is required.' });
   }
   try {
+    // [TIER GATE] Free/Basic run a single operational plan; the multi-package
+    // builder is a Pro capability. Block the creation of a 2nd tenant-owned plan
+    // for plans without advanced analytics (i.e. trial/basic). Pro/Enterprise
+    // are unlimited.
+    const plan = (req.subscription && req.subscription.subscription_plan) || 'trial';
+    const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.trial;
+    if (!limits.allowAdvancedAnalytics) {
+      const owned = await getQuery(
+        `SELECT COUNT(*) as count FROM membership_plans
+          WHERE tenant_id = ? AND (is_deleted = 0 OR is_deleted IS NULL)`, [req.tenant_id]);
+      if ((owned.count || 0) >= 1) {
+        return res.status(403).json({
+          error: 'Your plan supports a single membership package. Upgrade to Pro to build multiple packages.',
+          upgradeRequired: true, feature: 'multiPlan'
+        });
+      }
+    }
+
     // [FIX] Write req.tenant_id so the plan is owned by this tenant only
     await runQuery(
       `INSERT INTO membership_plans
@@ -4113,15 +4639,20 @@ router.put('/plans/:id', async (req, res) => {
 
 router.delete('/plans/:id', authorize('settings:write'), async (req, res) => {
   try {
-    // [FIX] Scope delete to plans owned by this tenant only
+    // Soft-delete (archive) instead of a destructive DELETE: membership_plans is
+    // referenced by memberships/invoices, so a hard delete fails on FK
+    // constraints ("Failed to delete plan"). Flag is_deleted=1 and clear
+    // is_active so the plan drops out of every active list; historical
+    // memberships that reference it still resolve their plan name.
     const result = await runQuery(
-      `DELETE FROM membership_plans WHERE id=? AND tenant_id=?`,
+      `UPDATE membership_plans SET is_deleted = 1, is_active = 0
+        WHERE id=? AND tenant_id=? AND (is_deleted = 0 OR is_deleted IS NULL)`,
       [req.params.id, req.tenant_id]
     );
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Plan not found or access denied.' });
     }
-    res.json({ message: 'Plan deleted' });
+    res.json({ message: 'Plan archived' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to delete plan.' });

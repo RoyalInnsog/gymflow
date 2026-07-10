@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet">
+    <link href="/assets/css/shared.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/assets/js/designSystem.js"></script>
+    <script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
+    <script src="/assets/js/utils.js"></script>
+    <title>Gym Flow - Security Center</title>
+    <style>
+        .sec-reveal {
+            animation: secFadeIn 0.25s ease-out;
+        }
+
+        @keyframes secFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Single OTP input: large, centered, evenly spaced digits (mobile friendly,
+           paste + one-time-code autofill work out of the box) */
+        #otpInput {
+            letter-spacing: 0.45em;
+            text-indent: 0.45em;
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+
+<body
+    class="shell-locked font-body text-body-md antialiased md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-surface">
+    <div id="jsb-header" data-page-title="Security Center"></div>
+    <div id="jsb-sidebar"></div>
+
+    <main class="max-w-3xl mx-auto px-margin-mobile md:px-margin-desktop mt-4 md:mt-8 pb-24">
+
+        <!-- 1. Page header -->
+        <a href="/settings"
+            class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors mb-4 text-body-md">
+            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">arrow_back</span>
+            <span>Settings</span>
+        </a>
+        <div class="mb-6 md:mb-8">
+            <h1 class="font-headline text-headline-lg-mobile md:text-headline-lg text-on-surface">Security</h1>
+            <p class="text-body-md text-on-surface-variant mt-1">Manage how you sign in, your devices, and recent
+                account activity.</p>
+        </div>
+
+        <!-- Loading skeleton -->
+        <div id="skeletonState" class="space-y-6" aria-hidden="true">
+            <div class="glass-panel p-5 md:p-lg rounded-2xl skeleton-card space-y-4">
+                <div class="skeleton h-5 w-40"></div>
+                <div class="skeleton h-14 w-full"></div>
+                <div class="skeleton h-14 w-full"></div>
+            </div>
+            <div class="glass-panel p-5 md:p-lg rounded-2xl skeleton-card space-y-4">
+                <div class="skeleton h-5 w-32"></div>
+                <div class="skeleton h-12 w-full"></div>
+            </div>
+            <div class="glass-panel p-5 md:p-lg rounded-2xl skeleton-card space-y-4">
+                <div class="skeleton h-5 w-36"></div>
+                <div class="skeleton h-12 w-full"></div>
+                <div class="skeleton h-12 w-full"></div>
+                <div class="skeleton h-12 w-full"></div>
+            </div>
+        </div>
+
+        <!-- Page-level error -->
+        <div id="errorState" class="hidden glass-panel rounded-2xl p-8 text-center sec-reveal">
+            <span class="material-symbols-outlined text-5xl text-error/80" aria-hidden="true">gpp_maybe</span>
+            <h2 class="text-title-lg text-on-surface mt-3">Couldn't load your security info</h2>
+            <p id="errorMsg" class="text-body-md text-on-surface-variant mt-1">Please check your connection and try
+                again.</p>
+            <div class="mt-5 flex justify-center gap-3">
+                <button id="retryBtn" type="button"
+                    class="bg-primary text-on-primary px-6 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-colors">
+                    Try again
+                </button>
+                <a id="loginLink" href="/login"
+                    class="hidden bg-primary text-on-primary px-6 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-colors">
+                    Sign in
+                </a>
+            </div>
+        </div>
+
+        <div id="pageContent" class="hidden space-y-6">
+
+            <!-- 2. Login methods -->
+            <section id="card-login-methods" class="glass-panel p-5 md:p-lg rounded-2xl flex flex-col gap-5">
+                <div>
+                    <h2 class="text-headline-sm text-on-surface">Login methods</h2>
+                    <p class="text-on-surface-variant text-sm mt-1">Ways you can sign in to this account.</p>
+                </div>
+
+                <!-- Password row -->
+                <div class="flex items-center gap-3 md:gap-4 flex-wrap">
+                    <div
+                        class="w-10 h-10 rounded-lg bg-surface-container-highest border border-outline-variant/30 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">password</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-title-md text-on-surface">Password</p>
+                        <p id="pwdSubtitle" class="text-body-sm text-on-surface-variant truncate"></p>
+                    </div>
+                    <button id="pwdToggleBtn" type="button" aria-expanded="false"
+                        class="shrink-0 bg-surface-container-highest hover:bg-surface-variant border border-outline-variant/30 text-on-surface px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                        Change password
+                    </button>
+                </div>
+
+                <!-- Change password (shown when a password exists) -->
+                <form id="formChangePassword"
+                    class="hidden sec-reveal bg-surface-container/50 border border-outline-variant/20 rounded-xl p-4 md:p-5 space-y-4">
+                    <div>
+                        <label for="current_password"
+                            class="block text-label-sm text-on-surface-variant uppercase tracking-wider mb-2">Current
+                            Password</label>
+                        <div class="relative flex items-center">
+                            <input type="password" id="current_password" name="current_password" required
+                                autocomplete="current-password"
+                                class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="password"
+                            class="block text-label-sm text-on-surface-variant uppercase tracking-wider mb-2">New
+                            Password</label>
+                        <div class="relative flex items-center">
+                            <input type="password" id="password" name="new_password" required minlength="8"
+                                autocomplete="new-password"
+                                class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="confirm_password"
+                            class="block text-label-sm text-on-surface-variant uppercase tracking-wider mb-2">Confirm
+                            New Password</label>
+                        <div class="relative flex items-center">
+                            <input type="password" id="confirm_password" name="confirm_new_password" required
+                                minlength="8" autocomplete="new-password"
+                                class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-3 pt-1">
+                        <button type="button" data-cancel="password"
+                            class="px-4 py-2 rounded-lg text-sm font-medium text-on-surface-variant hover:bg-white/5 transition-colors">Cancel</button>
+                        <button type="submit" id="changePwdBtn"
+                            class="bg-primary text-on-primary px-5 py-2 rounded-lg text-sm font-semibold shadow-sm hover:opacity-90 transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner
+                                aria-hidden="true">progress_activity</span>
+                            <span>Update password</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Set password (shown when no password yet) -->
+                <form id="formSetPassword"
+                    class="hidden sec-reveal bg-surface-container/50 border border-outline-variant/20 rounded-xl p-4 md:p-5 space-y-4">
+                    <div>
+                        <label for="set_password"
+                            class="block text-label-sm text-on-surface-variant uppercase tracking-wider mb-2">New
+                            Password</label>
+                        <div class="relative flex items-center">
+                            <input type="password" id="set_password" name="set_password" required minlength="8"
+                                autocomplete="new-password"
+                                class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="set_confirm"
+                            class="block text-label-sm text-on-surface-variant uppercase tracking-wider mb-2">Confirm
+                            Password</label>
+                        <div class="relative flex items-center">
+                            <input type="password" id="set_confirm" name="set_confirm" required minlength="8"
+                                autocomplete="new-password"
+                                class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-3 pt-1">
+                        <button type="button" data-cancel="password"
+                            class="px-4 py-2 rounded-lg text-sm font-medium text-on-surface-variant hover:bg-white/5 transition-colors">Cancel</button>
+                        <button type="submit" id="setPwdBtn"
+                            class="bg-primary text-on-primary px-5 py-2 rounded-lg text-sm font-semibold shadow-sm hover:opacity-90 transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner
+                                aria-hidden="true">progress_activity</span>
+                            <span>Set password</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Google row (hidden entirely when OAuth is not configured) -->
+                <div id="googleRow" class="hidden">
+                    <div class="h-px bg-outline-variant/20 mb-5"></div>
+                    <div class="flex items-center gap-3 md:gap-4 flex-wrap">
+                        <div
+                            class="w-10 h-10 rounded-lg bg-surface-container-highest border border-outline-variant/30 flex items-center justify-center shrink-0">
+                            <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+                                <path fill="#EA4335"
+                                    d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                                <path fill="#4285F4"
+                                    d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                                <path fill="#FBBC05"
+                                    d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                                <path fill="#34A853"
+                                    d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-title-md text-on-surface">Google</p>
+                            <p id="googleSubtitle" class="text-body-sm text-on-surface-variant truncate"></p>
+                        </div>
+                        <button id="googleConnectBtn" type="button"
+                            class="hidden shrink-0 bg-surface-container-highest hover:bg-surface-variant border border-outline-variant/30 text-on-surface px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                            Connect Google
+                        </button>
+                        <button id="googleDisconnectBtn" type="button"
+                            class="hidden shrink-0 text-error hover:bg-error/10 border border-error/20 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                            Disconnect
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. Email -->
+            <section id="card-email" class="glass-panel p-5 md:p-lg rounded-2xl flex flex-col gap-5">
+                <div>
+                    <h2 class="text-headline-sm text-on-surface">Email</h2>
+                    <p class="text-on-surface-variant text-sm mt-1">Used for sign-in, receipts, and account recovery.
+                    </p>
+                </div>
+                <div class="flex items-center gap-3 md:gap-4 flex-wrap">
+                    <div
+                        class="w-10 h-10 rounded-lg bg-surface-container-highest border border-outline-variant/30 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">mail</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-title-md text-on-surface flex items-center gap-2 flex-wrap">
+                            <span id="emailValue" class="truncate max-w-full"></span>
+                            <span id="emailBadge" class="shrink-0"></span>
+                        </p>
+                        <p id="emailPendingNote" class="hidden text-body-sm text-tertiary mt-0.5"></p>
+                    </div>
+                    <div class="flex gap-2 shrink-0 flex-wrap">
+                        <button id="resendVerifyBtn" type="button"
+                            class="hidden bg-tertiary/10 hover:bg-tertiary/20 text-tertiary border border-tertiary/30 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner
+                                aria-hidden="true">progress_activity</span>
+                            <span>Resend verification</span>
+                        </button>
+                        <button id="emailToggleBtn" type="button" aria-expanded="false"
+                            class="bg-surface-container-highest hover:bg-surface-variant border border-outline-variant/30 text-on-surface px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                            Change email
+                        </button>
+                    </div>
+                </div>
+                <p id="emailDisabledNote"
+                    class="hidden text-body-sm text-tertiary bg-tertiary/10 border border-tertiary/25 rounded-lg px-3 py-2">
+                    Email sending isn't configured on this server yet, so verification emails can't be delivered.
+                </p>
+                <form id="formChangeEmail"
+                    class="hidden sec-reveal bg-surface-container/50 border border-outline-variant/20 rounded-xl p-4 md:p-5 space-y-4">
+                    <div>
+                        <label for="new_email"
+                            class="block text-label-sm text-on-surface-variant uppercase tracking-wider mb-2">New Email
+                            Address</label>
+                        <input type="email" id="new_email" name="new_email" required autocomplete="email"
+                            placeholder="you@example.com"
+                            class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-4 py-3 text-on-surface placeholder:text-on-surface-variant/30 focus:border-primary focus:outline-none">
+                    </div>
+                    <div id="emailPwdWrap">
+                        <label for="email_current_password"
+                            class="block text-label-sm text-on-surface-variant uppercase tracking-wider mb-2">Current
+                            Password</label>
+                        <div class="relative flex items-center">
+                            <input type="password" id="email_current_password" name="email_current_password"
+                                autocomplete="current-password"
+                                class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
+                        </div>
+                    </div>
+                    <p class="text-body-sm text-on-surface-variant/80">We'll send a verification link to the new
+                        address. Your email only changes after you confirm it.</p>
+                    <div class="flex justify-end gap-3 pt-1">
+                        <button type="button" data-cancel="email"
+                            class="px-4 py-2 rounded-lg text-sm font-medium text-on-surface-variant hover:bg-white/5 transition-colors">Cancel</button>
+                        <button type="submit" id="changeEmailBtn"
+                            class="bg-primary text-on-primary px-5 py-2 rounded-lg text-sm font-semibold shadow-sm hover:opacity-90 transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner
+                                aria-hidden="true">progress_activity</span>
+                            <span>Send verification</span>
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- 4. Phone -->
+            <section id="card-phone" class="glass-panel p-5 md:p-lg rounded-2xl flex flex-col gap-5">
+                <div>
+                    <h2 class="text-headline-sm text-on-surface">Phone</h2>
+                    <p class="text-on-surface-variant text-sm mt-1">A verified phone number helps secure your account.
+                    </p>
+                </div>
+                <div class="flex items-center gap-3 md:gap-4 flex-wrap">
+                    <div
+                        class="w-10 h-10 rounded-lg bg-surface-container-highest border border-outline-variant/30 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-primary text-[20px]"
+                            aria-hidden="true">smartphone</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-title-md text-on-surface flex items-center gap-2 flex-wrap">
+                            <span id="phoneValue" class="truncate max-w-full"></span>
+                            <span id="phoneBadge" class="shrink-0"></span>
+                        </p>
+                    </div>
+                    <button id="phoneStartBtn" type="button"
+                        class="shrink-0 bg-surface-container-highest hover:bg-surface-variant border border-outline-variant/30 text-on-surface px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                        Add &amp; verify phone
+                    </button>
+                </div>
+
+                <!-- Step 1: phone entry -->
+                <div id="phoneStep1"
+                    class="hidden sec-reveal bg-surface-container/50 border border-outline-variant/20 rounded-xl p-4 md:p-5 space-y-4">
+                    <div>
+                        <label for="phoneInput"
+                            class="block text-label-sm text-on-surface-variant uppercase tracking-wider mb-2">Phone
+                            Number</label>
+                        <input type="tel" id="phoneInput" name="phone_number" autocomplete="tel"
+                            placeholder="98765 43210"
+                            class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-4 py-3 text-on-surface placeholder:text-on-surface-variant/30 focus:border-primary focus:outline-none">
+                    </div>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" id="phoneCancel1"
+                            class="px-4 py-2 rounded-lg text-sm font-medium text-on-surface-variant hover:bg-white/5 transition-colors">Cancel</button>
+                        <button type="button" id="sendOtpBtn"
+                            class="bg-primary text-on-primary px-5 py-2 rounded-lg text-sm font-semibold shadow-sm hover:opacity-90 transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner
+                                aria-hidden="true">progress_activity</span>
+                            <span>Send code</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: OTP entry -->
+                <div id="phoneStep2"
+                    class="hidden sec-reveal bg-surface-container/50 border border-outline-variant/20 rounded-xl p-4 md:p-5 space-y-4">
+                    <div>
+                        <label for="otpInput"
+                            class="block text-label-sm text-on-surface-variant uppercase tracking-wider mb-2">Verification
+                            Code</label>
+                        <p id="otpSentTo" class="text-body-sm text-on-surface-variant mb-3"></p>
+                        <input type="text" id="otpInput" inputmode="numeric" pattern="[0-9]*" maxlength="6"
+                            autocomplete="one-time-code" placeholder="······" aria-label="6-digit verification code"
+                            class="w-full max-w-[240px] mx-auto block text-center text-2xl bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-4 py-3 text-on-surface placeholder:text-on-surface-variant/30 focus:border-primary focus:outline-none">
+                        <p id="devCodeHint" class="hidden text-body-sm text-tertiary/80 text-center mt-2">dev code
+                            auto-filled</p>
+                    </div>
+                    <div class="flex items-center justify-between gap-3 flex-wrap">
+                        <button type="button" id="otpBackBtn"
+                            class="text-body-sm text-on-surface-variant hover:text-primary transition-colors underline underline-offset-4">
+                            Use a different number
+                        </button>
+                        <div class="flex gap-2 ml-auto">
+                            <button type="button" id="resendOtpBtn"
+                                class="bg-surface-container-highest hover:bg-surface-variant border border-outline-variant/30 text-on-surface px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:pointer-events-none">
+                                Resend code
+                            </button>
+                            <button type="button" id="verifyOtpBtn"
+                                class="bg-primary text-on-primary px-5 py-2 rounded-lg text-sm font-semibold shadow-sm hover:opacity-90 transition-colors flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner
+                                    aria-hidden="true">progress_activity</span>
+                                <span>Verify</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. Active sessions -->
+            <section id="card-sessions" class="glass-panel p-5 md:p-lg rounded-2xl flex flex-col gap-5">
+                <div>
+                    <h2 class="text-headline-sm text-on-surface">Active sessions</h2>
+                    <p class="text-on-surface-variant text-sm mt-1">Everywhere your account is currently signed in.</p>
+                </div>
+                <div id="sessionsList"></div>
+                <div class="flex justify-end border-t border-outline-variant/15 pt-4">
+                    <button id="logoutAllBtn" type="button"
+                        class="w-full md:w-auto bg-error/10 hover:bg-error/20 text-error border border-error/30 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner
+                            aria-hidden="true">progress_activity</span>
+                        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">logout</span>
+                        <span>Sign out all other devices</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- 6. Trusted devices -->
+            <section id="card-devices" class="glass-panel p-5 md:p-lg rounded-2xl flex flex-col gap-5">
+                <div>
+                    <h2 class="text-headline-sm text-on-surface">Trusted devices</h2>
+                    <p class="text-on-surface-variant text-sm mt-1">Devices you've signed in from that we remember.</p>
+                </div>
+                <div id="devicesList"></div>
+            </section>
+
+            <!-- 7. Recent activity -->
+            <section id="card-activity" class="glass-panel p-5 md:p-lg rounded-2xl flex flex-col gap-5">
+                <div>
+                    <h2 class="text-headline-sm text-on-surface">Recent activity</h2>
+                    <p class="text-on-surface-variant text-sm mt-1">The latest security events on your account.</p>
+                </div>
+                <div id="activityList"></div>
+            </section>
+        </div>
+    </main>
+
+    <div id="jsb-mobile-nav"></div>
+
+    <script>
+        (function () {
+            'use strict';
+
+            var SEC = null;          // GET /security payload
+            var pendingPhone = '';   // phone awaiting OTP verification
+            var cdTimer = null;      // resend cooldown interval
+
+            function $(id) { return document.getElementById(id); }
+            function esc(s) { return window.esc(s); }
+            function toggleEl(el, show) { if (el) el.classList.toggle('hidden', !show); }
+
+            // ─── API helper: normalized { ok, status, data } ─────────────────
+            async function call(method, path, body) {
+                try {
+                    var opts = { method: method };
+                    if (body !== undefined) opts.body = JSON.stringify(body);
+                    var res = await window.api.fetch(path, opts);
+                    var data = null;
+                    try { data = await res.json(); } catch (e) { /* empty body */ }
+                    return { ok: res.ok, status: res.status, data: data || {} };
+                } catch (e) {
+                    return { ok: false, status: 0, data: {} };
+                }
+            }
+
+            // ─── Error messages by API code ──────────────────────────────────
+            var ERR = {
+                WRONG_PASSWORD: 'Current password is incorrect.',
+                PASSWORD_REUSE: 'New password must be different from your current one.',
+                WEAK_PASSWORD: 'That password is too weak — use at least 8 characters mixing letters and numbers.',
+                PASSWORD_ALREADY_SET: 'A password is already set on this account.',
+                EMAIL_IN_USE: 'That email is already in use by another account.',
+                EMAIL_DISABLED: 'Email sending is not configured on this server yet.',
+                LAST_LOGIN_METHOD: "Set a password first so you don't lose access.",
+                OTP_COOLDOWN: 'Please wait a moment before requesting another code.',
+                OTP_DAILY_LIMIT: 'Daily code limit reached. Please try again tomorrow.',
+                OTP_INVALID: 'That code is not correct.',
+                OTP_EXPIRED: 'That code has expired — request a new one.',
+                OTP_ATTEMPTS: 'Too many wrong attempts — request a new code.'
+            };
+            function errMsg(r, fallback) {
+                if (r.status === 401) return 'Your session has expired. Please sign in again.';
+                if (r.status === 0) return 'Network error — check your connection and try again.';
+                return (r.data && (ERR[r.data.code] || r.data.error)) || fallback;
+            }
+
+            // ─── Button loading state (login-page pattern) ───────────────────
+            function setLoading(btn, on) {
+                if (!btn) return;
+                btn.disabled = on;
+                btn.classList.toggle('btn-loading', on);
+                var sp = btn.querySelector('[data-spinner]');
+                if (sp) sp.classList.toggle('hidden', !on);
+            }
+
+            // ─── Relative time (no helper exists in utils.js) ────────────────
+            function parseTs(d) {
+                if (d == null) return NaN;
+                if (typeof d === 'number') return d;
+                var s = String(d);
+                // SQLite CURRENT_TIMESTAMP is naive UTC ("YYYY-MM-DD HH:MM:SS")
+                if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(s)) s = s.replace(' ', 'T') + 'Z';
+                return new Date(s).getTime();
+            }
+            function timeAgo(d) {
+                var t = parseTs(d);
+                if (isNaN(t)) return 'unknown';
+                var s = Math.floor((Date.now() - t) / 1000);
+                if (s < 45) return 'just now';
+                if (s < 90) return 'a minute ago';
+                var m = Math.floor(s / 60);
+                if (m < 60) return m + ' min ago';
+                var h = Math.floor(m / 60);
+                if (h < 24) return h + (h === 1 ? ' hour ago' : ' hours ago');
+                var days = Math.floor(h / 24);
+                if (days < 7) return days + (days === 1 ? ' day ago' : ' days ago');
+                return window.utils.formatDate(new Date(t));
+            }
+
+            function deviceIcon(os) {
+                return /android|ios|iphone|ipad|mobile/i.test(String(os || '')) ? 'smartphone' : 'computer';
+            }
+
+            function badge(verified) {
+                if (verified) {
+                    return '<span class="inline-flex items-center gap-1 bg-secondary/15 text-secondary border border-secondary/35 text-xs px-2.5 py-0.5 rounded-full font-bold">' +
+                        '<span class="material-symbols-outlined text-[14px]" style="font-variation-settings:\'FILL\' 1;" aria-hidden="true">check_circle</span>Verified</span>';
+                }
+                return '<span class="inline-flex items-center gap-1 bg-tertiary/15 text-tertiary border border-tertiary/35 text-xs px-2.5 py-0.5 rounded-full font-bold">' +
+                    '<span class="material-symbols-outlined text-[14px]" aria-hidden="true">warning</span>Unverified</span>';
+            }
+
+            var CURRENT_CHIP = '<span class="bg-secondary/15 text-secondary border border-secondary/35 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide shrink-0">This device</span>';
+
+            // ─── OAuth redirect params (?linked=google / ?error=...) ─────────
+            function handleOAuthParams() {
+                var p = new URLSearchParams(window.location.search);
+                var touched = false;
+                if (p.get('linked') === 'google') {
+                    window.toast('Google account connected.', 'success');
+                    p.delete('linked');
+                    touched = true;
+                }
+                var err = p.get('error');
+                if (err) {
+                    var map = {
+                        google_in_use: 'That Google account is already connected to a different account.',
+                        google_link: 'Could not connect Google. Please try again.'
+                    };
+                    window.toast(map[err] || 'Could not connect Google. Please try again.', 'error');
+                    p.delete('error');
+                    touched = true;
+                }
+                if (touched) {
+                    var qs = p.toString();
+                    history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+                }
+            }
+
+            // ─── Page load ───────────────────────────────────────────────────
+            async function loadAll() {
+                toggleEl($('errorState'), false);
+                toggleEl($('skeletonState'), true);
+                toggleEl($('pageContent'), false);
+                var results = await Promise.all([
+                    call('GET', '/auth/security'),
+                    call('GET', '/auth/sessions'),
+                    call('GET', '/auth/devices')
+                ]);
+                var sec = results[0], ses = results[1], dev = results[2];
+                toggleEl($('skeletonState'), false);
+                if (!sec.ok) { showPageError(sec.status); return; }
+                SEC = sec.data || {};
+                renderLoginMethods();
+                renderEmail();
+                renderPhone();
+                renderActivity();
+                renderSessions(ses);
+                renderDevices(dev);
+                toggleEl($('pageContent'), true);
+            }
+
+            function showPageError(status) {
+                var is401 = status === 401;
+                $('errorMsg').textContent = is401
+                    ? 'Your session has expired. Please sign in again.'
+                    : (status === 0 ? 'Network error — check your connection and try again.' : 'Something went wrong on our side. Please try again.');
+                toggleEl($('retryBtn'), !is401);
+                var link = $('loginLink');
+                link.classList.toggle('hidden', !is401);
+                toggleEl($('errorState'), true);
+            }
+
+            // ─── Login methods card ──────────────────────────────────────────
+            function renderLoginMethods() {
+                var hasPwd = !!SEC.password_set;
+                $('pwdSubtitle').textContent = hasPwd
+                    ? 'Password is set'
+                    : 'No password yet — add one as a backup sign-in';
+                $('pwdToggleBtn').textContent = hasPwd ? 'Change password' : 'Set a password';
+                $('pwdToggleBtn').setAttribute('aria-expanded', 'false');
+                toggleEl($('formChangePassword'), false);
+                toggleEl($('formSetPassword'), false);
+
+                var g = (SEC.providers && SEC.providers.google) || {};
+                if (!SEC.google_available) {
+                    toggleEl($('googleRow'), false);
+                } else {
+                    toggleEl($('googleRow'), true);
+                    $('googleSubtitle').textContent = g.linked ? (g.email || 'Connected') : 'Not connected';
+                    toggleEl($('googleConnectBtn'), !g.linked);
+                    toggleEl($('googleDisconnectBtn'), !!g.linked);
+                }
+            }
+
+            function togglePwdForm(show) {
+                var form = SEC && SEC.password_set ? $('formChangePassword') : $('formSetPassword');
+                if (show === undefined) show = form.classList.contains('hidden');
+                toggleEl(form, show);
+                $('pwdToggleBtn').textContent = show
+                    ? 'Cancel'
+                    : (SEC && SEC.password_set ? 'Change password' : 'Set a password');
+                $('pwdToggleBtn').setAttribute('aria-expanded', String(!!show));
+                if (show) {
+                    var first = form.querySelector('input');
+                    if (first) first.focus();
+                } else {
+                    form.reset();
+                }
+            }
+
+            async function onChangePassword(e) {
+                e.preventDefault();
+                var btn = $('changePwdBtn');
+                setLoading(btn, false); // form engine pre-disables; reset before our own checks
+                var cur = $('current_password').value;
+                var nw = $('password').value;
+                var cf = $('confirm_password').value;
+                if (nw.length < 8) { window.toast('New password must be at least 8 characters.', 'warning'); $('password').focus(); return; }
+                if (nw !== cf) { window.toast('New passwords do not match.', 'warning'); $('confirm_password').focus(); return; }
+                setLoading(btn, true);
+                var r = await call('POST', '/auth/change-password', { current_password: cur, new_password: nw });
+                setLoading(btn, false);
+                if (r.ok) {
+                    window.toast((r.data && r.data.message) || 'Password changed.', 'success');
+                    togglePwdForm(false);
+                } else {
+                    window.toast(errMsg(r, 'Could not change password.'), 'error');
+                }
+            }
+
+            async function onSetPassword(e) {
+                e.preventDefault();
+                var btn = $('setPwdBtn');
+                setLoading(btn, false);
+                var nw = $('set_password').value;
+                var cf = $('set_confirm').value;
+                if (nw.length < 8) { window.toast('Password must be at least 8 characters.', 'warning'); $('set_password').focus(); return; }
+                if (nw !== cf) { window.toast('Passwords do not match.', 'warning'); $('set_confirm').focus(); return; }
+                setLoading(btn, true);
+                var r = await call('POST', '/auth/set-password', { new_password: nw });
+                setLoading(btn, false);
+                if (r.ok) {
+                    window.toast((r.data && r.data.message) || 'Password set.', 'success');
+                    SEC.password_set = true;
+                    renderLoginMethods();
+                    renderEmail(); // current-password field becomes required in change-email
+                } else if (r.data && r.data.code === 'PASSWORD_ALREADY_SET') {
+                    window.toast(ERR.PASSWORD_ALREADY_SET, 'info');
+                    loadAll();
+                } else {
+                    window.toast(errMsg(r, 'Could not set password.'), 'error');
+                }
+            }
+
+            async function onDisconnectGoogle() {
+                var ok = await window.confirmDialog(
+                    'Disconnect Google from this account? You will no longer be able to sign in with Google.',
+                    { title: 'Disconnect Google', danger: true, confirmText: 'Disconnect' }
+                );
+                if (!ok) return;
+                var btn = $('googleDisconnectBtn');
+                setLoading(btn, true);
+                var r = await call('DELETE', '/auth/providers/google');
+                setLoading(btn, false);
+                if (r.ok) {
+                    window.toast((r.data && r.data.message) || 'Google disconnected.', 'success');
+                    SEC.providers = SEC.providers || {};
+                    SEC.providers.google = { linked: false };
+                    renderLoginMethods();
+                } else if (r.data && r.data.code === 'LAST_LOGIN_METHOD') {
+                    window.toast(ERR.LAST_LOGIN_METHOD, 'warning');
+                } else {
+                    window.toast(errMsg(r, 'Could not disconnect Google.'), 'error');
+                }
+            }
+
+            // ─── Email card ──────────────────────────────────────────────────
+            function renderEmail() {
+                $('emailValue').textContent = SEC.email || '—';
+                $('emailBadge').innerHTML = badge(!!SEC.email_verified);
+                toggleEl($('resendVerifyBtn'), !SEC.email_verified);
+                var emailOff = SEC.email_enabled === false;
+                $('resendVerifyBtn').disabled = emailOff;
+                $('resendVerifyBtn').classList.toggle('opacity-50', emailOff);
+                toggleEl($('emailDisabledNote'), emailOff);
+                // Current password is only required when the account has one.
+                var pw = $('email_current_password');
+                toggleEl($('emailPwdWrap'), !!SEC.password_set);
+                if (SEC.password_set) pw.setAttribute('required', 'required');
+                else pw.removeAttribute('required');
+                $('emailToggleBtn').setAttribute('aria-expanded', 'false');
+                toggleEl($('formChangeEmail'), false);
+            }
+
+            function toggleEmailForm(show) {
+                var form = $('formChangeEmail');
+                if (show === undefined) show = form.classList.contains('hidden');
+                toggleEl(form, show);
+                $('emailToggleBtn').textContent = show ? 'Cancel' : 'Change email';
+                $('emailToggleBtn').setAttribute('aria-expanded', String(!!show));
+                if (show) $('new_email').focus();
+                else form.reset();
+            }
+
+            async function onChangeEmail(e) {
+                e.preventDefault();
+                var btn = $('changeEmailBtn');
+                setLoading(btn, false);
+                var nw = $('new_email').value.trim();
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nw)) { window.toast('Enter a valid email address.', 'warning'); $('new_email').focus(); return; }
+                if (nw.toLowerCase() === String(SEC.email || '').toLowerCase()) { window.toast('That is already your email address.', 'info'); return; }
+                var body = { new_email: nw };
+                if (SEC.password_set) body.current_password = $('email_current_password').value;
+                setLoading(btn, true);
+                var r = await call('POST', '/auth/change-email', body);
+                setLoading(btn, false);
+                if (r.ok) {
+                    window.toast('Verification link sent to ' + nw + '.', 'success');
+                    if (r.data && r.data.verificationPending) {
+                        $('emailPendingNote').textContent = 'Pending verification: ' + nw;
+                        toggleEl($('emailPendingNote'), true);
+                    }
+                    toggleEmailForm(false);
+                } else {
+                    window.toast(errMsg(r, 'Could not change email.'), 'error');
+                }
+            }
+
+            async function onResendVerification() {
+                var btn = $('resendVerifyBtn');
+                setLoading(btn, true);
+                var r = await call('POST', '/auth/resend-verification', { email: SEC.email });
+                setLoading(btn, false);
+                if (r.ok) window.toast((r.data && r.data.message) || 'Verification email sent.', 'success');
+                else window.toast(errMsg(r, 'Could not send verification email.'), 'error');
+            }
+
+            // ─── Phone card ──────────────────────────────────────────────────
+            function renderPhone() {
+                cancelPhoneFlow();
+                if (SEC.phone) {
+                    $('phoneValue').textContent = SEC.phone;
+                    $('phoneBadge').innerHTML = badge(!!SEC.phone_verified);
+                    $('phoneStartBtn').textContent = 'Verify phone';
+                    toggleEl($('phoneStartBtn'), !SEC.phone_verified);
+                } else {
+                    $('phoneValue').textContent = 'No phone added';
+                    $('phoneBadge').innerHTML = '';
+                    $('phoneStartBtn').textContent = 'Add & verify phone';
+                    toggleEl($('phoneStartBtn'), true);
+                }
+            }
+
+            function startPhoneFlow() {
+                toggleEl($('phoneStep2'), false);
+                toggleEl($('phoneStep1'), true);
+                if (SEC.phone && !$('phoneInput').value) $('phoneInput').value = SEC.phone;
+                $('phoneInput').focus();
+            }
+
+            function cancelPhoneFlow() {
+                clearInterval(cdTimer);
+                toggleEl($('phoneStep1'), false);
+                toggleEl($('phoneStep2'), false);
+                toggleEl($('devCodeHint'), false);
+                $('otpInput').value = '';
+                var rb = $('resendOtpBtn');
+                rb.disabled = false;
+                rb.textContent = 'Resend code';
+            }
+
+            function showOtpStep(data) {
+                toggleEl($('phoneStep1'), false);
+                toggleEl($('phoneStep2'), true);
+                $('otpSentTo').textContent = 'Enter the 6-digit code sent to ' + pendingPhone + '.';
+                $('otpInput').value = '';
+                toggleEl($('devCodeHint'), false);
+                if (data && data.devCode) {
+                    $('otpInput').value = String(data.devCode);
+                    toggleEl($('devCodeHint'), true);
+                }
+                $('otpInput').focus();
+            }
+
+            function startCooldown(seconds) {
+                var btn = $('resendOtpBtn');
+                clearInterval(cdTimer);
+                var left = Math.max(1, Math.round(Number(seconds) || 60));
+                btn.disabled = true;
+                btn.textContent = 'Resend in ' + left + 's';
+                cdTimer = setInterval(function () {
+                    left--;
+                    if (left <= 0) {
+                        clearInterval(cdTimer);
+                        btn.disabled = false;
+                        btn.textContent = 'Resend code';
+                    } else {
+                        btn.textContent = 'Resend in ' + left + 's';
+                    }
+                }, 1000);
+            }
+
+            async function sendOtp(fromResend) {
+                var raw = $('phoneInput').value.replace(/[^\d+]/g, '');
+                var digits = raw.replace(/\D/g, '');
+                if (digits.length < 10) {
+                    window.toast('Enter a valid phone number.', 'warning');
+                    if (!fromResend) $('phoneInput').focus();
+                    return;
+                }
+                pendingPhone = raw;
+                var btn = fromResend ? $('resendOtpBtn') : $('sendOtpBtn');
+                setLoading(btn, true);
+                var r = await call('POST', '/auth/phone/request-otp', { phone: raw });
+                setLoading(btn, false);
+                if (fromResend) btn.textContent = 'Resend code'; // setLoading leaves text intact, but be safe after countdown
+                if (r.ok) {
+                    window.toast((r.data && r.data.message) || 'Verification code sent.', 'success');
+                    showOtpStep(r.data);
+                    startCooldown(r.data && r.data.cooldown);
+                } else if (r.data && r.data.code === 'OTP_COOLDOWN') {
+                    // A code is already in flight — let the user type it.
+                    window.toast(ERR.OTP_COOLDOWN, 'warning');
+                    if ($('phoneStep2').classList.contains('hidden')) showOtpStep(null);
+                    startCooldown(r.data && r.data.cooldown);
+                } else {
+                    window.toast(errMsg(r, 'Could not send the code.'), 'error');
+                }
+            }
+
+            async function verifyOtp() {
+                var code = $('otpInput').value.replace(/\D/g, '');
+                if (code.length !== 6) {
+                    window.toast('Enter the 6-digit code.', 'warning');
+                    $('otpInput').focus();
+                    return;
+                }
+                var btn = $('verifyOtpBtn');
+                setLoading(btn, true);
+                var r = await call('POST', '/auth/phone/verify-otp', { phone: pendingPhone, code: code });
+                setLoading(btn, false);
+                if (r.ok) {
+                    window.toast((r.data && r.data.message) || 'Phone number verified.', 'success');
+                    SEC.phone = pendingPhone;
+                    SEC.phone_verified = true;
+                    renderPhone();
+                } else {
+                    window.toast(errMsg(r, 'Verification failed.'), 'error');
+                    var c = r.data && r.data.code;
+                    if (c === 'OTP_EXPIRED' || c === 'OTP_ATTEMPTS') $('otpInput').value = '';
+                    $('otpInput').focus();
+                }
+            }
+
+            // ─── Sessions card ───────────────────────────────────────────────
+            function renderSessions(r) {
+                var list = $('sessionsList');
+                if (!r.ok) {
+                    list.innerHTML = '<p class="text-body-sm text-on-surface-variant py-2">Couldn\'t load sessions right now.</p>';
+                    return;
+                }
+                var sessions = (r.data && r.data.sessions) || [];
+                if (!sessions.length) {
+                    list.innerHTML = '<p class="text-body-sm text-on-surface-variant py-2">No active sessions.</p>';
+                    return;
+                }
+                var sorted = sessions.slice().sort(function (a, b) { return (b.current ? 1 : 0) - (a.current ? 1 : 0); });
+                list.innerHTML = sorted.map(function (s) {
+                    var chip = s.current ? CURRENT_CHIP : '';
+                    var revoke = s.current ? '' :
+                        '<button type="button" data-revoke="' + esc(String(s.id)) + '" aria-label="Sign out this session" ' +
+                        'class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-error hover:bg-error/10 border border-error/20 transition-colors">' +
+                        '<span class="material-symbols-outlined text-[18px]" aria-hidden="true">logout</span></button>';
+                    var label = s.device_label
+                        ? '<p class="text-body-sm text-on-surface-variant truncate">' + esc(s.device_label) + '</p>'
+                        : '';
+                    return '<div class="flex items-center gap-3 py-3 border-b border-outline-variant/15 last:border-0 last:pb-0 first:pt-0">' +
+                        '<span class="material-symbols-outlined text-on-surface-variant text-[22px] shrink-0" aria-hidden="true">' + deviceIcon(s.os) + '</span>' +
+                        '<div class="flex-1 min-w-0">' +
+                        '<p class="text-body-md font-medium text-on-surface flex items-center gap-2 flex-wrap">' +
+                        '<span class="truncate">' + esc(s.browser || 'Unknown browser') + ' · ' + esc(s.os || 'Unknown OS') + '</span>' + chip + '</p>' +
+                        label +
+                        '<p class="text-body-sm text-on-surface-variant/70 truncate">' +
+                        (s.ip ? esc(s.ip) + ' · ' : '') + 'Last active ' + esc(timeAgo(s.last_active || s.created_at)) + '</p>' +
+                        '</div>' + revoke + '</div>';
+                }).join('');
+            }
+
+            async function refreshSessions() {
+                renderSessions(await call('GET', '/auth/sessions'));
+            }
+
+            async function onSessionsClick(e) {
+                var btn = e.target.closest('[data-revoke]');
+                if (!btn) return;
+                var ok = await window.confirmDialog(
+                    'Sign this session out? That device will need to sign in again.',
+                    { title: 'Sign out session', danger: true, confirmText: 'Sign out' }
+                );
+                if (!ok) return;
+                setLoading(btn, true);
+                var r = await call('DELETE', '/auth/sessions/' + encodeURIComponent(btn.getAttribute('data-revoke')));
+                if (r.ok) {
+                    window.toast((r.data && r.data.message) || 'Session signed out.', 'success');
+                    refreshSessions();
+                } else {
+                    setLoading(btn, false);
+                    window.toast(errMsg(r, 'Could not sign out that session.'), 'error');
+                }
+            }
+
+            async function onLogoutAll() {
+                var ok = await window.confirmDialog(
+                    'Sign out on every device except this one?',
+                    { title: 'Sign out other devices', danger: true, confirmText: 'Sign out all' }
+                );
+                if (!ok) return;
+                var btn = $('logoutAllBtn');
+                setLoading(btn, true);
+                var r = await call('POST', '/auth/logout-all', {});
+                setLoading(btn, false);
+                if (r.ok) {
+                    var n = (r.data && r.data.revoked) || 0;
+                    window.toast(n > 0
+                        ? ('Signed out ' + n + (n === 1 ? ' other device.' : ' other devices.'))
+                        : 'No other devices were signed in.', n > 0 ? 'success' : 'info');
+                    refreshSessions();
+                } else {
+                    window.toast(errMsg(r, 'Could not sign out other devices.'), 'error');
+                }
+            }
+
+            // ─── Trusted devices card ────────────────────────────────────────
+            function renderDevices(r) {
+                var list = $('devicesList');
+                if (!r.ok) {
+                    list.innerHTML = '<p class="text-body-sm text-on-surface-variant py-2">Couldn\'t load devices right now.</p>';
+                    return;
+                }
+                var devices = (r.data && r.data.devices) || [];
+                if (!devices.length) {
+                    list.innerHTML = '<p class="text-body-sm text-on-surface-variant py-2">No trusted devices yet.</p>';
+                    return;
+                }
+                var sorted = devices.slice().sort(function (a, b) { return (b.current ? 1 : 0) - (a.current ? 1 : 0); });
+                list.innerHTML = sorted.map(function (d) {
+                    var chip = d.current ? CURRENT_CHIP : '';
+                    return '<div class="flex items-center gap-3 py-3 border-b border-outline-variant/15 last:border-0 last:pb-0 first:pt-0">' +
+                        '<span class="material-symbols-outlined text-on-surface-variant text-[22px] shrink-0" aria-hidden="true">' + deviceIcon(d.os) + '</span>' +
+                        '<div class="flex-1 min-w-0">' +
+                        '<p class="text-body-md font-medium text-on-surface flex items-center gap-2 flex-wrap">' +
+                        '<span class="truncate">' + esc(d.browser || 'Unknown browser') + ' · ' + esc(d.os || 'Unknown OS') + '</span>' + chip + '</p>' +
+                        '<p class="text-body-sm text-on-surface-variant/70 truncate">' +
+                        (d.first_ip ? 'First seen from ' + esc(d.first_ip) + ' · ' : '') +
+                        'Last seen ' + esc(timeAgo(d.last_seen || d.created_at)) + '</p>' +
+                        '</div>' +
+                        '<button type="button" data-forget="' + esc(String(d.id)) + '" aria-label="Forget this device" ' +
+                        'class="shrink-0 text-error hover:bg-error/10 border border-error/20 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">Forget</button>' +
+                        '</div>';
+                }).join('');
+            }
+
+            async function refreshDevices() {
+                renderDevices(await call('GET', '/auth/devices'));
+            }
+
+            async function onDevicesClick(e) {
+                var btn = e.target.closest('[data-forget]');
+                if (!btn) return;
+                var ok = await window.confirmDialog(
+                    'Forget this device? It may need extra verification the next time it signs in.',
+                    { title: 'Forget device', danger: true, confirmText: 'Forget' }
+                );
+                if (!ok) return;
+                setLoading(btn, true);
+                var r = await call('DELETE', '/auth/devices/' + encodeURIComponent(btn.getAttribute('data-forget')));
+                if (r.ok) {
+                    window.toast((r.data && r.data.message) || 'Device forgotten.', 'success');
+                    refreshDevices();
+                } else {
+                    setLoading(btn, false);
+                    window.toast(errMsg(r, 'Could not forget that device.'), 'error');
+                }
+            }
+
+            // ─── Recent activity card ────────────────────────────────────────
+            var EVENT_META = {
+                login: ['Signed in', 'login'],
+                logout: ['Signed out', 'logout'],
+                login_failed: ['Failed sign-in attempt', 'gpp_maybe'],
+                failed_login: ['Failed sign-in attempt', 'gpp_maybe'],
+                password_changed: ['Password changed', 'key'],
+                password_set: ['Password set', 'key'],
+                password_reset: ['Password reset', 'lock_reset'],
+                new_device: ['New device sign-in', 'devices'],
+                provider_linked: ['Google connected', 'link'],
+                provider_unlinked: ['Google disconnected', 'link_off'],
+                email_change_requested: ['Email change requested', 'mail'],
+                email_changed: ['Email changed', 'mail'],
+                email_verified: ['Email verified', 'mark_email_read'],
+                phone_verified: ['Phone verified', 'smartphone'],
+                otp_requested: ['Phone code requested', 'pin'],
+                session_revoked: ['Session signed out', 'logout'],
+                logout_all: ['Signed out other devices', 'logout'],
+                device_forgotten: ['Trusted device removed', 'devices_off']
+            };
+            function eventMeta(ev) {
+                if (EVENT_META[ev]) return EVENT_META[ev];
+                var label = ev
+                    ? (String(ev).charAt(0).toUpperCase() + String(ev).slice(1)).replace(/_/g, ' ')
+                    : 'Account activity';
+                return [label, 'history'];
+            }
+
+            function renderActivity() {
+                var list = $('activityList');
+                var events = (SEC.events || []).slice(0, 15);
+                if (!events.length) {
+                    list.innerHTML = '<p class="text-body-sm text-on-surface-variant py-2">No recent activity.</p>';
+                    return;
+                }
+                list.innerHTML = events.map(function (ev) {
+                    var meta = eventMeta(ev.event);
+                    var parts = [];
+                    if (ev.browser) parts.push(esc(ev.browser));
+                    if (ev.os) parts.push(esc(ev.os));
+                    if (ev.ip) parts.push(esc(ev.ip));
+                    parts.push(esc(timeAgo(ev.created_at)));
+                    return '<div class="flex items-start gap-3 py-2.5 border-b border-outline-variant/10 last:border-0 last:pb-0 first:pt-0">' +
+                        '<span class="w-7 h-7 rounded-full bg-surface-container-highest border border-outline-variant/25 flex items-center justify-center shrink-0 mt-0.5">' +
+                        '<span class="material-symbols-outlined text-[15px] text-on-surface-variant" aria-hidden="true">' + meta[1] + '</span></span>' +
+                        '<div class="flex-1 min-w-0">' +
+                        '<p class="text-body-md text-on-surface">' + esc(meta[0]) + '</p>' +
+                        '<p class="text-body-sm text-on-surface-variant/70 truncate">' + parts.join(' · ') + '</p>' +
+                        '</div></div>';
+                }).join('');
+            }
+
+            // ─── Wiring ──────────────────────────────────────────────────────
+            function bindEvents() {
+                $('retryBtn').addEventListener('click', loadAll);
+
+                $('pwdToggleBtn').addEventListener('click', function () { togglePwdForm(); });
+                $('formChangePassword').addEventListener('submit', onChangePassword);
+                $('formSetPassword').addEventListener('submit', onSetPassword);
+                document.querySelectorAll('[data-cancel="password"]').forEach(function (b) {
+                    b.addEventListener('click', function () { togglePwdForm(false); });
+                });
+
+                $('googleConnectBtn').addEventListener('click', function () {
+                    window.location.href = '/api/v1/auth/google?intent=link';
+                });
+                $('googleDisconnectBtn').addEventListener('click', onDisconnectGoogle);
+
+                $('emailToggleBtn').addEventListener('click', function () { toggleEmailForm(); });
+                $('formChangeEmail').addEventListener('submit', onChangeEmail);
+                document.querySelectorAll('[data-cancel="email"]').forEach(function (b) {
+                    b.addEventListener('click', function () { toggleEmailForm(false); });
+                });
+                $('resendVerifyBtn').addEventListener('click', onResendVerification);
+
+                $('phoneStartBtn').addEventListener('click', startPhoneFlow);
+                $('phoneCancel1').addEventListener('click', cancelPhoneFlow);
+                $('sendOtpBtn').addEventListener('click', function () { sendOtp(false); });
+                $('resendOtpBtn').addEventListener('click', function () { sendOtp(true); });
+                $('verifyOtpBtn').addEventListener('click', verifyOtp);
+                $('otpBackBtn').addEventListener('click', startPhoneFlow);
+                $('phoneInput').addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') { e.preventDefault(); sendOtp(false); }
+                });
+                $('otpInput').addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') { e.preventDefault(); verifyOtp(); }
+                });
+
+                $('sessionsList').addEventListener('click', onSessionsClick);
+                $('logoutAllBtn').addEventListener('click', onLogoutAll);
+                $('devicesList').addEventListener('click', onDevicesClick);
+            }
+
+            function init() {
+                handleOAuthParams();
+                bindEvents();
+                loadAll();
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    </script>
+</body>
+
+</html>

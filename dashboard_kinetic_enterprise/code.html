@@ -9,6 +9,20 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
 <script src="/assets/js/membershipEngine.js"></script>
 <script src="/assets/js/utils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -36,14 +50,18 @@
     50% { transform: scale(1.15); }
     100% { transform: scale(1); opacity: 1; }
   }
+  /* Out-of-credits modal: card scales smoothly outward from the center when shown */
+  @keyframes ocPop { from { transform: scale(.75); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  #outOfCreditsModal .oc-card { transform: scale(.75); opacity: 0; }
+  #outOfCreditsModal.oc-show .oc-card { animation: ocPop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 </style>
 </head>
-<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
+<body class="shell-locked font-body text-body-md antialiased md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
 <div id="jsb-header" data-page-title="Executive Dashboard"></div>
 
 <div id="jsb-sidebar"></div>
 
-<main class="flex-grow pt-6 pb-24 md:pb-12 px-margin-mobile md:px-margin-desktop max-w-[1440px] mx-auto w-full flex flex-col gap-lg">
+<main class="flex-1 overflow-y-auto pt-6 pb-24 md:pb-12 px-margin-mobile md:px-margin-desktop max-w-[1440px] mx-auto w-full flex flex-col gap-lg">
 
   <!-- Page Header & Actions -->
   <div class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-4">
@@ -98,7 +116,7 @@
   <!-- ═══════════════════════════════════════════════════════ -->
   <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-gutter mb-6">
     <!-- Revenue -->
-    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group">
+    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('revenue', 'Revenue & Collections')">
       <div class="absolute -right-6 -top-6 w-28 h-28 bg-secondary/5 rounded-full blur-2xl group-hover:bg-secondary/10 transition-all"></div>
       <div class="flex items-center justify-between mb-1">
         <div class="flex items-center gap-2">
@@ -116,7 +134,7 @@
       </div>
     </div>
     <!-- Membership -->
-    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group">
+    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('members', 'Membership & Growth')">
       <div class="absolute -right-6 -top-6 w-28 h-28 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all"></div>
       <div class="flex items-center justify-between mb-1">
         <div class="flex items-center gap-2">
@@ -134,7 +152,7 @@
       </div>
     </div>
     <!-- Leads -->
-    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group">
+    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('members', 'Membership & Growth')">
       <div class="absolute -right-6 -top-6 w-28 h-28 bg-tertiary/5 rounded-full blur-2xl group-hover:bg-tertiary/10 transition-all"></div>
       <div class="flex items-center justify-between mb-1">
         <div class="flex items-center gap-2">
@@ -150,7 +168,7 @@
       </div>
     </div>
     <!-- Financial Health -->
-    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group">
+    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('revenue', 'Revenue & Collections')">
       <div class="absolute -right-6 -top-6 w-28 h-28 bg-[#81c995]/5 rounded-full blur-2xl group-hover:bg-[#81c995]/10 transition-all"></div>
       <div class="flex items-center justify-between mb-1">
         <div class="flex items-center gap-2">
@@ -177,7 +195,7 @@
   <!-- ═══════════════════════════════════════════════════════ -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-6">
     <!-- Today's Checkins -->
-    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group">
+    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('attendance', 'Attendance & Checkins')">
       <div class="absolute -right-6 -top-6 w-28 h-28 bg-[#d0bcff]/5 rounded-full blur-2xl group-hover:bg-[#d0bcff]/10 transition-all"></div>
       <div class="flex items-center gap-2 mb-1">
         <span class="material-symbols-outlined text-[#d0bcff] text-[20px]" style="font-variation-settings:'FILL' 1;">how_to_reg</span>
@@ -187,7 +205,7 @@
       <p class="text-xs text-on-surface-variant mt-auto">Total verified checkins for today</p>
     </div>
     <!-- Peak Hours -->
-    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group">
+    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('attendance', 'Attendance & Checkins')">
       <div class="absolute -right-6 -top-6 w-28 h-28 bg-[#ffb95f]/5 rounded-full blur-2xl group-hover:bg-[#ffb95f]/10 transition-all"></div>
       <div class="flex items-center gap-2 mb-1">
         <span class="material-symbols-outlined text-[#ffb95f] text-[20px]" style="font-variation-settings:'FILL' 1;">schedule</span>
@@ -197,7 +215,7 @@
       <p class="text-xs text-on-surface-variant mt-auto">Most active time of the day</p>
     </div>
     <!-- Most Active Member -->
-    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group">
+    <div class="glass-card rounded-xl p-5 flex flex-col gap-3 relative overflow-hidden group kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('attendance', 'Attendance & Checkins')">
       <div class="absolute -right-6 -top-6 w-28 h-28 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all"></div>
       <div class="flex items-center gap-2 mb-1">
         <span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings:'FILL' 1;">stars</span>
@@ -211,7 +229,7 @@
   <!-- ═══════════════════════════════════════════════════════ -->
   <!-- REVENUE TREND -->
   <!-- ═══════════════════════════════════════════════════════ -->
-  <div class="glass-card rounded-xl p-6 flex flex-col">
+  <div class="glass-card rounded-xl p-6 flex flex-col kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('revenue', 'Revenue Trend & Collections')">
     <div class="flex justify-between items-center mb-4">
       <div>
         <h3 class="font-headline-md text-headline-md text-on-surface">Revenue Trend</h3>
@@ -257,7 +275,7 @@
   <!-- ═══════════════════════════════════════════════════════ -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
     <!-- Renewal Forecast -->
-    <div class="lg:col-span-7 glass-card rounded-xl p-6">
+    <div id="renewal-forecast-card" class="lg:col-span-7 glass-card rounded-xl p-6">
       <div class="flex items-center gap-2 mb-5">
         <span class="material-symbols-outlined text-[#d0bcff]" style="font-variation-settings:'FILL' 1;">event_upcoming</span>
         <h3 class="font-headline-md text-headline-md text-on-surface">Renewal Forecast</h3>
@@ -296,7 +314,7 @@
     </div>
 
     <!-- Member Segmentation Donut -->
-    <div class="lg:col-span-5 glass-card rounded-xl p-6 flex flex-col">
+    <div class="lg:col-span-5 glass-card rounded-xl p-6 flex flex-col kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('members', 'Member Segmentation')">
       <div class="flex items-center gap-2 mb-5">
         <span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL' 1;">donut_large</span>
         <h3 class="font-headline-md text-headline-md text-on-surface">Member Segmentation</h3>
@@ -318,7 +336,7 @@
   <!-- ═══════════════════════════════════════════════════════ -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
     <!-- Churn Analytics -->
-    <div class="lg:col-span-5 glass-card rounded-xl p-6">
+    <div class="lg:col-span-5 glass-card rounded-xl p-6 kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('members', 'Churn & Retention Analytics')">
       <div class="flex items-center gap-2 mb-5">
         <span class="material-symbols-outlined text-error" style="font-variation-settings:'FILL' 1;">trending_down</span>
         <h3 class="font-headline-md text-headline-md text-on-surface">Churn Analytics</h3>
@@ -794,10 +812,22 @@ async function loadRevenueTrend() {
     if (!res.ok) throw new Error('Failed to fetch revenue trend');
     const data = await res.json();
 
-    document.getElementById('projected-badge').querySelector('span:last-child').innerText = 'Projected: ' + fmt(data.projected);
-
-    // Intel cards
-    document.getElementById('intel-forecast').innerText = fmt(data.projected);
+    // [ANALYTICS] Only surface a forward projection when the server confirms
+    // enough history (>=6 months). With 2-3 months the compounding forecast is
+    // meaningless, so the badge + projection point are suppressed entirely.
+    const showProjection = data.hasEnoughHistory !== false && data.projected != null;
+    const projBadge = document.getElementById('projected-badge');
+    const intelForecast = document.getElementById('intel-forecast');
+    if (showProjection) {
+      if (projBadge) {
+        projBadge.classList.remove('hidden');
+        projBadge.querySelector('span:last-child').innerText = 'Projected: ' + fmt(data.projected);
+      }
+      if (intelForecast) intelForecast.innerText = fmt(data.projected);
+    } else {
+      if (projBadge) projBadge.classList.add('hidden');
+      if (intelForecast) intelForecast.innerText = '—';
+    }
 
     const revCanvas = document.getElementById('chart-revenue-trend');
 
@@ -812,9 +842,11 @@ async function loadRevenueTrend() {
       }
     }
 
-    // Add projection point
-    labels.push('Next');
-    values.push(data.projected);
+    // Add projection point only when a valid projection exists.
+    if (showProjection) {
+      labels.push('Next');
+      values.push(data.projected);
+    }
 
     buildWhenVisible(revCanvas, () => {
       const skeleton = document.getElementById('chart-revenue-skeleton');
@@ -831,11 +863,11 @@ async function loadRevenueTrend() {
           backgroundColor: 'rgba(181,196,255,0.08)',
           fill: true,
           tension: 0.4,
-          pointRadius: values.map((_, i) => i === values.length - 1 ? 6 : 4),
-          pointBackgroundColor: values.map((_, i) => i === values.length - 1 ? '#81c995' : '#b5c4ff'),
-          pointBorderColor: values.map((_, i) => i === values.length - 1 ? '#81c995' : '#b5c4ff'),
+          pointRadius: values.map((_, i) => (showProjection && i === values.length - 1) ? 6 : 4),
+          pointBackgroundColor: values.map((_, i) => (showProjection && i === values.length - 1) ? '#81c995' : '#b5c4ff'),
+          pointBorderColor: values.map((_, i) => (showProjection && i === values.length - 1) ? '#81c995' : '#b5c4ff'),
           borderWidth: 2.5,
-          segment: { borderDash: ctx2 => ctx2.p1DataIndex === values.length - 2 ? [6, 4] : undefined }
+          segment: { borderDash: ctx2 => (showProjection && ctx2.p1DataIndex === values.length - 2) ? [6, 4] : undefined }
         }]
       },
       options: {
@@ -860,26 +892,63 @@ async function loadRevenueTrend() {
 
 // 3. Renewal Forecast
 async function loadRenewalForecast() {
+  const card = document.getElementById('renewal-forecast-card');
+  // Clear any prior error banner on every (re)attempt — this is the "reset the
+  // error variable" step before the fetch lifecycle re-runs.
+  const priorBanner = card && card.querySelector('.rf-error-banner');
+  if (priorBanner) priorBanner.remove();
+
   try {
     const res = await window.api.fetch('/analytics/renewal-forecast');
-    const data = await res.json();
+    // A non-2xx is a failure, not data — bail to the catch so we never map over
+    // an error body and never leave skeletons up on a 4xx/5xx.
+    if (!res.ok) throw new Error('renewal-forecast HTTP ' + res.status);
+    const data = (await res.json()) || {};
 
-    document.getElementById('rf-7-count').innerText = num(data.expiring7?.count);
-    document.getElementById('rf-7-revenue').innerText = 'Revenue at risk: ' + fmt(data.expiring7.revenueAtRisk);
-    document.getElementById('rf-30-count').innerText = num(data.expiring30?.count);
-    document.getElementById('rf-30-revenue').innerText = 'Revenue at risk: ' + fmt(data.expiring30.revenueAtRisk);
-    document.getElementById('rf-60-count').innerText = num(data.expiring60?.count);
-    document.getElementById('rf-60-revenue').innerText = 'Revenue at risk: ' + fmt(data.expiring60.revenueAtRisk);
-    document.getElementById('rf-expected').innerText = txt(data.expiring30?.expectedRenewals);
-    document.getElementById('rf-lost').innerText = txt(data.expiring30?.expectedLost);
-    document.getElementById('rf-rate').innerText = pct(data.historicalRenewalRate);
+    // Every bucket is optional: a missing node renders 0 / -- rather than
+    // throwing halfway and stranding the remaining skeletons.
+    const e7  = data.expiring7  || {};
+    const e30 = data.expiring30 || {};
+    const e60 = data.expiring60 || {};
 
-    // Intel
-    document.getElementById('intel-expiring').innerText = data.expiring30.count;
-    document.getElementById('intel-lost').innerText = data.expiring30.expectedLost;
+    document.getElementById('rf-7-count').innerText   = num(e7.count);
+    document.getElementById('rf-7-revenue').innerText  = 'Revenue at risk: ' + fmt(e7.revenueAtRisk);
+    document.getElementById('rf-30-count').innerText  = num(e30.count);
+    document.getElementById('rf-30-revenue').innerText = 'Revenue at risk: ' + fmt(e30.revenueAtRisk);
+    document.getElementById('rf-60-count').innerText  = num(e60.count);
+    document.getElementById('rf-60-revenue').innerText = 'Revenue at risk: ' + fmt(e60.revenueAtRisk);
+    document.getElementById('rf-expected').innerText  = txt(e30.expectedRenewals);
+    document.getElementById('rf-lost').innerText      = txt(e30.expectedLost);
+    document.getElementById('rf-rate').innerText      = pct(data.historicalRenewalRate);
+
+    // Intel cards
+    document.getElementById('intel-expiring').innerText = num(e30.count);
+    document.getElementById('intel-lost').innerText     = num(e30.expectedLost);
 
     window._renewalData = data;
-  } catch (err) { console.error('Renewal forecast error:', err); }
+  } catch (err) {
+    console.error('Renewal forecast error:', err);
+    // Resiliency UX: never leave this card's skeletons spinning. Collapse them
+    // to a neutral placeholder and mount an inline error view with an explicit,
+    // self-contained retry that re-triggers the fetch lifecycle.
+    if (!card) return;
+    card.querySelectorAll('.skeleton').forEach(s => { s.classList.remove('skeleton'); s.innerText = '--'; });
+    if (card.querySelector('.rf-error-banner')) return;
+    const banner = document.createElement('div');
+    banner.className = 'rf-error-banner mt-4 flex items-center justify-between gap-3 rounded-lg border border-error/20 bg-error/10 px-3 py-2 text-xs text-error';
+    banner.innerHTML = `
+      <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">error</span>Couldn't load renewal forecast.</span>
+      <button type="button" class="rf-retry-btn font-bold underline hover:no-underline">Retry</button>`;
+    banner.querySelector('.rf-retry-btn').addEventListener('click', () => {
+      // Reset to the loading state, then safely re-trigger the fetch.
+      ['rf-7-count', 'rf-30-count', 'rf-60-count'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '<span class="skeleton h-8 w-16 inline-block"></span>';
+      });
+      loadRenewalForecast();
+    });
+    card.appendChild(banner);
+  }
 }
 
 // 4. Churn Analytics
@@ -1124,6 +1193,84 @@ function trendBadge(value, label, isPercent = false, isCurrency = false) {
   </div>
 </div>
 
+<!-- Out of WhatsApp Credits Modal -->
+<div id="outOfCreditsModal" class="fixed inset-0 z-[60] hidden items-center justify-center">
+  <!-- Backdrop: blurs the whole dashboard behind the modal + dark tint -->
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-md" onclick="window.hideOutOfCreditsModal()"></div>
+  <!-- Card: scales outward from center via .oc-show animation -->
+  <div class="oc-card glass-card relative w-[90%] max-w-md rounded-2xl border border-white/20 shadow-[0_20px_60px_rgba(0,0,0,0.8)] p-7 m-4 text-center">
+    <div class="w-16 h-16 rounded-2xl bg-error/10 border border-error/20 text-error flex items-center justify-center mx-auto mb-5">
+      <span class="material-symbols-outlined text-[34px]" style="font-variation-settings: 'FILL' 1;">sms_failed</span>
+    </div>
+    <h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">You're out of WhatsApp credits</h3>
+    <p class="font-body-md text-body-md text-on-surface-variant mb-6">Your automated WhatsApp messages — renewal reminders, receipts, and follow-ups — are paused until you top up your wallet or upgrade your plan.</p>
+    <div class="flex flex-col gap-3">
+      <button onclick="window.location.href='/settings#billing'" class="w-full bg-primary hover:bg-primary/90 text-on-primary px-6 py-3 rounded-xl font-label-lg text-label-lg transition-colors flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+        Add Wallet Credits
+      </button>
+      <button onclick="window.location.href='/settings#billing'" class="w-full bg-surface-container-high hover:bg-surface-variant text-on-surface px-6 py-3 rounded-xl font-label-lg text-label-lg transition-colors border border-white/10 flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined text-[20px]">upgrade</span>
+        Upgrade Plan
+      </button>
+    </div>
+    <button onclick="window.hideOutOfCreditsModal(true)" class="mt-5 text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors">Dismiss</button>
+  </div>
+</div>
+
+<script>
+// ─── Out of WhatsApp Credits Modal ──────────────────────
+window.showOutOfCreditsModal = function () {
+  const m = document.getElementById('outOfCreditsModal');
+  if (!m) return;
+  m.classList.remove('hidden');
+  m.classList.add('flex');
+  // Force reflow so the animation restarts cleanly on repeated shows
+  void m.offsetWidth;
+  m.classList.add('oc-show');
+};
+
+window.hideOutOfCreditsModal = function (dismiss) {
+  const m = document.getElementById('outOfCreditsModal');
+  if (!m) return;
+  m.classList.remove('oc-show');
+  m.classList.remove('flex');
+  m.classList.add('hidden');
+  // "Dismiss" suppresses the modal for the rest of this browser session
+  if (dismiss === true) {
+    try { sessionStorage.setItem('ooc_dismissed', '1'); } catch (e) {}
+  }
+};
+
+async function checkWhatsAppCredits() {
+  try {
+    if (sessionStorage.getItem('ooc_dismissed')) return;
+    const data = await window.api.get('/subscription/status');
+    if (!data) return;
+
+    const plan = String(data.plan || '').toLowerCase();
+    // Basic plan has 0 allowance by design and never sends WhatsApp — don't nag it.
+    if (plan === 'basic') return;
+
+    let remaining;
+    if (data.whatsapp && data.whatsapp.remaining != null) {
+      remaining = Number(data.whatsapp.remaining);
+    } else {
+      const limit = (data.usage && data.usage.whatsapp && data.usage.whatsapp.limit) || 0;
+      const current = (data.usage && data.usage.whatsapp && data.usage.whatsapp.current) || 0;
+      remaining = limit - current;
+    }
+
+    if (remaining <= 0) window.showOutOfCreditsModal();
+  } catch (e) {
+    // Never block the dashboard if the status check fails.
+    console.error('WhatsApp credit check failed', e);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', checkWhatsAppCredits);
+</script>
+
 <script>
 async function loadAlerts() {
   try {
@@ -1281,7 +1428,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const maxRev = Math.max(1, ...t.map(m => Math.abs(m.revenue || 0)));
       html += '<h4 class="font-label-md uppercase tracking-wider text-on-surface-variant mb-1">Monthly Trend</h4>';
       html += t.length ? t.map(m => barRow(m.label || m.month, m.revenue, maxRev, '#81c995', money(m.revenue))).join('') : empty;
-      if (trend) html += `<p class="text-xs text-on-surface-variant mt-1">Projected next month: <span class="text-on-surface font-medium">${money(trend.projected)}</span> · Avg growth ${esc(trend.avgGrowthRate)}%</p>`;
+      // Only show the projection line with >=6 months of real history; the
+      // compounding avg-growth figure is noise below that (guarded server-side
+      // via hasEnoughHistory, re-checked here on trend length).
+      if (trend && trend.hasEnoughHistory !== false && trend.projected != null && t.length >= 6) {
+        html += `<p class="text-xs text-on-surface-variant mt-1">Projected next month: <span class="text-on-surface font-medium">${money(trend.projected)}</span> · Avg growth ${esc(trend.avgGrowthRate)}%</p>`;
+      }
       if (fin) {
         const pm = fin.paymentMethods;
         const entries = Array.isArray(pm) ? pm.map(x => [x.method || x.label, x.total != null ? x.total : x.amount]) : (pm ? Object.entries(pm) : []);

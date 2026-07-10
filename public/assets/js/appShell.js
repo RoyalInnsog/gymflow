@@ -354,6 +354,79 @@
   };
 
   /* =================================================================
+   * [ORG] Organization & Identity Graph — pending banner
+   * A dismissible strip below the header prompting the user to review
+   * pending staff invitations / member-profile matches on /join. Entirely
+   * additive; never throws into the host page.
+   * ================================================================= */
+  var OrgBanner = {
+    ID: 'gf-org-banner',
+    maybeShow: async function () {
+      try {
+        // Don't show on the focused identity flows themselves. NOTE: gate on the
+        // path, not window.__gymAppShellInjected / __gfOnboarding — those are the
+        // per-script init guards utils.js / onboarding.js set on EVERY page, so
+        // they are always truthy here and can't indicate shell suppression.
+        var path = (window.location.pathname || '');
+        if (path === '/join' || path === '/select-role') return;
+        // Guard against double-injection (SPA re-entry / re-boot).
+        if (document.getElementById(this.ID)) return;
+
+        var ctx = await window.api.get('/org/context');
+        if (!ctx) return;
+        var invites = (ctx.pending_invitations && ctx.pending_invitations.length) || 0;
+        var claims = (ctx.pending_claims && ctx.pending_claims.length) || 0;
+        var total = invites + claims;
+        if (total <= 0) return;
+
+        this.render(total, invites, claims);
+      } catch (e) { /* offline / no session — banner simply absent */ }
+    },
+    render: function (total, invites, claims) {
+      if (document.getElementById(this.ID)) return;
+      // Wording: prefer the dominant kind but stay accurate for the mix.
+      var noun;
+      if (invites > 0 && claims === 0) noun = total === 1 ? 'invitation' : 'invitations';
+      else if (claims > 0 && invites === 0) noun = total === 1 ? 'member match' : 'member matches';
+      else noun = 'invitation(s) & match(es)';
+      var msg = 'You have ' + total + ' pending ' + noun + '.';
+
+      var bar = document.createElement('div');
+      bar.id = this.ID;
+      bar.setAttribute('role', 'status');
+      // Fixed below the header (header is ~64px), z-index 9450 — under the
+      // subscription badge (9500) so it never overlaps. Full-width on mobile;
+      // offset for the 280px sidebar on desktop, matching the badge behaviour.
+      bar.style.cssText =
+        'position:fixed;top:64px;left:0;right:0;z-index:9450;' +
+        'display:flex;align-items:center;gap:10px;' +
+        'padding:8px 14px;' +
+        'background:rgba(24,26,34,.92);backdrop-filter:blur(10px);' +
+        'border-bottom:1px solid rgba(140,170,255,.35);' +
+        'box-shadow:0 6px 20px rgba(0,0,0,.28);font-family:inherit;';
+      bar.innerHTML =
+        '<span class="material-symbols-outlined" style="font-size:20px;color:#8caaff;flex-shrink:0" aria-hidden="true">group_add</span>' +
+        '<span style="flex:1;min-width:0;font-size:13px;color:#dfe3ee;line-height:1.35">' + esc(msg) + '</span>' +
+        '<a href="/join" style="flex-shrink:0;text-decoration:none;font-size:12px;font-weight:700;color:#fff;background:#5b7cff;padding:6px 12px;border-radius:8px">Review</a>' +
+        '<button type="button" data-org-dismiss aria-label="Dismiss" style="flex-shrink:0;background:none;border:none;color:#8b93a7;cursor:pointer;font-size:20px;line-height:1;padding:2px 4px">&times;</button>';
+
+      // Desktop: clear the fixed 280px sidebar like #gf-sub-badge does.
+      var mq = window.matchMedia('(min-width:768px)');
+      function applyOffset() { bar.style.left = mq.matches ? '280px' : '0'; }
+      applyOffset();
+      if (mq.addEventListener) mq.addEventListener('change', applyOffset);
+
+      var self = this;
+      bar.querySelector('[data-org-dismiss]').addEventListener('click', function () {
+        var el = document.getElementById(self.ID);
+        if (el) el.remove();
+      });
+
+      document.body.appendChild(bar);
+    }
+  };
+
+  /* =================================================================
    * Bootstrap
    * ================================================================= */
   function boot() {
@@ -378,7 +451,546 @@
         }
       } catch (e) { /* no session / offline — skip tour */ }
     })();
+
+    // [ORG] Organization & Identity Graph — pending invitation / member-match
+    // banner. Additive and fully self-contained: it must never break the shell,
+    // so it runs after (and independently of) the session/tour logic above and
+    // swallows every error.
+    OrgBanner.maybeShow();
   }
+
+
+  /* =================================================================
+   * FEATURE 6 — Dynamic Interactive Analytics Drill-down Modal
+   * ================================================================= */
+  window.openAnalyticsDrilldown = async function (type, title, clickedSegment) {
+    // 1. Create Modal Container if not exists
+    var modal = document.getElementById('analyticsDrilldownModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'analyticsDrilldownModal';
+      // Backdrop wrapper — starts hidden; opacity & backdrop-blur animate independently
+      modal.className = 'fixed inset-0 z-[9999] hidden';
+      modal.innerHTML =
+        // Backdrop layer (fades in/out independently)
+        '<div class="drilldown-backdrop absolute inset-0 bg-black/60 backdrop-blur-md opacity-0 transition-opacity duration-300 ease-out"></div>' +
+        // Centering container — flex layout, does not animate
+        '<div class="relative z-10 flex items-center justify-center w-full h-full p-4" id="drilldownCenterWrap">' +
+        // Content card — scales/translates/fades as a unit
+        '<div class="drilldown-card glass-panel w-full max-w-4xl rounded-2xl border border-white/10 shadow-2xl p-6 overflow-y-auto max-h-[90vh] flex flex-col gap-6' +
+        ' opacity-0 scale-95 translate-y-4 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]">' +
+        '  <!-- Header -->' +
+        '  <div class="flex justify-between items-start border-b border-white/5 pb-4">' +
+        '    <div>' +
+        '      <h3 id="drilldownTitle" class="font-headline-lg text-headline-lg text-on-surface">Analytics Detailed View</h3>' +
+        '      <p id="drilldownSubtitle" class="font-body-md text-body-md text-on-surface-variant mt-1">Deep-dive business intelligence metrics</p>' +
+        '    </div>' +
+        '    <button id="closeDrilldownBtn" class="text-on-surface-variant hover:text-on-surface p-1.5 rounded-lg hover:bg-white/5 transition-colors">' +
+        '      <span class="material-symbols-outlined">close</span>' +
+        '    </button>' +
+        '  </div>' +
+        '  <!-- Filter & Actions -->' +
+        '  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-container-low p-4 rounded-xl border border-white/5">' +
+        '    <div class="flex items-center gap-2">' +
+        '      <span class="material-symbols-outlined text-on-surface-variant text-sm">filter_alt</span>' +
+        '      <select id="drilldownTimeRange" class="bg-surface-container border border-outline-variant px-3 py-1.5 rounded-lg font-label-md text-label-md text-on-background focus:outline-none focus:ring-1 focus:ring-primary">' +
+        '        <option value="30">Last 30 Days</option>' +
+        '        <option value="7">Last 7 Days</option>' +
+        '        <option value="90">Last 90 Days</option>' +
+        '      </select>' +
+        '    </div>' +
+        '    <div class="flex items-center gap-2">' +
+        '      <button id="drilldownExportBtn" class="bg-primary/10 border border-primary text-primary px-4 py-2 rounded-lg font-label-md text-label-md hover:bg-primary/20 transition-colors flex items-center gap-2">' +
+        '        <span class="material-symbols-outlined text-[18px]">download</span> Export CSV' +
+        '      </button>' +
+        '    </div>' +
+        '  </div>' +
+        '  <!-- Summary Grid -->' +
+        '  <div id="drilldownSummaryGrid" class="grid grid-cols-1 sm:grid-cols-4 gap-4"></div>' +
+        '  <!-- Chart & Insights -->' +
+        '  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">' +
+        '    <div class="lg:col-span-2 bg-surface-container-low p-4 rounded-xl border border-white/5 flex flex-col gap-4">' +
+        '      <div class="flex items-center justify-between">' +
+        '        <h4 id="drilldownChartTitle" class="font-title-md text-on-surface font-semibold">Breakdown</h4>' +
+        '      </div>' +
+        '      <div class="h-80 relative flex items-center justify-center">' +
+        '        <canvas id="drilldownMainChart"></canvas>' +
+        '        <div id="drilldownChartLoading" class="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-10 rounded-xl">' +
+        '          <span class="material-symbols-outlined animate-spin text-primary text-5xl">progress_activity</span>' +
+        '        </div>' +
+        '        <div id="drilldownChartEmpty" class="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-surface/30 backdrop-blur-sm hidden z-10">' +
+        '          <span class="material-symbols-outlined text-primary text-4xl mb-2">analytics</span>' +
+        '          <h5 class="font-title-md text-on-surface font-semibold mb-1">No data available</h5>' +
+        '          <p class="text-on-surface-variant text-xs">Try selecting a different date range.</p>' +
+        '        </div>' +
+        '      </div>' +
+        '    </div>' +
+        '    <div class="bg-surface-container-low p-4 rounded-xl border border-white/5 flex flex-col gap-4">' +
+        '      <h4 class="font-title-md text-on-surface font-semibold flex items-center gap-2">' +
+        '        <span class="material-symbols-outlined text-secondary">insights</span> Key Insights' +
+        '      </h4>' +
+        '      <ul id="drilldownInsightsList" class="space-y-3 text-sm text-on-surface-variant flex-1 overflow-y-auto max-h-[300px]"></ul>' +
+        '    </div>' +
+        '  </div>' +
+        '  <!-- Table area -->' +
+        '  <div id="drilldownTableContainer" class="hidden flex flex-col gap-4">' +
+        '    <h4 id="drilldownTableTitle" class="font-title-md text-on-surface font-semibold">Breakdown Data</h4>' +
+        '    <div class="overflow-x-auto bg-surface-container-low rounded-xl border border-white/5">' +
+        '      <table class="w-full text-left border-collapse text-sm">' +
+        '        <thead id="drilldownTableHeader" class="border-b border-white/10 text-on-surface-variant font-medium bg-surface-container-high">' +
+        '        </thead>' +
+        '        <tbody id="drilldownTableBody" class="divide-y divide-white/5 text-on-surface">' +
+        '        </tbody>' +
+        '      </table>' +
+        '    </div>' +
+        '  </div>' +
+        '</div>' +
+        '</div>';
+      document.body.appendChild(modal);
+
+      // ─── Close handler (shared by button, backdrop click, Escape) ───
+      var backdrop = modal.querySelector('.drilldown-backdrop');
+      var card     = modal.querySelector('.drilldown-card');
+      var centerWrap = document.getElementById('drilldownCenterWrap');
+
+      function closeDrilldown() {
+        // Phase 1 — animate out
+        backdrop.classList.add('opacity-0');
+        card.classList.add('opacity-0', 'scale-95', 'translate-y-4');
+        card.classList.remove('opacity-100', 'scale-100', 'translate-y-0');
+        // Phase 2 — hide after transition completes
+        var onEnd = function () {
+          card.removeEventListener('transitionend', onEnd);
+          modal.classList.add('hidden');
+        };
+        card.addEventListener('transitionend', onEnd);
+        // Safety fallback if transitionend doesn't fire
+        setTimeout(function () { modal.classList.add('hidden'); }, 350);
+      }
+
+      document.getElementById('closeDrilldownBtn').onclick = closeDrilldown;
+
+      // Click outside the card to close
+      centerWrap.addEventListener('click', function (e) {
+        if (e.target === centerWrap) closeDrilldown();
+      });
+
+      // Escape key to close
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+          closeDrilldown();
+        }
+      });
+    }
+
+    // 2. Open Modal — two-phase animation via rAF
+    var backdrop = modal.querySelector('.drilldown-backdrop');
+    var card     = modal.querySelector('.drilldown-card');
+
+    // Reset to initial hidden state
+    backdrop.classList.add('opacity-0');
+    card.classList.add('opacity-0', 'scale-95', 'translate-y-4');
+    card.classList.remove('opacity-100', 'scale-100', 'translate-y-0');
+
+    // Unhide the wrapper (no visual yet — both layers are at opacity-0)
+    modal.classList.remove('hidden');
+
+    // Next frame: trigger the transitions
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        // Backdrop fades in
+        backdrop.classList.remove('opacity-0');
+        // Card pops up with spring easing (slight delay for depth effect)
+        card.classList.remove('opacity-0', 'scale-95', 'translate-y-4');
+        card.classList.add('opacity-100', 'scale-100', 'translate-y-0');
+      });
+    });
+
+    document.getElementById('drilldownTitle').innerText = title;
+    var loading = document.getElementById('drilldownChartLoading');
+    var empty = document.getElementById('drilldownChartEmpty');
+    var grid = document.getElementById('drilldownSummaryGrid');
+    var insightsList = document.getElementById('drilldownInsightsList');
+    var tableContainer = document.getElementById('drilldownTableContainer');
+    var tableHeader = document.getElementById('drilldownTableHeader');
+    var tableBody = document.getElementById('drilldownTableBody');
+    var tableTitle = document.getElementById('drilldownTableTitle');
+
+    loading.classList.remove('hidden');
+    empty.classList.add('hidden');
+    tableContainer.classList.add('hidden');
+    grid.innerHTML = '';
+    insightsList.innerHTML = '';
+
+    // 3. Lazy Load Chart.js CDN if not globally loaded
+    if (!window.Chart) {
+      await new Promise(function (resolve) {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        s.onload = resolve;
+        document.head.appendChild(s);
+      });
+    }
+
+    // 4. Fetch detailed statistics
+    var data = null;
+    try {
+      data = await window.api.get('/analytics/drilldown/' + type);
+    } catch (e) {
+      console.error('Failed to load drilldown data:', e);
+      loading.classList.add('hidden');
+      empty.classList.remove('hidden');
+      empty.querySelector('h5').innerText = 'Connection Error';
+      empty.querySelector('p').innerText = 'Could not fetch data from the server. Check your network.';
+      return;
+    }
+
+    loading.classList.add('hidden');
+
+    if (!data) {
+      empty.classList.remove('hidden');
+      return;
+    }
+
+    // Setup Export Button Handler
+    var exportBtn = document.getElementById('drilldownExportBtn');
+    exportBtn.onclick = function () {
+      var csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += "Metric,Value\r\n";
+      Object.keys(data).forEach(function (key) {
+        if (Array.isArray(data[key])) {
+          data[key].forEach(function (row) {
+            csvContent += Object.keys(row).map(function (k) { return k + ':' + row[k]; }).join(",") + "\r\n";
+          });
+        }
+      });
+      var encodedUri = encodeURI(csvContent);
+      var link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", type + "_drilldown_report.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
+    function fmt(val) {
+      return '₹' + Number(val || 0).toLocaleString('en-IN');
+    }
+
+    if (window._drilldownChart) {
+      window._drilldownChart.destroy();
+    }
+
+    var chartCanvas = document.getElementById('drilldownMainChart');
+    var chartCtx = chartCanvas.getContext('2d');
+    var chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, labels: { color: '#b3b3b3' } }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#b3b3b3' } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#b3b3b3' } }
+      },
+      onHover: function (event, chartElement) {
+        event.native.target.style.cursor = chartElement.length ? 'pointer' : 'default';
+      }
+    };
+
+    if (type === 'revenue') {
+      var dailyData = data.daily || [];
+      var methodData = data.paymentMethods || [];
+      var topPaying = data.topPaying || [];
+      var dues = data.outstandingDues || [];
+
+      var totalRev = dailyData.reduce(function (acc, curr) { return acc + (curr.amount || 0); }, 0);
+      var upiAmt = (methodData.find(function (m) { return m.label.toLowerCase() === 'upi'; }) || {}).amount || 0;
+      var cashAmt = (methodData.find(function (m) { return m.label.toLowerCase() === 'cash'; }) || {}).amount || 0;
+      var dueAmt = dues.reduce(function (acc, curr) { return acc + (curr.total_due || 0); }, 0);
+
+      grid.innerHTML = 
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">30D Revenue</span>' +
+        '  <span class="text-xl font-bold text-secondary">' + fmt(totalRev) + '</span>' +
+        '</div>' +
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">UPI Collection</span>' +
+        '  <span class="text-xl font-bold text-[#81c995]">' + fmt(upiAmt) + '</span>' +
+        '</div>' +
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Cash Collection</span>' +
+        '  <span class="text-xl font-bold text-[#ffb95f]">' + fmt(cashAmt) + '</span>' +
+        '</div>' +
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Outstanding Dues</span>' +
+        '  <span class="text-xl font-bold text-error">' + fmt(dueAmt) + '</span>' +
+        '</div>';
+
+      if (dailyData.length === 0) {
+        empty.classList.remove('hidden');
+      } else {
+        window._drilldownChart = new Chart(chartCtx, {
+          type: 'line',
+          data: {
+            labels: dailyData.map(function (d) { return d.date.substring(5); }),
+            datasets: [{
+              label: 'Daily Collection',
+              data: dailyData.map(function (d) { return d.amount; }),
+              borderColor: '#81c995',
+              backgroundColor: 'rgba(129,201,149,0.1)',
+              fill: true,
+              tension: 0.3
+            }]
+          },
+          options: chartOptions
+        });
+      }
+
+      var upiPct = totalRev > 0 ? Math.round((upiAmt / totalRev) * 100) : 0;
+      insightsList.innerHTML = 
+        '<li class="flex gap-2"><span class="material-symbols-outlined text-[#81c995] text-[18px]">check_circle</span> UPI is the most popular payment channel, driving ' + upiPct + '% of total transactions.</li>' +
+        '<li class="flex gap-2"><span class="material-symbols-outlined text-[#ffb95f] text-[18px]">info</span> Unpaid invoices have accumulated ' + fmt(dueAmt) + ' in outstanding dues.</li>' +
+        '<li class="flex gap-2"><span class="material-symbols-outlined text-[#d0bcff] text-[18px]">trending_up</span> Rolling revenue indicates steady MoM growth with high customer conversion.</li>';
+
+      tableContainer.classList.remove('hidden');
+      tableTitle.innerText = "Outstanding Dues List";
+      tableHeader.innerHTML = '<tr class="text-on-surface-variant font-medium"><th class="py-2 px-4">Member Name</th><th class="py-2 px-4">Outstanding Due</th></tr>';
+      tableBody.innerHTML = dues.map(function (d) { 
+        return '<tr><td class="py-2 px-4 font-semibold">' + esc(d.name) + '</td><td class="py-2 px-4 text-error font-bold">' + fmt(d.total_due) + '</td></tr>';
+      }).join('') || '<tr><td colspan="2" class="py-4 text-center text-on-surface-variant">No outstanding dues.</td></tr>';
+
+    } else if (type === 'members') {
+      var joins = data.dailyJoins || [];
+      var genders = data.genders || [];
+      var plans = data.plans || [];
+      var ageGroups = data.ageGroups || [];
+      var expired = data.expiredList || [];
+
+      var totalJoins = joins.reduce(function (acc, curr) { return acc + (curr.count || 0); }, 0);
+      var maleCount = (genders.find(function (g) { return g.label.toLowerCase() === 'male'; }) || {}).count || 0;
+      var femaleCount = (genders.find(function (g) { return g.label.toLowerCase() === 'female'; }) || {}).count || 0;
+      var activeWithPlan = plans.reduce(function (acc, curr) { return acc + (curr.label !== 'No Active Plan' ? curr.count : 0); }, 0);
+
+      grid.innerHTML = 
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">30D New Joins</span>' +
+        '  <span class="text-xl font-bold text-primary">' + totalJoins + '</span>' +
+        '</div>' +
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Active members</span>' +
+        '  <span class="text-xl font-bold text-secondary">' + activeWithPlan + '</span>' +
+        '</div>' +
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Male Members</span>' +
+        '  <span class="text-xl font-bold text-[#ffb95f]">' + maleCount + '</span>' +
+        '</div>' +
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Female Members</span>' +
+        '  <span class="text-xl font-bold text-[#d0bcff]">' + femaleCount + '</span>' +
+        '</div>';
+
+      if (plans.length === 0) {
+        empty.classList.remove('hidden');
+      } else {
+        window._drilldownChart = new Chart(chartCtx, {
+          type: 'doughnut',
+          data: {
+            labels: plans.map(function (p) { return p.label; }),
+            datasets: [{
+              data: plans.map(function (p) { return p.count; }),
+              backgroundColor: ['#81c995', '#d0bcff', '#ffb95f', '#ff8a80']
+            }]
+          },
+          options: chartOptions
+        });
+      }
+
+      insightsList.innerHTML = 
+        '<li class="flex gap-2"><span class="material-symbols-outlined text-primary text-[18px]">group</span> Roster split stands at ' + maleCount + ' male and ' + femaleCount + ' female members.</li>' +
+        '<li class="flex gap-2"><span class="material-symbols-outlined text-[#81c995] text-[18px]">check_circle</span> Active plans show solid subscriptions.</li>' +
+        '<li class="flex gap-2"><span class="material-symbols-outlined text-error text-[18px]">person_off</span> Expired members list contains ' + expired.length + ' accounts waiting for billing follow-up.</li>';
+
+      tableContainer.classList.remove('hidden');
+      tableTitle.innerText = "Recent Expired Members";
+      tableHeader.innerHTML = '<tr class="text-on-surface-variant font-medium"><th class="py-2 px-4">Member Name</th><th class="py-2 px-4">Expired Date</th></tr>';
+      tableBody.innerHTML = expired.map(function (e) { 
+        return '<tr><td class="py-2 px-4 font-semibold">' + esc(e.name) + '</td><td class="py-2 px-4 text-on-surface-variant">' + esc(e.date) + '</td></tr>';
+      }).join('') || '<tr><td colspan="2" class="py-4 text-center text-on-surface-variant">No recently expired members.</td></tr>';
+
+    } else if (type === 'finance') {
+      var txs = data.transactions || [];
+      var pends = data.pending || [];
+      var colls = data.collectionsByPlan || [];
+
+      var totalCollected = txs.reduce(function (acc, curr) { return acc + (curr.total_amount || 0); }, 0);
+      var totalPending = pends.reduce(function (acc, curr) { return acc + (curr.total_amount || 0); }, 0);
+      var cardCount = txs.filter(function (t) { return (t.payment_method || '').toLowerCase() === 'card'; }).length;
+
+      grid.innerHTML = 
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Total Received</span>' +
+        '  <span class="text-xl font-bold text-secondary">' + fmt(totalCollected) + '</span>' +
+        '</div>' +
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Pending Dues</span>' +
+        '  <span class="text-xl font-bold text-error">' + fmt(totalPending) + '</span>' +
+        '</div>' +
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Card Transactions</span>' +
+        '  <span class="text-xl font-bold text-primary">' + cardCount + '</span>' +
+        '</div>' +
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Unpaid Count</span>' +
+        '  <span class="text-xl font-bold text-[#ffb95f]">' + pends.length + '</span>' +
+        '</div>';
+
+      if (colls.length === 0) {
+        empty.classList.remove('hidden');
+      } else {
+        window._drilldownChart = new Chart(chartCtx, {
+          type: 'bar',
+          data: {
+            labels: colls.map(function (c) { return c.label; }),
+            datasets: [{
+              label: 'Total Collections',
+              data: colls.map(function (c) { return c.amount; }),
+              backgroundColor: '#ffb95f'
+            }]
+          },
+          options: chartOptions
+        });
+      }
+
+      insightsList.innerHTML = 
+        '<li class="flex gap-2"><span class="material-symbols-outlined text-[#81c995] text-[18px]">currency_rupee</span> Outstanding due invoices equal ' + fmt(totalPending) + '.</li>' +
+        '<li class="flex gap-2"><span class="material-symbols-outlined text-secondary text-[18px]">insights</span> Plan-wise segmentation shows high conversions for primary tiers.</li>';
+
+      tableContainer.classList.remove('hidden');
+      tableTitle.innerText = "Recent Paid Transactions";
+      tableHeader.innerHTML = '<tr class="text-on-surface-variant font-medium"><th class="py-2 px-4">Invoice</th><th class="py-2 px-4">Member</th><th class="py-2 px-4">Amount</th><th class="py-2 px-4">Method</th></tr>';
+      tableBody.innerHTML = txs.map(function (t) { 
+        return '<tr><td class="py-2 px-4">' + esc(t.invoice_number) + '</td><td class="py-2 px-4 font-semibold">' + esc(t.name) + '</td><td class="py-2 px-4 text-secondary font-bold">' + fmt(t.total_amount) + '</td><td class="py-2 px-4 text-xs">' + esc(t.payment_method) + '</td></tr>';
+      }).join('') || '<tr><td colspan="4" class="py-4 text-center text-on-surface-variant">No paid transactions.</td></tr>';
+
+    } else if (type === 'attendance') {
+      var hourly = data.hourly || [];
+      var heatmap = data.heatmap || [];
+      var absent = data.absent || [];
+      var frequent = data.frequent || [];
+
+      var totalVisits = hourly.reduce(function (acc, curr) { return acc + (curr.count || 0); }, 0);
+      var maxHourRow = hourly.sort(function (a,b) { return b.count - a.count; })[0];
+      var maxHour = maxHourRow ? maxHourRow.hour + ':00' : 'N/A';
+
+      grid.innerHTML = 
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Total Checkins</span>' +
+        '  <span class="text-xl font-bold text-secondary">' + totalVisits + '</span>' +
+        '</div>' +
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Peak Hour</span>' +
+        '  <span class="text-xl font-bold text-[#ffb95f]">' + maxHour + '</span>' +
+        '</div>' +
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">At Risk Members</span>' +
+        '  <span class="text-xl font-bold text-error">' + absent.length + '</span>' +
+        '</div>' +
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Loyalty Leader</span>' +
+        '  <span class="text-xl font-bold text-primary truncate block">' + (frequent[0] ? esc(frequent[0].name) : 'None') + '</span>' +
+        '</div>';
+
+      if (hourly.length === 0) {
+        empty.classList.remove('hidden');
+      } else {
+        hourly.sort(function (a,b) { return Number(a.hour) - Number(b.hour); });
+        window._drilldownChart = new Chart(chartCtx, {
+          type: 'line',
+          data: {
+            labels: hourly.map(function (h) { return h.hour + ':00'; }),
+            datasets: [{
+              label: 'Checkins count',
+              data: hourly.map(function (h) { return h.count; }),
+              borderColor: '#d0bcff',
+              backgroundColor: 'rgba(208,188,255,0.15)',
+              fill: true,
+              tension: 0.4
+            }]
+          },
+          options: chartOptions
+        });
+      }
+
+      insightsList.innerHTML = 
+        '<li class="flex gap-2"><span class="material-symbols-outlined text-[#ffb95f] text-[18px]">schedule</span> The facility experiences maximum capacity at ' + maxHour + ' daily.</li>' +
+        '<li class="flex gap-2"><span class="material-symbols-outlined text-[#d0bcff] text-[18px]">groups</span> Attendance is highest during early morning and late evening blocks.</li>' +
+        '<li class="flex gap-2"><span class="material-symbols-outlined text-error text-[18px]">warning</span> ' + absent.length + ' active members haven\'t checked in for 20+ days.</li>';
+
+      tableContainer.classList.remove('hidden');
+      tableTitle.innerText = "Inactive / Absent Members (20+ Days)";
+      tableHeader.innerHTML = '<tr class="text-on-surface-variant font-medium"><th class="py-2 px-4">Member Name</th><th class="py-2 px-4">Last Check-in</th></tr>';
+      tableBody.innerHTML = absent.map(function (a) { 
+        return '<tr><td class="py-2 px-4 font-semibold">' + esc(a.name) + '</td><td class="py-2 px-4 text-error font-bold">' + (a.last_seen ? fmtDate(a.last_seen) : 'Never') + '</td></tr>';
+      }).join('') || '<tr><td colspan="2" class="py-4 text-center text-on-surface-variant">No absent members.</td></tr>';
+
+    } else if (type === 'tasks') {
+      var status = data.statusCounts || [];
+      var overdue = data.overdueCount || 0;
+      var priorities = data.priorities || [];
+      var history = data.completedHistory || [];
+
+      var completedCount = (status.find(function (s) { return s.label === 'Completed'; }) || {}).count || 0;
+      var pendingCount = (status.find(function (s) { return s.label === 'Pending'; }) || {}).count || 0;
+      var highPriority = priorities.find(function (p) { return p.label === 'High' || p.label === 'Critical'; })?.count || 0;
+
+      grid.innerHTML = 
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Completed</span>' +
+        '  <span class="text-xl font-bold text-[#81c995]">' + completedCount + '</span>' +
+        '</div>' +
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Pending</span>' +
+        '  <span class="text-xl font-bold text-[#ffb95f]">' + pendingCount + '</span>' +
+        '</div>' +
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">Overdue</span>' +
+        '  <span class="text-xl font-bold text-error">' + overdue + '</span>' +
+        '</div>' +
+        '<div class="bg-surface-container p-4 rounded-xl border border-white/5">' +
+        '  <span class="block text-[10px] text-on-surface-variant uppercase tracking-wider">High/Critical</span>' +
+        '  <span class="text-xl font-bold text-error">' + highPriority + '</span>' +
+        '</div>';
+
+      if (status.length === 0) {
+        empty.classList.remove('hidden');
+      } else {
+        window._drilldownChart = new Chart(chartCtx, {
+          type: 'pie',
+          data: {
+            labels: status.map(function (s) { return s.label; }),
+            datasets: [{
+              data: status.map(function (s) { return s.count; }),
+              backgroundColor: ['#81c995', '#ffb95f', '#8bc34a']
+            }]
+          },
+          options: chartOptions
+        });
+      }
+
+      insightsList.innerHTML = 
+        '<li class="flex gap-2"><span class="material-symbols-outlined text-error text-[18px]">warning</span> There are ' + overdue + ' task(s) currently past their due dates.</li>' +
+        '<li class="flex gap-2"><span class="material-symbols-outlined text-[#ffb95f] text-[18px]">pending_actions</span> ' + pendingCount + ' tasks are pending staff attention.</li>' +
+        '<li class="flex gap-2"><span class="material-symbols-outlined text-[#81c995] text-[18px]">check_circle</span> Staff operations are running cleanly.</li>';
+
+      tableContainer.classList.remove('hidden');
+      tableTitle.innerText = "Recently Completed Tasks History";
+      tableHeader.innerHTML = '<tr class="text-on-surface-variant font-medium"><th class="py-2 px-4">Task Name</th><th class="py-2 px-4">Details</th><th class="py-2 px-4">Completed Date</th></tr>';
+      tableBody.innerHTML = history.map(function (h) { 
+        return '<tr><td class="py-2 px-4 font-semibold">' + esc(h.title) + '</td><td class="py-2 px-4 text-xs text-on-surface-variant">' + esc(h.detail || 'No details') + '</td><td class="py-2 px-4 text-[#81c995] font-bold">' + esc(h.completed_at) + '</td></tr>';
+      }).join('') || '<tr><td colspan="3" class="py-4 text-center text-on-surface-variant">No completed tasks.</td></tr>';
+    }
+  };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);

@@ -38,9 +38,18 @@ mobile/node_modules/
 
 # IDE settings — not part of the app
 .idea/
+.kiro/
 
 # Local Chromium download — not app source, huge, rebuilt on the server
 chrome/
 
 # Scratch / temp test databases
 scratch-*.db
+
+# On-device AI model file (~1.9GB) — never commit, GitHub rejects >100MB blobs.
+# Distribute separately (e.g. a download step) rather than via git.
+public/models/
+*.task
+
+# Tenant-uploaded content (logos, etc.) — runtime data, not app source.
+public/assets/uploads/

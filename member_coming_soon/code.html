@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link href="/assets/css/shared.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        window.__gymAppShellInjected = true;
+        window.__gfOnboarding = true;
+    </script>
+    <script src="/assets/js/designSystem.js"></script>
+    <script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
+    <script src="/assets/js/utils.js"></script>
+    <title>Gym Flow - Member Hub</title>
+    <style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-smoothing: antialiased;
+        }
+        .bg-mesh {
+            background-color: var(--background);
+            background-image:
+                radial-gradient(at 0% 0%, color-mix(in srgb, var(--surface-bright) 26%, transparent) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, color-mix(in srgb, var(--surface-container) 40%, transparent) 0px, transparent 50%);
+        }
+        @keyframes pulse-ring {
+            0%   { transform: scale(1);    opacity: 0.35; }
+            70%  { transform: scale(1.45); opacity: 0; }
+            100% { transform: scale(1.45); opacity: 0; }
+        }
+        .pulse-ring { animation: pulse-ring 2.4s cubic-bezier(0.2, 0.6, 0.4, 1) infinite; }
+        @media (prefers-reduced-motion: reduce) { .pulse-ring { animation: none; opacity: 0; } }
+    </style>
+</head>
+<body class="bg-mesh min-h-screen flex items-center justify-center p-margin-mobile md:p-margin-desktop text-on-surface font-body-md antialiased selection:bg-primary/30 selection:text-primary">
+
+<!-- Background lights -->
+<div class="absolute top-1/4 left-1/4 w-96 h-96 bg-surface-variant/20 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[150px] pointer-events-none"></div>
+
+<main class="w-full max-w-[500px] relative z-10 flex flex-col">
+    <div class="bg-surface-container/60 backdrop-blur-xl border border-outline-variant/30 rounded-xl p-8 md:p-10 shadow-2xl flex flex-col relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-surface-bright/10 to-transparent pointer-events-none"></div>
+        <div class="relative z-10">
+
+            <!-- Hero: No gym linked -->
+            <div class="relative flex justify-center mb-xl">
+                <div class="pulse-ring absolute h-20 w-20 rounded-2xl border border-primary/40"></div>
+                <div class="h-20 w-20 flex items-center justify-center rounded-2xl bg-surface-container-highest border border-outline-variant/50 shadow-inner">
+                    <span id="hero-icon" class="material-symbols-outlined text-[38px] text-primary">link_off</span>
+                </div>
+            </div>
+
+            <div class="text-center mb-xl">
+                <h1 id="hero-title" class="font-headline-lg text-headline-lg text-on-surface mb-xs uppercase">No Gym Linked</h1>
+                <p id="hero-sub" class="font-body-sm text-body-sm text-on-surface-variant max-w-[360px] mx-auto">
+                    Your Gym Flow account isn't connected to a gym yet. Ask your gym's front desk
+                    to add you as a member with this email or phone — the link request will appear here.
+                </p>
+            </div>
+
+            <!-- Pending link requests (claims + invitations) -->
+            <div id="pending-wrap" class="hidden flex-col gap-base mb-xl">
+                <label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest pl-1">Pending requests</label>
+                <div id="pending-list" class="flex flex-col gap-md"></div>
+            </div>
+
+            <!-- Account summary -->
+            <div class="bg-surface-container-low border border-outline-variant/30 rounded-lg p-5 flex flex-col gap-3 mb-xl">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-primary text-[20px]">account_circle</span>
+                    <div class="min-w-0">
+                        <div class="font-body-sm text-body-sm text-on-surface-variant">Email Address</div>
+                        <div id="user-email" class="font-body-md text-body-md font-semibold text-on-surface truncate">...</div>
+                    </div>
+                </div>
+                <div class="h-px bg-outline-variant/20"></div>
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-primary text-[20px]">phone</span>
+                    <div>
+                        <div class="font-body-sm text-body-sm text-on-surface-variant">Verified Phone</div>
+                        <div id="user-phone" class="font-body-md text-body-md font-semibold text-on-surface">...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Existing memberships (if any) -->
+            <div id="gyms-wrap" class="hidden flex-col gap-base mb-xl">
+                <label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest pl-1">Your Memberships</label>
+                <div id="gym-list" class="flex flex-col gap-md"></div>
+            </div>
+
+            <!-- Secondary Actions -->
+            <div class="flex flex-col gap-3">
+                <button onclick="window.location.href='/security'" class="w-full bg-surface-container-low border border-outline-variant/40 text-on-surface py-3.5 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-surface-container hover:border-outline-variant transition-all flex items-center justify-center gap-3" type="button">
+                    <span class="material-symbols-outlined text-[20px] text-primary">security</span>
+                    <span>SECURITY CENTER</span>
+                </button>
+                <button id="logout-btn" class="w-full bg-surface-container-low border border-outline-variant/40 text-on-surface py-3.5 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-surface-container hover:border-outline-variant transition-all flex items-center justify-center gap-3" type="button">
+                    <span class="material-symbols-outlined text-[20px] text-error">logout</span>
+                    <span>SIGN OUT</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-8 font-body-sm text-body-sm text-on-surface-variant/50">
+        <p>Member Portal · Gym Flow OS</p>
+    </div>
+</main>
+
+<script>
+(function () {
+  var esc = window.esc;
+  var emailEl = document.getElementById('user-email');
+  var phoneEl = document.getElementById('user-phone');
+  var gymListEl = document.getElementById('gym-list');
+
+  function show(id) { var e = document.getElementById(id); e.classList.remove('hidden'); e.classList.add('flex'); }
+
+  // Approve a member link request → scope into the member role → member app.
+  function acceptClaim(tenantId, memberId, btn) {
+    btn.disabled = true;
+    window.api.post('/org/claims/accept', { tenant_id: tenantId, member_id: memberId }).then(function (r) {
+      if (!r || r.error) { window.toast((r && r.error) || 'Could not accept — try again online.', 'error'); btn.disabled = false; return; }
+      if (r.linked) {
+        window.toast('Linked! Opening your member area…', 'success');
+        window.api.post('/auth/select-role', { tenant_id: tenantId, role_id: 'r5' }).then(function () {
+          window.location.href = '/member';
+        }).catch(function () { window.location.reload(); });
+      } else {
+        window.toast(r.message || 'Request sent for gym approval.', 'info');
+        loadPending();
+      }
+    }).catch(function () { window.toast('You appear to be offline — connect to respond.', 'warning'); btn.disabled = false; });
+  }
+
+  function dismissClaim(tenantId, memberId) {
+    window.api.post('/org/claims/dismiss', { tenant_id: tenantId, member_id: memberId }).then(function () {
+      window.toast('Dismissed.', 'info'); loadPending();
+    }).catch(function () { window.toast('You appear to be offline — connect to respond.', 'warning'); });
+  }
+
+  function respondInvite(id, action) {
+    window.api.post('/org/invitations/' + id + '/' + action, {}).then(function (r) {
+      if (!r || r.error) { window.toast((r && r.error) || 'Failed.', 'error'); return; }
+      if (action === 'accept') { window.toast('Invitation accepted!', 'success'); window.location.href = '/select-role'; }
+      else { window.toast('Invitation declined.', 'info'); loadPending(); }
+    }).catch(function () { window.toast('You appear to be offline — connect to respond.', 'warning'); });
+  }
+
+  function requestCard(inner) {
+    return '<div class="w-full bg-surface-container-low border border-primary/30 rounded-lg p-4">' + inner + '</div>';
+  }
+
+  function loadPending() {
+    window.api.get('/org/context').then(function (ctx) {
+      if (!ctx || ctx.error) return;
+      var list = document.getElementById('pending-list');
+      var claims = ctx.pending_claims || [];
+      var invites = ctx.pending_invitations || [];
+      if (!claims.length && !invites.length) {
+        document.getElementById('pending-wrap').classList.add('hidden');
+        return;
+      }
+      var h = '';
+      claims.forEach(function (c) {
+        h += requestCard(
+          '<div class="flex items-center gap-3 mb-3">' +
+          '  <div class="h-10 w-10 flex items-center justify-center rounded bg-primary/10 border border-primary/20"><span class="material-symbols-outlined text-[20px] text-primary">storefront</span></div>' +
+          '  <div class="min-w-0"><div class="font-body-md text-body-md font-semibold text-on-surface truncate">' + esc(c.gym_name || 'Gym') + '</div>' +
+          '  <div class="font-body-sm text-body-sm text-on-surface-variant">wants to link you to member “' + esc(c.member_name || c.full_name || 'you') + '”</div></div>' +
+          '</div>' +
+          '<div class="flex gap-2">' +
+          '  <button data-ca="' + esc(String(c.tenant_id)) + '|' + esc(String(c.member_id)) + '" class="flex-1 bg-primary text-on-primary py-2.5 rounded-lg font-label-caps text-label-caps tracking-widest min-h-[44px]">APPROVE</button>' +
+          '  <button data-cd="' + esc(String(c.tenant_id)) + '|' + esc(String(c.member_id)) + '" class="flex-1 bg-surface-container border border-outline-variant/40 text-on-surface-variant py-2.5 rounded-lg font-label-caps text-label-caps tracking-widest min-h-[44px]">NOT NOW</button>' +
+          '</div>');
+      });
+      invites.forEach(function (i) {
+        h += requestCard(
+          '<div class="flex items-center gap-3 mb-3">' +
+          '  <div class="h-10 w-10 flex items-center justify-center rounded bg-secondary/10 border border-secondary/20"><span class="material-symbols-outlined text-[20px] text-secondary">mail</span></div>' +
+          '  <div class="min-w-0"><div class="font-body-md text-body-md font-semibold text-on-surface truncate">' + esc(i.gym_name || 'Gym') + '</div>' +
+          '  <div class="font-body-sm text-body-sm text-on-surface-variant">invited you as ' + esc(i.role_name || 'staff') + '</div></div>' +
+          '</div>' +
+          '<div class="flex gap-2">' +
+          '  <button data-ia="' + esc(String(i.id)) + '" class="flex-1 bg-primary text-on-primary py-2.5 rounded-lg font-label-caps text-label-caps tracking-widest min-h-[44px]">ACCEPT</button>' +
+          '  <button data-ir="' + esc(String(i.id)) + '" class="flex-1 bg-surface-container border border-outline-variant/40 text-on-surface-variant py-2.5 rounded-lg font-label-caps text-label-caps tracking-widest min-h-[44px]">DECLINE</button>' +
+          '</div>');
+      });
+      list.innerHTML = h;
+      show('pending-wrap');
+      document.getElementById('hero-icon').textContent = 'notifications_active';
+      document.getElementById('hero-title').textContent = 'LINK REQUEST';
+      document.getElementById('hero-sub').textContent = 'A gym wants to connect with your account. Approve to unlock your member area.';
+
+      list.querySelectorAll('[data-ca]').forEach(function (b) {
+        b.addEventListener('click', function () { var p = b.getAttribute('data-ca').split('|'); acceptClaim(p[0], p[1], b); });
+      });
+      list.querySelectorAll('[data-cd]').forEach(function (b) {
+        b.addEventListener('click', function () { var p = b.getAttribute('data-cd').split('|'); dismissClaim(p[0], p[1]); });
+      });
+      list.querySelectorAll('[data-ia]').forEach(function (b) {
+        b.addEventListener('click', function () { respondInvite(b.getAttribute('data-ia'), 'accept'); });
+      });
+      list.querySelectorAll('[data-ir]').forEach(function (b) {
+        b.addEventListener('click', function () { respondInvite(b.getAttribute('data-ir'), 'reject'); });
+      });
+    }).catch(function () {});
+  }
+
+  (async function () {
+    try {
+      var r = await window.api.fetch('/auth/session');
+      if (r.status === 401 || r.status === 403) { window.location.href = '/login'; return; }
+      var data = await r.json();
+
+      if (data && data.user) {
+        emailEl.textContent = data.user.email || 'N/A';
+        phoneEl.textContent = data.user.phone || 'N/A';
+      }
+
+      var roles = (data && data.roles) || [];
+      if (roles.length > 0) {
+        gymListEl.innerHTML = '';
+        roles.forEach(function (role) {
+          var isMember = role.role_id === 'r5';
+          var card = document.createElement('div');
+          card.className = 'w-full flex items-center justify-between bg-surface-container-low border border-outline-variant/30 rounded-lg p-4' + (isMember ? ' cursor-pointer hover:border-primary/50 transition-colors' : '');
+          card.innerHTML =
+            '<div class="flex items-center gap-3 min-w-0">' +
+            '  <div class="h-10 w-10 flex items-center justify-center rounded bg-primary/10 border border-primary/20">' +
+            '    <span class="material-symbols-outlined text-[20px] text-primary">storefront</span>' +
+            '  </div>' +
+            '  <div class="min-w-0">' +
+            '    <div class="font-body-md text-body-md font-semibold text-on-surface truncate">' + esc(role.gym_name || 'Gym') + '</div>' +
+            '    <div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mt-0.5">' + esc(role.role_name || 'Member') + '</div>' +
+            '  </div>' +
+            '</div>' +
+            (isMember ? '<span class="material-symbols-outlined text-primary text-[20px]">arrow_forward</span>'
+                      : '<span class="bg-secondary/20 border border-secondary/30 text-secondary text-[10px] uppercase font-semibold px-2 py-0.5 rounded">Active</span>');
+          if (isMember) {
+            card.addEventListener('click', function () {
+              window.api.post('/auth/select-role', { tenant_id: role.tenant_id, role_id: 'r5' }).then(function () {
+                window.location.href = '/member';
+              }).catch(function () {});
+            });
+          }
+          gymListEl.appendChild(card);
+        });
+        show('gyms-wrap');
+      }
+
+      loadPending();
+    } catch (e) {
+      // Offline: leave the static explanation visible.
+    }
+  })();
+
+  document.getElementById('logout-btn').addEventListener('click', async function () {
+    try { await window.api.fetch('/auth/logout', { method: 'POST' }); } catch (e) {}
+    window.location.href = '/login';
+  });
+})();
+</script>
+</body>
+</html>

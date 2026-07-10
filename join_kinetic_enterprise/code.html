@@ -1,0 +1,539 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="/assets/css/shared.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+// Focused identity flow: suppress the admin app shell (subscription badge +
+// guided tour) and the setup wizard — both key off these idempotency guards.
+// /join is reachable by member and pending tokens that must never see admin
+// chrome (see select_role_kinetic_enterprise/code.html for the same pattern).
+window.__gymAppShellInjected = true;
+window.__gfOnboarding = true;
+</script>
+<script src="/assets/js/designSystem.js"></script>
+<script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
+<script src="/assets/js/utils.js"></script>
+<title>Gym Flow - Join &amp; Invitations</title>
+
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .bg-mesh {
+            background-color: #131313;
+            background-image:
+                radial-gradient(at 0% 0%, rgba(53, 53, 53, 0.4) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(31, 31, 31, 0.5) 0px, transparent 50%);
+        }
+
+        .join-reveal {
+            animation: joinFadeIn 0.25s ease-out;
+        }
+
+        @keyframes joinFadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+
+</head>
+<body class="bg-mesh min-h-screen flex items-start md:items-center justify-center p-margin-mobile md:p-margin-desktop py-10 text-on-surface font-body-md antialiased selection:bg-primary/30 selection:text-primary">
+
+<!-- Atmospheric background light elements -->
+<div class="fixed top-1/4 left-1/4 w-96 h-96 bg-surface-variant/20 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="fixed bottom-1/4 right-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[150px] pointer-events-none"></div>
+
+<main class="w-full max-w-[520px] relative z-10 flex flex-col">
+
+<!-- Header -->
+<div class="mb-6">
+<a href="/dashboard" class="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors mb-4 text-body-md group">
+<span class="material-symbols-outlined text-[20px] group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">arrow_back</span>
+<span>Dashboard</span>
+</a>
+<div class="flex items-center gap-4">
+<div class="h-14 w-14 shrink-0 flex items-center justify-center rounded-lg bg-surface-container-highest border border-outline-variant/50 shadow-inner">
+<span class="material-symbols-outlined text-[30px] text-primary" style="font-variation-settings:'FILL' 1;">group_add</span>
+</div>
+<div>
+<h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Join &amp; Invitations</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Accept invitations and confirm gym memberships linked to your account.</p>
+</div>
+</div>
+</div>
+
+<!-- Loading skeleton -->
+<div id="skeletonState" class="space-y-4" aria-hidden="true">
+<div class="bg-surface-container/60 border border-outline-variant/30 rounded-xl p-5 space-y-4">
+<div class="skeleton h-4 w-40"></div>
+<div class="skeleton h-16 w-full"></div>
+<div class="skeleton h-16 w-full"></div>
+</div>
+</div>
+
+<!-- Page-level error card (copied pattern from security_center) -->
+<div id="errorState" class="hidden bg-surface-container/60 backdrop-blur-xl border border-outline-variant/30 rounded-xl p-8 text-center join-reveal">
+<span class="material-symbols-outlined text-5xl text-error/80" aria-hidden="true">cloud_off</span>
+<h2 class="text-title-lg text-on-surface mt-3">Couldn't load your invitations</h2>
+<p id="errorMsg" class="text-body-md text-on-surface-variant mt-1">Please check your connection and try again.</p>
+<div class="mt-5 flex justify-center gap-3">
+<button id="retryBtn" type="button"
+    class="bg-primary text-on-primary px-6 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-colors flex items-center gap-2">
+    <span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner aria-hidden="true">progress_activity</span>
+    <span>Try again</span>
+</button>
+<a id="loginLink" href="/login"
+    class="hidden bg-primary text-on-primary px-6 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-colors">
+    Sign in
+</a>
+</div>
+</div>
+
+<!-- Content -->
+<div id="pageContent" class="hidden space-y-6">
+
+  <!-- Pending invitations -->
+  <section id="invitesSection" class="hidden">
+    <h2 class="font-label-caps text-label-caps text-on-surface-variant/70 uppercase tracking-widest mb-3 flex items-center gap-2">
+      <span class="material-symbols-outlined text-[18px] text-primary" aria-hidden="true">mail</span>
+      Pending invitations
+    </h2>
+    <div id="invitesList" class="flex flex-col gap-3"></div>
+  </section>
+
+  <!-- Member claim candidates -->
+  <section id="claimsSection" class="hidden">
+    <h2 class="font-label-caps text-label-caps text-on-surface-variant/70 uppercase tracking-widest mb-3 flex items-center gap-2">
+      <span class="material-symbols-outlined text-[18px] text-primary" aria-hidden="true">person_search</span>
+      Do you belong to these gyms?
+    </h2>
+    <div id="claimsList" class="flex flex-col gap-3"></div>
+  </section>
+
+  <!-- Org switcher -->
+  <section id="orgsSection" class="hidden">
+    <h2 class="font-label-caps text-label-caps text-on-surface-variant/70 uppercase tracking-widest mb-3 flex items-center gap-2">
+      <span class="material-symbols-outlined text-[18px] text-primary" aria-hidden="true">swap_horiz</span>
+      Switch organization
+    </h2>
+    <div id="orgsList" class="flex flex-col gap-2"></div>
+  </section>
+
+  <!-- Empty state (all caught up) -->
+  <section id="emptyState" class="hidden bg-surface-container/60 backdrop-blur-xl border border-outline-variant/30 rounded-xl p-8 text-center join-reveal">
+    <div class="h-16 w-16 mx-auto flex items-center justify-center rounded-full bg-secondary/10 border border-secondary/25">
+      <span class="material-symbols-outlined text-[34px] text-secondary" style="font-variation-settings:'FILL' 1;" aria-hidden="true">task_alt</span>
+    </div>
+    <h2 class="text-title-lg text-on-surface mt-4">You're all caught up</h2>
+    <p class="text-body-md text-on-surface-variant mt-1">No pending invitations or member matches right now.</p>
+    <a href="/dashboard"
+      class="inline-flex items-center gap-2 mt-5 bg-primary text-on-primary px-6 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-colors">
+      <span class="material-symbols-outlined text-[18px]" aria-hidden="true">arrow_back</span>
+      <span>Back to dashboard</span>
+    </a>
+  </section>
+
+</div>
+
+<p class="text-center mt-8 font-body-sm text-body-sm text-on-surface-variant/50">One account can hold roles and memberships across different gyms.</p>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return window.esc ? window.esc(s) : String(s == null ? '' : s); }
+  function toggleEl(el, show) { if (el) el.classList.toggle('hidden', !show); }
+
+  // Role id -> icon/label, mirrors select_role_kinetic_enterprise ROLE_META.
+  var ROLE_META = {
+    r1: { icon: 'storefront',           label: 'Owner' },
+    r2: { icon: 'admin_panel_settings', label: 'Manager' },
+    r3: { icon: 'sports',               label: 'Trainer' },
+    r4: { icon: 'badge',                label: 'Admin' },
+    r5: { icon: 'fitness_center',       label: 'Member' }
+  };
+
+  // ─── API helper: normalized { ok, status, data } (security_center pattern) ──
+  async function call(method, path, body) {
+    try {
+      var opts = { method: method };
+      if (body !== undefined) opts.body = JSON.stringify(body);
+      var res = await window.api.fetch(path, opts);
+      var data = null;
+      try { data = await res.json(); } catch (e) { /* empty body */ }
+      return { ok: res.ok, status: res.status, data: data || {} };
+    } catch (e) {
+      return { ok: false, status: 0, data: {} };
+    }
+  }
+
+  function setLoading(btn, on) {
+    if (!btn) return;
+    btn.disabled = on;
+    btn.classList.toggle('btn-loading', on);
+    var sp = btn.querySelector('[data-spinner]');
+    if (sp) sp.classList.toggle('hidden', !on);
+  }
+
+  // ─── Invitation error messages by API code ────────────────────────────────
+  var INVITE_ERR = {
+    INVITE_EXPIRED:   'This invitation has expired — ask the gym to send a new one.',
+    ALREADY_ACCEPTED: 'This invitation has already been accepted.',
+    WRONG_EMAIL:      'This invitation was sent to a different email address.',
+    INVITE_INACTIVE:  'This invitation is no longer active.'
+  };
+  var CLAIM_ERR = {
+    NO_MATCH:    'We could not match you to this member profile.',
+    CLAIM_TAKEN: 'This member profile has already been claimed by another account.'
+  };
+  function errMsg(r, map, fallback) {
+    if (r.status === 401) return 'Your session has expired. Please sign in again.';
+    if (r.status === 0) return 'Network error — check your connection and try again.';
+    var code = r.data && r.data.code;
+    return (code && map[code]) || (r.data && r.data.error) || fallback;
+  }
+
+  // ─── Switch org + redirect (reuses /auth/select-role, F1) ─────────────────
+  async function selectRole(tenantId, roleId, btn) {
+    setLoading(btn, true);
+    try {
+      var res = await window.api.fetch('/auth/select-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: tenantId, role_id: roleId })
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (res.ok) {
+        window.location.href = (data && data.redirect) || '/dashboard';
+        return;
+      }
+      setLoading(btn, false);
+      window.toast((data && data.error) || 'Could not open that organization.', 'error');
+    } catch (e) {
+      setLoading(btn, false);
+      window.toast('Connection lost. Please try again.', 'error');
+    }
+  }
+
+  // ─── Invitation card ──────────────────────────────────────────────────────
+  function inviteCard(inv) {
+    var meta = ROLE_META[inv.role_id] || {};
+    var card = document.createElement('div');
+    card.className = 'bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-4 md:p-5 join-reveal';
+    var byLine = inv.invited_by_name
+      ? '<p class="text-body-sm text-on-surface-variant/70 mt-1">Invited by ' + esc(inv.invited_by_name) + '</p>'
+      : '';
+    card.innerHTML =
+      '<div class="flex items-start gap-3">' +
+        '<div class="h-11 w-11 shrink-0 flex items-center justify-center rounded-lg bg-primary/10 border border-outline-variant/40">' +
+          '<span class="material-symbols-outlined text-[22px] text-primary" aria-hidden="true">' + (meta.icon || 'mail') + '</span>' +
+        '</div>' +
+        '<div class="flex-1 min-w-0">' +
+          '<p class="text-body-md text-on-surface">You’ve been invited to join <span class="font-semibold">' + esc(inv.gym_name || 'this gym') + '</span> as <span class="font-semibold text-primary">' + esc(inv.role_name || meta.label || 'staff') + '</span>.</p>' +
+          byLine +
+        '</div>' +
+      '</div>' +
+      '<div class="flex justify-end gap-2 mt-4" data-actions>' +
+        '<button type="button" data-act="decline" class="px-4 py-2 rounded-lg text-sm font-semibold text-error hover:bg-error/10 border border-error/25 transition-colors flex items-center gap-2">' +
+          '<span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner aria-hidden="true">progress_activity</span>' +
+          '<span>Decline</span>' +
+        '</button>' +
+        '<button type="button" data-act="accept" class="bg-primary text-on-primary px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-colors flex items-center gap-2">' +
+          '<span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner aria-hidden="true">progress_activity</span>' +
+          '<span>Accept</span>' +
+        '</button>' +
+      '</div>';
+
+    var acceptBtn = card.querySelector('[data-act="accept"]');
+    var declineBtn = card.querySelector('[data-act="decline"]');
+
+    acceptBtn.addEventListener('click', function () { onAcceptInvite(inv, card, acceptBtn, declineBtn); });
+    declineBtn.addEventListener('click', function () { onDeclineInvite(inv, card, acceptBtn, declineBtn); });
+    return card;
+  }
+
+  async function onAcceptInvite(inv, card, acceptBtn, declineBtn) {
+    setLoading(acceptBtn, true);
+    if (declineBtn) declineBtn.disabled = true;
+    var r = await call('POST', '/org/invitations/' + encodeURIComponent(inv.id) + '/accept');
+    if (r.ok) {
+      window.toast((r.data && r.data.message) || 'Invitation accepted.', 'success');
+      // Swap the actions for a "Switch to <gym>" button using the tenant/role
+      // returned by the accept response.
+      var tenantId = r.data && r.data.tenant_id;
+      var roleId = r.data && r.data.role_id;
+      var actions = card.querySelector('[data-actions]');
+      actions.innerHTML =
+        '<button type="button" data-act="switch" class="bg-secondary/15 text-secondary border border-secondary/35 px-5 py-2 rounded-lg text-sm font-semibold hover:bg-secondary/25 transition-colors flex items-center gap-2">' +
+          '<span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner aria-hidden="true">progress_activity</span>' +
+          '<span class="material-symbols-outlined text-[18px]" aria-hidden="true">login</span>' +
+          '<span>Switch to ' + esc(inv.gym_name || 'gym') + '</span>' +
+        '</button>';
+      var switchBtn = actions.querySelector('[data-act="switch"]');
+      switchBtn.addEventListener('click', function () {
+        if (tenantId && roleId) selectRole(tenantId, roleId, switchBtn);
+        else window.location.href = '/dashboard';
+      });
+    } else {
+      setLoading(acceptBtn, false);
+      if (declineBtn) declineBtn.disabled = false;
+      window.toast(errMsg(r, INVITE_ERR, 'Could not accept the invitation.'), 'error');
+      // Expired / already-accepted / inactive invites are gone — drop the card.
+      var code = r.data && r.data.code;
+      if (code === 'INVITE_EXPIRED' || code === 'ALREADY_ACCEPTED' || code === 'INVITE_INACTIVE') {
+        removeCard(card, 'invites');
+      }
+    }
+  }
+
+  async function onDeclineInvite(inv, card, acceptBtn, declineBtn) {
+    var ok = await window.confirmDialog(
+      'Decline the invitation to join ' + (inv.gym_name || 'this gym') + '?',
+      { title: 'Decline invitation', danger: true, confirmText: 'Decline' }
+    );
+    if (!ok) return;
+    setLoading(declineBtn, true);
+    if (acceptBtn) acceptBtn.disabled = true;
+    var r = await call('POST', '/org/invitations/' + encodeURIComponent(inv.id) + '/reject');
+    if (r.ok) {
+      window.toast((r.data && r.data.message) || 'Invitation declined.', 'info');
+      removeCard(card, 'invites');
+    } else {
+      setLoading(declineBtn, false);
+      if (acceptBtn) acceptBtn.disabled = false;
+      window.toast(errMsg(r, INVITE_ERR, 'Could not decline the invitation.'), 'error');
+    }
+  }
+
+  // ─── Claim candidate card ─────────────────────────────────────────────────
+  function claimCard(cand) {
+    var card = document.createElement('div');
+    card.className = 'bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-4 md:p-5 join-reveal';
+    card.innerHTML =
+      '<div class="flex items-start gap-3">' +
+        '<div class="h-11 w-11 shrink-0 flex items-center justify-center rounded-lg bg-surface-container-highest border border-outline-variant/40">' +
+          '<span class="material-symbols-outlined text-[22px] text-primary" aria-hidden="true">badge</span>' +
+        '</div>' +
+        '<div class="flex-1 min-w-0">' +
+          '<p class="text-body-md text-on-surface">We found a member profile <span class="font-semibold">' + esc(cand.member_name || 'a member') + '</span> at <span class="font-semibold">' + esc(cand.gym_name || 'a gym') + '</span>.</p>' +
+          '<p class="text-body-sm text-on-surface-variant/70 mt-1">Do you belong to this gym?</p>' +
+        '</div>' +
+      '</div>' +
+      '<div class="flex justify-end gap-2 mt-4" data-actions>' +
+        '<button type="button" data-act="dismiss" class="px-4 py-2 rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-white/5 border border-outline-variant/30 transition-colors flex items-center gap-2">' +
+          '<span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner aria-hidden="true">progress_activity</span>' +
+          '<span>Not now</span>' +
+        '</button>' +
+        '<button type="button" data-act="claim" class="bg-primary text-on-primary px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-colors flex items-center gap-2">' +
+          '<span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner aria-hidden="true">progress_activity</span>' +
+          '<span>Yes, that’s me</span>' +
+        '</button>' +
+      '</div>';
+
+    var yesBtn = card.querySelector('[data-act="claim"]');
+    var noBtn = card.querySelector('[data-act="dismiss"]');
+    yesBtn.addEventListener('click', function () { onClaim(cand, card, yesBtn, noBtn); });
+    noBtn.addEventListener('click', function () { onDismissClaim(cand, card, yesBtn, noBtn); });
+    return card;
+  }
+
+  async function onClaim(cand, card, yesBtn, noBtn) {
+    setLoading(yesBtn, true);
+    if (noBtn) noBtn.disabled = true;
+    var r = await call('POST', '/org/claims/accept', { tenant_id: cand.tenant_id, member_id: cand.member_id });
+    if (r.ok) {
+      var linked = r.data && r.data.linked;
+      var pending = r.data && r.data.status === 'pending';
+      var msg = linked
+        ? 'You’re now linked to ' + (cand.gym_name || 'this gym') + '.'
+        : (pending ? 'Sent to the gym for confirmation.' : ((r.data && r.data.message) || 'Request submitted.'));
+      window.toast(msg, linked ? 'success' : 'info');
+      removeCard(card, 'claims');
+    } else {
+      setLoading(yesBtn, false);
+      if (noBtn) noBtn.disabled = false;
+      window.toast(errMsg(r, CLAIM_ERR, 'Could not confirm this membership.'), 'error');
+      var code = r.data && r.data.code;
+      if (code === 'NO_MATCH' || code === 'CLAIM_TAKEN') removeCard(card, 'claims');
+    }
+  }
+
+  async function onDismissClaim(cand, card, yesBtn, noBtn) {
+    setLoading(noBtn, true);
+    if (yesBtn) yesBtn.disabled = true;
+    var r = await call('POST', '/org/claims/dismiss', { tenant_id: cand.tenant_id, member_id: cand.member_id });
+    if (r.ok) {
+      window.toast('Dismissed.', 'info');
+      removeCard(card, 'claims');
+    } else {
+      setLoading(noBtn, false);
+      if (yesBtn) yesBtn.disabled = false;
+      window.toast(errMsg(r, CLAIM_ERR, 'Could not dismiss this suggestion.'), 'error');
+    }
+  }
+
+  // ─── Org switcher row ─────────────────────────────────────────────────────
+  function orgRow(org, isCurrent) {
+    var meta = ROLE_META[org.role_id] || { icon: 'storefront' };
+    var row = document.createElement(isCurrent ? 'div' : 'button');
+    if (!isCurrent) row.type = 'button';
+    row.className = 'w-full flex items-center gap-3 bg-surface-container-lowest border rounded-lg p-3.5 text-left transition-all ' +
+      (isCurrent ? 'border-secondary/35' : 'border-outline-variant/40 hover:border-primary/60 hover:bg-surface-container-low active:scale-[0.99]');
+    row.innerHTML =
+      '<div class="h-10 w-10 shrink-0 flex items-center justify-center rounded-lg bg-surface-container-highest border border-outline-variant/40">' +
+        '<span class="material-symbols-outlined text-[20px] text-primary" aria-hidden="true">' + meta.icon + '</span>' +
+      '</div>' +
+      '<div class="flex-1 min-w-0">' +
+        '<div class="text-body-md text-on-surface font-semibold truncate">' + esc(org.gym_name || 'Gym') + '</div>' +
+        '<div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest mt-0.5">' + esc(org.role_name || meta.label || '') + '</div>' +
+      '</div>' +
+      (isCurrent
+        ? '<span class="shrink-0 bg-secondary/15 text-secondary border border-secondary/35 text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wide">Current</span>'
+        : '<span class="material-symbols-outlined text-[20px] text-on-surface-variant/50" data-arrow aria-hidden="true">arrow_forward</span>' +
+          '<span class="material-symbols-outlined text-[18px] text-primary animate-spin hidden" data-spinner aria-hidden="true">progress_activity</span>');
+
+    if (!isCurrent) {
+      row.addEventListener('click', function () {
+        var arrow = row.querySelector('[data-arrow]');
+        if (arrow) arrow.classList.add('hidden');
+        selectRole(org.tenant_id, org.role_id, row);
+      });
+    }
+    return row;
+  }
+
+  // ─── Card removal + re-evaluate empty state ───────────────────────────────
+  function removeCard(card, kind) {
+    card.classList.add('opacity-0');
+    card.style.transition = 'opacity .2s ease';
+    setTimeout(function () {
+      card.remove();
+      var listId = kind === 'invites' ? 'invitesList' : 'claimsList';
+      var sectionId = kind === 'invites' ? 'invitesSection' : 'claimsSection';
+      var list = $(listId);
+      if (list && list.children.length === 0) toggleEl($(sectionId), false);
+      reevaluateEmpty();
+    }, 210);
+  }
+
+  function reevaluateEmpty() {
+    var invitesLeft = $('invitesList').children.length;
+    var claimsLeft = $('claimsList').children.length;
+    // The empty state stands in only when there is nothing actionable AND no
+    // multi-org switcher to show.
+    var orgsShown = !$('orgsSection').classList.contains('hidden');
+    toggleEl($('emptyState'), invitesLeft === 0 && claimsLeft === 0 && !orgsShown);
+  }
+
+  // ─── Render everything from GET /org/context ──────────────────────────────
+  function render(ctx) {
+    var invites = (ctx.pending_invitations || []);
+    var claims = (ctx.pending_claims || []);
+    var orgs = (ctx.organizations || []);
+    var current = ctx.current || null;
+
+    // Invitations
+    var invitesList = $('invitesList');
+    invitesList.innerHTML = '';
+    invites.forEach(function (inv) { invitesList.appendChild(inviteCard(inv)); });
+    toggleEl($('invitesSection'), invites.length > 0);
+
+    // Claim candidates
+    var claimsList = $('claimsList');
+    claimsList.innerHTML = '';
+    claims.forEach(function (c) { claimsList.appendChild(claimCard(c)); });
+    toggleEl($('claimsSection'), claims.length > 0);
+
+    // Org switcher (only when the account holds more than one org)
+    var orgsList = $('orgsList');
+    orgsList.innerHTML = '';
+    if (orgs.length > 1) {
+      orgs.forEach(function (org) {
+        var isCurrent = !!(current && org.tenant_id === current.tenant_id && org.role_id === current.role_id);
+        orgsList.appendChild(orgRow(org, isCurrent));
+      });
+      toggleEl($('orgsSection'), true);
+    } else {
+      toggleEl($('orgsSection'), false);
+    }
+
+    // Empty state
+    var orgsShown = orgs.length > 1;
+    toggleEl($('emptyState'), invites.length === 0 && claims.length === 0 && !orgsShown);
+
+    toggleEl($('pageContent'), true);
+  }
+
+  function showPageError(status) {
+    var is401 = status === 401;
+    $('errorMsg').textContent = is401
+      ? 'Your session has expired. Please sign in again.'
+      : (status === 0 ? 'Network error — check your connection and try again.' : 'Something went wrong on our side. Please try again.');
+    toggleEl($('retryBtn'), !is401);
+    $('loginLink').classList.toggle('hidden', !is401);
+    toggleEl($('errorState'), true);
+  }
+
+  async function load() {
+    toggleEl($('errorState'), false);
+    toggleEl($('pageContent'), false);
+    toggleEl($('skeletonState'), true);
+    var r = await call('GET', '/org/context');
+    toggleEl($('skeletonState'), false);
+    if (r.status === 401) { window.location.href = '/login'; return; }
+    if (!r.ok) { showPageError(r.status); return; }
+    render(r.data || {});
+  }
+
+  function init() {
+    $('retryBtn').addEventListener('click', function () {
+      setLoading($('retryBtn'), true);
+      load().finally(function () { setLoading($('retryBtn'), false); });
+    });
+    load();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+</body></html>

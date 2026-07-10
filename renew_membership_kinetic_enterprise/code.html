@@ -10,8 +10,23 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
 <script src="/assets/js/utils.js"></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 <title>Gym Flow - Renew Membership</title>
 
 <style>
@@ -297,7 +312,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         } else {
           const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${currentTotalDue}&cu=INR&tn=Gym+Membership`;
           document.getElementById('qr-amount-display').innerText = `₹${currentTotalDue.toLocaleString()}`;
-          document.getElementById('qr-image').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiString)}`;
+          const qr = new QRious({
+            value: upiString,
+            size: 250
+          });
+          const base64DataUrl = qr.toDataURL();
+          const qrImg = document.getElementById('qr-image');
+          const tempImg = new Image();
+          tempImg.onload = () => {
+            qrImg.src = base64DataUrl;
+          };
+          tempImg.src = base64DataUrl;
         }
       } catch (err) {
         console.error('QR Gen error', err);

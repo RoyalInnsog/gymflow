@@ -271,6 +271,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ─── VIEWPORT-LOCKED SHELL ──────────────────────────── */
+/* Prevents global page scroll; only <main> scrolls.     */
+.shell-locked {
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for mobile browser chrome */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.shell-locked > main {
+  flex: 1 1 0%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* ─── GLASS CARDS ─────────────────────────────────────── */
 .glass-card {
   background:
@@ -406,13 +421,15 @@ body {
    hides behind it. Flat fallback works everywhere; @supports adds the device
    safe-area inset (home indicator) only where env() is understood. */
 @media (max-width: 767px) {
-  body { padding-bottom: 88px !important; }
+  /* pb-32 (128px) reservation so page content + any sticky action bar always
+     scroll clear above the 64px fixed bottom nav — never clipped. */
+  body { padding-bottom: 128px !important; }
   /* Focused flows have no bottom nav, so no reservation is needed. */
   body.no-bottom-nav { padding-bottom: 0 !important; }
 }
 @supports (padding: env(safe-area-inset-bottom)) {
   @media (max-width: 767px) {
-    body { padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important; }
+    body { padding-bottom: calc(112px + env(safe-area-inset-bottom)) !important; }
   }
   /* The bottom nav itself sits above the home indicator. */
   .jsb-bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
@@ -420,6 +437,45 @@ body {
      clear the home indicator. !important wins over Tailwind's pb utility. */
   .jsb-action-bar { padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important; }
 }
+
+/* ─── REUSABLE CARD CONTEXT MENU (3-dot) ──────────────── */
+/* Paired with /assets/js/cardMenu.js. The panel is positioned with
+   position:fixed by JS so it escapes any overflow-hidden card; these rules
+   only style it and gate visibility on the .gf-open state. */
+.gf-card-menu { position: relative; display: inline-flex; }
+.gf-card-menu-trigger { background: none; border: none; cursor: pointer; line-height: 0; }
+.gf-card-menu-panel {
+  position: fixed;
+  min-width: 184px;
+  z-index: 2147483001;               /* above bottom nav / drilldown chrome */
+  background: var(--surface-container-high, #262626);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 12px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+  padding: 6px;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+  transform-origin: top right;
+  pointer-events: none;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+.gf-card-menu.gf-open .gf-card-menu-panel { opacity: 1; transform: none; pointer-events: auto; }
+.gf-card-menu-panel > button,
+.gf-card-menu-panel > a,
+.gf-card-menu-panel > [role="menuitem"] {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; box-sizing: border-box;
+  padding: 9px 12px; border-radius: 8px;
+  font-size: 13px; font-weight: 500; line-height: 1.2;
+  color: var(--on-surface, #e6e6e6);
+  background: transparent; border: none; text-align: left;
+  text-decoration: none; cursor: pointer; white-space: nowrap;
+}
+.gf-card-menu-panel > button:hover,
+.gf-card-menu-panel > a:hover,
+.gf-card-menu-panel > [role="menuitem"]:hover { background: rgba(255, 255, 255, 0.07); }
+.gf-card-menu-panel .material-symbols-outlined { font-size: 18px; }
+.gf-card-menu-panel .gf-danger { color: var(--color-error, #ffaaa3); }
 
 /* ─── OVERFLOW PREVENTION ─────────────────────────────── */
 html, body { overflow-x: hidden; }
@@ -1056,4 +1112,87 @@ main, aside, .desktop-sidebar {
   transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
               margin 200ms cubic-bezier(0.16, 1, 0.3, 1),
               width 200ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* ─── INTERACTIVE DASHBOARD CARD & MODAL STYLES ─── */
+.kpi-card-interactive {
+  cursor: pointer !important;
+  user-select: none;
+}
+.kpi-card-interactive:hover {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  transform: translateY(-2px) !important;
+}
+.kpi-card-interactive:active {
+  transform: translateY(0) scale(0.98) !important;
+}
+
+/* Custom overlay anims */
+#analyticsDrilldownModal {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+#analyticsDrilldownModal.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+#analyticsDrilldownModal.show > div {
+  transform: scale(1) !important;
+}
+
+/* ─── PRINT ISOLATION ─────────────────────────────────── */
+/* window.print() must produce a clean document, not a screenshot of the running
+   app. Strip every piece of ambient chrome — sidebars, headers, bottom nav,
+   trial/subscription badges, banners, toasts, FABs, card context menus, tour
+   overlays and anything tagged .no-print / [data-no-print] — and reset the page
+   to a plain white sheet. Add class="no-print" (to hide) or "print-only"
+   (screen-hidden, print-shown) to opt individual elements in or out. */
+@media print {
+  .desktop-sidebar,
+  .jsb-bottom-nav,
+  header, #jsb-header,
+  #gf-sub-badge,
+  #gf-org-banner,
+  #gym-net-pill,
+  #mobile-more-sheet,
+  #gf-tour-tip,
+  .gf-card-menu, .gf-card-menu-panel,
+  .jsb-toast-container,
+  .no-print, [data-no-print] {
+    display: none !important;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Drop the fixed sidebar offset the header/main carry on desktop. */
+  main, .main-content, [class*="md:ml-[280px]"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Flatten glass/blur/shadow effects that don't render on paper. */
+  .glass-card, .glass-panel {
+    background: #ffffff !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    border-color: #e5e5e5 !important;
+  }
+
+  /* Screen-hidden content that should appear only on the printed page. */
+  .print-only { display: block !important; }
+
+  a[href]::after { content: "" !important; } /* no URL suffixes */
+  @page { margin: 12mm; }
 }

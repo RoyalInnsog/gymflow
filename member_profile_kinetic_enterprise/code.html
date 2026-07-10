@@ -10,6 +10,20 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
 <script src="/assets/js/membershipEngine.js"></script>
 <script src="/assets/js/utils.js"></script>
 <title>Gym Flow - Member Profile</title>
@@ -29,7 +43,7 @@
 </style>
 
 </head>
-<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
+<body class="shell-locked font-body text-body-md antialiased md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
 <div id="jsb-header" data-page-title="Member Profile"></div>
 <div id="jsb-sidebar"></div>
 
@@ -46,18 +60,21 @@
   <!-- Profile Header Card -->
   <div class="glass-card rounded-xl p-6 flex flex-col md:flex-row items-center md:items-start gap-gutter">
     <div class="relative">
-      <div class="w-32 h-32 rounded-full overflow-hidden border-4 border-surface-container-high shrink-0 bg-surface-container flex items-center justify-center text-primary font-bold">
-        <img id="memberProfileImage" alt="Member Photo" class="w-full h-full object-cover" src="" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-        <span id="memberProfileInitials" class="hidden w-full h-full items-center justify-center text-display-lg font-bold bg-primary/10 text-primary">JSB</span>
+      <div class="w-32 h-32 rounded-full overflow-hidden border-4 border-surface-container-high shrink-0 bg-surface-container flex items-center justify-center text-primary font-bold relative">
+        <img id="memberProfileImage" alt="Member Photo" class="w-full h-full object-cover hidden" src="">
+        <div id="memberProfilePlaceholder" class="w-full h-full flex items-center justify-center bg-primary/10 text-primary">
+          <span class="material-symbols-outlined text-[48px]">account_circle</span>
+        </div>
+        <span id="memberProfileInitials" class="hidden w-full h-full items-center justify-center text-display-lg font-bold bg-primary/10 text-primary"></span>
       </div>
       <div id="member-status-badge" class="absolute -bottom-2 -right-2 bg-surface-container-high text-on-surface-variant font-label-caps text-label-caps px-2 py-1 rounded-full border border-white/10 flex items-center gap-1">
-        <div class="w-4 h-4 rounded bg-white/10 animate-pulse"></div>
+        <span class="skeleton h-3 w-12 inline-block rounded"></span>
       </div>
     </div>
     <div class="flex-grow text-center md:text-left space-y-2">
       <div class="flex flex-col md:flex-row items-center gap-xs">
         <h2 class="font-headline-lg text-headline-lg text-on-surface bg-white/10 rounded animate-pulse w-48 h-8" id="member-name-heading"></h2>
-        <span id="member-plan-badge" class="bg-[#2A2A2A] text-[#c6c6c6] px-2 py-1 rounded border border-[#4c4546] font-label-caps text-label-caps flex items-center gap-1 min-w-[80px] h-6 animate-pulse"></span>
+        <span id="member-plan-badge" class="font-label-caps text-label-caps flex items-center gap-1"><span class="skeleton h-6 w-20 inline-block rounded"></span></span>
       </div>
       <p class="font-body-md text-body-md text-on-surface-variant flex items-center justify-center md:justify-start gap-2">
         <span class="material-symbols-outlined text-[18px]">location_on</span> <span id="member-branch"><span class="skeleton h-4 w-28 inline-block align-middle"></span></span>
@@ -577,50 +594,123 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Load Member Data
+  // ── Resilience helpers ──────────────────────────────────────────────────
+  // Member-level hard stop: with no member object at all there is nothing to
+  // render, so show ONE friendly empty state instead of a page of blank cards.
+  function showProfileError(msg) {
+    const host = document.getElementById('tab-contents');
+    if (host) {
+      host.innerHTML = `
+        <div class="profile-tab-content flex flex-col items-center justify-center text-center py-20 px-6">
+          <div class="w-14 h-14 rounded-2xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-4 shadow-sm">
+            <span class="material-symbols-outlined text-primary text-[28px]">person_off</span>
+          </div>
+          <h3 class="font-title-lg text-title-lg text-on-surface font-semibold mb-1">${esc(msg || 'Member data unavailable')}</h3>
+          <p class="text-on-surface-variant text-sm max-w-sm mb-5">The profile couldn't be loaded. It may have been removed, or the connection dropped.</p>
+          <div class="flex gap-3">
+            <button onclick="location.reload()" class="px-4 py-2 rounded-lg bg-primary text-on-primary text-xs font-bold flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">refresh</span> Retry</button>
+            <a href="/members" class="px-4 py-2 rounded-lg border border-white/10 text-xs font-bold flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">arrow_back</span> Back</a>
+          </div>
+        </div>`;
+    }
+    const h = document.getElementById('member-name-heading');
+    if (h) { h.classList.remove('animate-pulse'); h.innerText = 'Member unavailable'; }
+  }
+
+  // Card-level error boundary: run ONE section's render in isolation so a bad
+  // record in a single card can never blank the whole profile. On failure, drop
+  // a clean "Data unavailable" placeholder into that section's container.
+  function safeSection(fn, placeholderEl, colspan) {
+    try { fn(); }
+    catch (e) {
+      console.error('[member-profile] section render failed:', e);
+      if (!placeholderEl) return;
+      placeholderEl.innerHTML = placeholderEl.tagName === 'TBODY'
+        ? `<tr><td colspan="${colspan || 4}" class="py-6 text-center text-on-surface-variant text-sm">Data unavailable.</td></tr>`
+        : `<div class="py-8 text-center text-on-surface-variant text-sm">Data unavailable.</div>`;
+    }
+  }
+
   async function loadProfile() {
     try {
       const response = await window.api.fetch(`/members/${memberId}`);
-      const data = await response.json();
-      if (!response.ok) return console.error(data.error);
+      // Parse defensively: a non-JSON / empty body must not throw here.
+      let data = {};
+      try { data = (await response.json()) || {}; } catch (_) { data = {}; }
+      if (!response.ok) return showProfileError((data && data.error) || 'Failed to load this member.');
 
-      const { member, membership, timeline, communications } = data;
+      // Defensive destructure — a partial/empty payload must NEVER throw. A
+      // missing `member` is a hard stop; missing timeline / communications just
+      // mean "no records yet", so default them to [] before any .filter/.map.
+      const member = data.member || null;
+      const membership = data.membership || null;
+      const timeline = Array.isArray(data.timeline) ? data.timeline : [];
+      const communications = Array.isArray(data.communications) ? data.communications : [];
+      if (!member) return showProfileError('This member could not be found.');
       loadedMember = member;
       loadedMembership = membership;
 
-      // Update Header
-      document.title = `Member Profile - ${member.full_name}`;
-      document.getElementById('member-name-heading').innerText = member.full_name;
+      // Update Header — `||` fallback so even a nameless record still renders.
+      const fullName = member.full_name || 'Unnamed Member';
+      document.title = `Member Profile - ${fullName}`;
+      const nameHeading = document.getElementById('member-name-heading');
+      nameHeading.classList.remove('animate-pulse');
+      nameHeading.innerText = fullName;
       document.getElementById('member-branch').innerText = window.APP_CONFIG?.brand?.name || 'Headquarters';
       
+      // Plan badge — always resolve to a concrete text pill (never leave the
+      // skeleton/empty block behind). Full className is set here since the
+      // markup only carries the loading skeleton.
       const planBadge = document.getElementById('member-plan-badge');
       if (membership) {
-        planBadge.innerHTML = `<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span> ${esc(membership.plan_name)}`;
+        planBadge.className = "bg-primary/10 text-primary px-2 py-1 rounded border border-primary/20 font-label-caps text-label-caps flex items-center gap-1";
+        planBadge.innerHTML = `<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span> ${esc(membership.plan_name || 'Active Plan')}`;
       } else {
+        planBadge.className = "bg-surface-container-high text-on-surface-variant px-2 py-1 rounded border border-white/10 font-label-caps text-label-caps flex items-center gap-1";
         planBadge.innerHTML = `<span class="material-symbols-outlined text-[14px]">star</span> No Plan`;
       }
 
-      // Status Badge
+      // Status Badge — Active / Expired, with a neutral fallback for any
+      // unknown/missing status so it never stays a blank skeleton block.
       const statusBadge = document.getElementById('member-status-badge');
-      if (member.status === 'Active') {
+      const status = member.status || 'Unknown';
+      if (status === 'Active') {
         statusBadge.className = "absolute -bottom-2 -right-2 bg-green-500/20 text-green-400 font-label-caps text-label-caps px-2 py-1 rounded-full border border-green-500/50 flex items-center gap-1";
         statusBadge.innerHTML = '<div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div> Active';
-      } else {
+      } else if (status === 'Expired') {
         statusBadge.className = "absolute -bottom-2 -right-2 bg-red-500/20 text-red-400 font-label-caps text-label-caps px-2 py-1 rounded-full border border-red-500/50 flex items-center gap-1";
         statusBadge.innerHTML = '<div class="w-2 h-2 rounded-full bg-red-400"></div> Expired';
+      } else {
+        statusBadge.className = "absolute -bottom-2 -right-2 bg-surface-container-high text-on-surface-variant font-label-caps text-label-caps px-2 py-1 rounded-full border border-white/10 flex items-center gap-1";
+        statusBadge.innerHTML = `<div class="w-2 h-2 rounded-full bg-on-surface-variant"></div> ${esc(status)}`;
       }
 
       // Photo
       const photo = member.photo_url || '';
       const memberImg = document.getElementById('memberProfileImage');
       const initialsSpan = document.getElementById('memberProfileInitials');
+      const placeholderDiv = document.getElementById('memberProfilePlaceholder');
       if (photo) {
-        memberImg.src = photo;
-        memberImg.style.display = 'block';
-        initialsSpan.style.display = 'none';
+        const bufferImg = new Image();
+        bufferImg.src = photo;
+        bufferImg.onload = () => {
+          memberImg.src = photo;
+          memberImg.classList.remove('hidden');
+          if (placeholderDiv) placeholderDiv.classList.add('hidden');
+          initialsSpan.classList.add('hidden');
+        };
+        bufferImg.onerror = () => {
+          memberImg.classList.add('hidden');
+          if (placeholderDiv) placeholderDiv.classList.add('hidden');
+          initialsSpan.classList.remove('hidden');
+          const initials = member.full_name ? member.full_name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : 'GF';
+          initialsSpan.innerText = initials;
+        };
       } else {
-        memberImg.style.display = 'none';
-        initialsSpan.style.display = 'flex';
-        const initials = member.full_name ? member.full_name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : 'GYM';
+        memberImg.classList.add('hidden');
+        if (placeholderDiv) placeholderDiv.classList.add('hidden');
+        initialsSpan.classList.remove('hidden');
+        const initials = member.full_name ? member.full_name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : 'GF';
         initialsSpan.innerText = initials;
       }
 
@@ -648,61 +738,67 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.getElementById('overview-emergency-name').innerText = member.emergency_contact_name || 'N/A';
       document.getElementById('overview-emergency-phone').innerText = member.emergency_contact_phone || 'N/A';
       document.getElementById('overview-created-at').innerText = member.created_at ? new Date(member.created_at).toLocaleDateString() : 'N/A';
-      document.getElementById('overview-plan-name').innerText = membership ? `${membership.plan_name} (Expires ${membership.end_date})` : 'No active membership plan';
+      document.getElementById('overview-plan-name').innerText = membership ? `${membership.plan_name || 'Plan'} (Expires ${membership.end_date || 'N/A'})` : 'No active membership plan';
 
-      // Tab 2: Payments Tab
+      // Tab 2: Payments Tab — isolated so a malformed payment row can't blank the page.
       const paymentsTable = document.getElementById('tab-payments-body');
-      paymentsTable.innerHTML = '';
-      const payTimeline = timeline.filter(t => t.type === 'Payment');
-      if (payTimeline.length === 0) {
-        paymentsTable.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-on-surface-variant">No transaction records.</td></tr>`;
-      } else {
-        payTimeline.forEach(p => {
-          // Parse values out of details description
-          const matchAmount = p.details.match(/Amount:\s*₹([\d,]+)/);
-          const amt = matchAmount ? '₹' + matchAmount[1] : '₹0';
-          const matchMethod = p.details.match(/via\s*(\w+)/);
-          const method = matchMethod ? matchMethod[1] : 'N/A';
-          const matchRef = p.details.match(/Txn:\s*([^\)]+)/);
-          const ref = matchRef ? matchRef[1] : 'N/A';
-          const matchInv = p.details.match(/Invoice\s*#(\w+)/);
-          const invNum = matchInv ? matchInv[1] : 'N/A';
+      safeSection(() => {
+        paymentsTable.innerHTML = '';
+        const payTimeline = timeline.filter(t => t && t.type === 'Payment');
+        if (payTimeline.length === 0) {
+          paymentsTable.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-on-surface-variant">No transaction records.</td></tr>`;
+        } else {
+          payTimeline.forEach(p => {
+            // Parse values out of details description — `details` may be missing,
+            // so coalesce to '' before .match() (which would throw on undefined).
+            const details = p.details || '';
+            const matchAmount = details.match(/Amount:\s*₹([\d,]+)/);
+            const amt = matchAmount ? '₹' + matchAmount[1] : '₹0';
+            const matchMethod = details.match(/via\s*(\w+)/);
+            const method = matchMethod ? matchMethod[1] : 'N/A';
+            const matchRef = details.match(/Txn:\s*([^\)]+)/);
+            const ref = matchRef ? matchRef[1] : 'N/A';
+            const matchInv = details.match(/Invoice\s*#(\w+)/);
+            const invNum = matchInv ? matchInv[1] : 'N/A';
 
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td class="py-3 px-4 text-on-surface font-mono">${p.date}</td>
-            <td class="py-3 px-4 font-mono font-bold text-secondary">${amt}</td>
-            <td class="py-3 px-4 text-on-surface-variant">${method}</td>
-            <td class="py-3 px-4 text-on-surface-variant font-mono text-xs">${ref}</td>
-            <td class="py-3 px-4 text-primary font-mono text-xs cursor-pointer hover:underline" onclick="window.location.href='/receipt?id=${invNum}'">${invNum}</td>
-            <td class="py-3 px-4"><span class="px-2 py-0.5 rounded-full text-xs font-label-sm uppercase bg-[#81c995]/10 text-[#81c995] border border-[#81c995]/20">Successful</span></td>
-          `;
-          paymentsTable.appendChild(row);
-        });
-      }
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td class="py-3 px-4 text-on-surface font-mono">${esc(p.date || 'N/A')}</td>
+              <td class="py-3 px-4 font-mono font-bold text-secondary">${amt}</td>
+              <td class="py-3 px-4 text-on-surface-variant">${method}</td>
+              <td class="py-3 px-4 text-on-surface-variant font-mono text-xs">${ref}</td>
+              <td class="py-3 px-4 text-primary font-mono text-xs cursor-pointer hover:underline" onclick="window.location.href='/receipt?id=${invNum}'">${invNum}</td>
+              <td class="py-3 px-4"><span class="px-2 py-0.5 rounded-full text-xs font-label-sm uppercase bg-[#81c995]/10 text-[#81c995] border border-[#81c995]/20">Successful</span></td>
+            `;
+            paymentsTable.appendChild(row);
+          });
+        }
+      }, paymentsTable, 6);
 
-      // Tab 3: Membership Tab
+      // Tab 3: Membership Tab — isolated like payments.
       const membershipsTable = document.getElementById('tab-memberships-body');
-      membershipsTable.innerHTML = '';
-      const msTimeline = timeline.filter(t => t.type === 'Membership');
+      safeSection(() => {
+        membershipsTable.innerHTML = '';
+        const msTimeline = timeline.filter(t => t && t.type === 'Membership');
       if (msTimeline.length === 0) {
         membershipsTable.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-on-surface-variant">No membership records.</td></tr>`;
       } else {
         msTimeline.forEach(m => {
-          const matchPlan = m.details.match(/Plan:\s*([^.]+)/);
+          const details = m.details || '';
+          const matchPlan = details.match(/Plan:\s*([^.]+)/);
           const plan = matchPlan ? matchPlan[1] : 'N/A';
-          const matchDuration = m.details.match(/Duration:\s*([\d-]+)\s*to\s*([\d-]+)/);
+          const matchDuration = details.match(/Duration:\s*([\d-]+)\s*to\s*([\d-]+)/);
           const start = matchDuration ? matchDuration[1] : 'N/A';
           const end = matchDuration ? matchDuration[2] : 'N/A';
           
-          const isRenew = m.title.includes('Renewed');
+          const isRenew = (m.title || '').includes('Renewed');
 
           const row = document.createElement('tr');
           row.innerHTML = `
-            <td class="py-3 px-4 text-on-surface font-bold">${plan}</td>
-            <td class="py-3 px-4 font-mono text-on-surface-variant">${start}</td>
-            <td class="py-3 px-4 font-mono text-on-surface-variant">${end}</td>
-            <td class="py-3 px-4 font-mono text-secondary">₹${membership ? membership.price : '1,500'}</td>
+            <td class="py-3 px-4 text-on-surface font-bold">${esc(plan)}</td>
+            <td class="py-3 px-4 font-mono text-on-surface-variant">${esc(start)}</td>
+            <td class="py-3 px-4 font-mono text-on-surface-variant">${esc(end)}</td>
+            <td class="py-3 px-4 font-mono text-secondary">₹${membership ? (membership.price ?? '1,500') : '1,500'}</td>
             <td class="py-3 px-4"><span class="px-2.5 py-0.5 rounded text-xs font-label-sm uppercase ${
               isRenew ? 'bg-tertiary/10 text-tertiary border border-tertiary/20' : 'bg-primary/10 text-primary border border-primary/20'
             }">${isRenew ? 'Renewal' : 'Initial'}</span></td>
@@ -710,6 +806,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           membershipsTable.appendChild(row);
         });
       }
+      }, membershipsTable, 5);
 
       // Tab 4: Measurements Tab
       const bmiVal = member.bmi || 0;
@@ -732,27 +829,32 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.getElementById('measure-chest').innerText = chest > 0 ? chest + ' inches' : 'N/A';
       document.getElementById('measure-arms').innerText = arms > 0 ? arms + ' inches' : 'N/A';
 
-      // Tab 5: Communication Log Tab
+      // Tab 5: Communication Log Tab — isolated + null-guarded.
       const communicationTable = document.getElementById('tab-communication-body');
-      communicationTable.innerHTML = '';
-      if (communications.length === 0) {
-        communicationTable.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-on-surface-variant">No communications sent.</td></tr>`;
-      } else {
-        communications.forEach(c => {
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td class="py-3 px-4 font-mono text-on-surface-variant text-xs">${new Date(c.created_at).toLocaleDateString()}</td>
-            <td class="py-3 px-4 font-bold text-on-surface">${esc(c.title)}</td>
-            <td class="py-3 px-4 text-on-surface-variant max-w-md truncate" title="${esc(c.message)}">${esc(c.message)}</td>
-          `;
-          communicationTable.appendChild(row);
-        });
-      }
+      safeSection(() => {
+        communicationTable.innerHTML = '';
+        if (communications.length === 0) {
+          communicationTable.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-on-surface-variant">No communications sent.</td></tr>`;
+        } else {
+          communications.forEach(c => {
+            // `created_at` may be absent — avoid rendering "Invalid Date".
+            const when = c.created_at ? new Date(c.created_at).toLocaleDateString() : 'N/A';
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td class="py-3 px-4 font-mono text-on-surface-variant text-xs">${esc(when)}</td>
+              <td class="py-3 px-4 font-bold text-on-surface">${esc(c.title || 'Message')}</td>
+              <td class="py-3 px-4 text-on-surface-variant max-w-md truncate" title="${esc(c.message || '')}">${esc(c.message || '')}</td>
+            `;
+            communicationTable.appendChild(row);
+          });
+        }
+      }, communicationTable, 3);
 
-      // Tab 6: Trainer/Manager Notes
+      // Tab 6: Trainer/Manager Notes — isolated + null-guarded.
       const notesTimeline = document.getElementById('notes-timeline-container');
-      notesTimeline.innerHTML = '';
-      const notesEvents = timeline.filter(t => t.type === 'Retention');
+      safeSection(() => {
+        notesTimeline.innerHTML = '';
+        const notesEvents = timeline.filter(t => t && t.type === 'Retention');
       if (notesEvents.length === 0) {
         notesTimeline.innerHTML = `<p class="text-center text-on-surface-variant py-8">No logged notes for this member.</p>`;
       } else {
@@ -761,12 +863,13 @@ document.addEventListener("DOMContentLoaded", async () => {
           card.className = 'bg-surface-container-low border border-white/5 rounded-xl p-4 flex flex-col gap-2 relative';
           
           // Parse values out of retention details
-          const matchRisk = n.details.match(/Risk Level:\s*(\w+)/);
+          const nDetails = n.details || '';
+          const matchRisk = nDetails.match(/Risk Level:\s*(\w+)/);
           const risk = matchRisk ? matchRisk[1] : 'Medium';
-          const matchChannel = n.details.match(/Channel:\s*([^.]+)/);
+          const matchChannel = nDetails.match(/Channel:\s*([^.]+)/);
           const channel = matchChannel ? matchChannel[1] : 'WhatsApp';
-          const matchNotes = n.details.match(/Notes:\s*([\s\S]+)/);
-          const detailsText = matchNotes ? matchNotes[1] : n.details;
+          const matchNotes = nDetails.match(/Notes:\s*([\s\S]+)/);
+          const detailsText = matchNotes ? matchNotes[1] : (nDetails || 'No details');
 
           let badgeColor = "bg-[#81c995]/10 text-[#81c995]";
           if (risk === 'High') badgeColor = "bg-error/10 text-error";
@@ -774,20 +877,24 @@ document.addEventListener("DOMContentLoaded", async () => {
 
           card.innerHTML = `
             <div class="flex justify-between items-center mb-1">
-              <span class="px-2 py-0.5 rounded text-xs font-label-sm font-bold uppercase ${badgeColor}">${risk} Risk</span>
-              <span class="text-xs text-on-surface-variant font-mono">${n.date}</span>
+              <span class="px-2 py-0.5 rounded text-xs font-label-sm font-bold uppercase ${badgeColor}">${esc(risk)} Risk</span>
+              <span class="text-xs text-on-surface-variant font-mono">${esc(n.date || '')}</span>
             </div>
-            <p class="text-sm text-on-surface whitespace-pre-wrap">"${detailsText}"</p>
+            <p class="text-sm text-on-surface whitespace-pre-wrap">"${esc(detailsText)}"</p>
             <div class="text-xs text-on-surface-variant border-t border-white/5 pt-2 mt-1 flex justify-between">
-              <span>Logged via: <strong>${channel}</strong></span>
+              <span>Logged via: <strong>${esc(channel)}</strong></span>
             </div>
           `;
           notesTimeline.appendChild(card);
         });
       }
+      }, notesTimeline);
 
     } catch (err) {
-      console.error(err);
+      // Last-resort boundary: an unexpected failure anywhere above shows ONE
+      // friendly state instead of a page of blank ("black") cards.
+      console.error('[member-profile] load failed:', err);
+      showProfileError('Something went wrong loading this profile.');
     }
   }
 

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link href="/assets/css/shared.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/assets/js/designSystem.js"></script>
+    <script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
+    <script src="/assets/js/utils.js"></script>
+    <title>Gym Flow - Verify Phone</title>
+    <style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-smoothing: antialiased;
+        }
+        .bg-mesh {
+            background-color: #131313;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(53, 53, 53, 0.4) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(31, 31, 31, 0.5) 0px, transparent 50%);
+        }
+        .otp-input::-webkit-outer-spin-button,
+        .otp-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .otp-input {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-mesh min-h-screen flex items-center justify-center p-margin-mobile md:p-margin-desktop text-on-surface font-body-md antialiased selection:bg-primary/30 selection:text-primary">
+
+<!-- Background lights -->
+<div class="absolute top-1/4 left-1/4 w-96 h-96 bg-surface-variant/20 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[150px] pointer-events-none"></div>
+
+<main class="w-full max-w-[460px] relative z-10 flex flex-col">
+    <!-- Glassmorphic Card -->
+    <div class="bg-surface-container/60 backdrop-blur-xl border border-outline-variant/30 rounded-xl p-8 md:p-10 shadow-2xl flex flex-col relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-surface-bright/10 to-transparent pointer-events-none"></div>
+        <div class="relative z-10">
+            <!-- Brand / Logo -->
+            <div class="flex justify-center mb-xl">
+                <div class="h-16 w-16 flex items-center justify-center rounded-lg bg-surface-container-highest border border-outline-variant/50 shadow-inner">
+                    <span class="material-symbols-outlined text-4xl text-primary dynamic-logo" style="font-variation-settings: 'FILL' 1;">security</span>
+                </div>
+            </div>
+
+            <!-- Header -->
+            <div class="text-center mb-xl" id="headerSection">
+                <h1 class="font-headline-lg text-headline-lg text-on-surface mb-xs">Verification</h1>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">Verify your phone number to secure your identity.</p>
+            </div>
+
+            <!-- Error Banner -->
+            <div id="errorBanner" class="hidden bg-error/15 border border-error/30 rounded-lg p-4 mb-xl flex items-start gap-3">
+                <span class="material-symbols-outlined text-error text-[20px] mt-0.5">error</span>
+                <p id="errorText" class="font-body-sm text-body-sm text-error"></p>
+            </div>
+
+            <!-- Step 1: Capture Phone -->
+            <div id="stepCapture" class="flex flex-col gap-xl">
+                <div class="flex flex-col gap-base">
+                    <label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest pl-1">Phone Number</label>
+                    <div class="flex gap-2">
+                        <!-- Country Code Selector -->
+                        <div class="relative w-1/3">
+                            <select id="countryCode" class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg py-3 pl-3 pr-8 font-body-md text-body-md text-on-surface outline-none appearance-none focus:border-primary focus:ring-1 focus:ring-primary/50 shadow-inner cursor-pointer">
+                                <option value="+91" selected>🇮🇳 +91</option>
+                                <option value="+1">🇺🇸 +1</option>
+                                <option value="+44">🇬🇧 +44</option>
+                                <option value="+61">🇦🇺 +61</option>
+                                <option value="+971">🇦🇪 +971</option>
+                            </select>
+                            <span class="material-symbols-outlined absolute right-3 top-3 text-on-surface-variant/70 text-[18px] pointer-events-none">arrow_drop_down</span>
+                        </div>
+                        <!-- Phone Input -->
+                        <div class="relative flex-1">
+                            <input id="phoneNumber" class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg py-3 px-4 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/30 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none shadow-inner" placeholder="98765 43210" type="tel" required>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="btnSendOtp" class="w-full bg-primary text-on-primary py-4 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-primary-fixed-dim hover:shadow-primary/20 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/10 border border-primary-fixed/20">
+                    <span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner>progress_activity</span>
+                    <span data-label>SEND CODE</span>
+                    <span class="material-symbols-outlined text-[18px]" data-arrow>arrow_forward</span>
+                </button>
+            </div>
+
+            <!-- Step 2: Verify OTP (Hidden by default) -->
+            <div id="stepVerify" class="hidden flex flex-col gap-xl">
+                <div class="text-center mb-base">
+                    <p class="font-body-sm text-body-sm text-on-surface-variant">We sent a verification code to <span id="displayPhone" class="font-semibold text-on-surface"></span></p>
+                </div>
+
+                <div class="flex flex-col gap-base">
+                    <label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest text-center">Enter Verification Code</label>
+                    <div class="flex justify-between gap-2 mt-2" id="otpContainer">
+                        <input class="otp-input w-12 h-14 bg-surface-container-lowest border border-outline-variant/40 rounded-lg text-center font-body-lg text-headline-md text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-inner" type="number" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                        <input class="otp-input w-12 h-14 bg-surface-container-lowest border border-outline-variant/40 rounded-lg text-center font-body-lg text-headline-md text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-inner" type="number" maxlength="1" pattern="[0-9]" inputmode="numeric" disabled>
+                        <input class="otp-input w-12 h-14 bg-surface-container-lowest border border-outline-variant/40 rounded-lg text-center font-body-lg text-headline-md text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-inner" type="number" maxlength="1" pattern="[0-9]" inputmode="numeric" disabled>
+                        <input class="otp-input w-12 h-14 bg-surface-container-lowest border border-outline-variant/40 rounded-lg text-center font-body-lg text-headline-md text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-inner" type="number" maxlength="1" pattern="[0-9]" inputmode="numeric" disabled>
+                        <input class="otp-input w-12 h-14 bg-surface-container-lowest border border-outline-variant/40 rounded-lg text-center font-body-lg text-headline-md text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-inner" type="number" maxlength="1" pattern="[0-9]" inputmode="numeric" disabled>
+                        <input class="otp-input w-12 h-14 bg-surface-container-lowest border border-outline-variant/40 rounded-lg text-center font-body-lg text-headline-md text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-inner" type="number" maxlength="1" pattern="[0-9]" inputmode="numeric" disabled>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    <button id="btnVerifyOtp" class="w-full bg-primary text-on-primary py-4 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-primary-fixed-dim hover:shadow-primary/20 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/10 border border-primary-fixed/20">
+                        <span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner>progress_activity</span>
+                        <span data-label>VERIFY CODE</span>
+                        <span class="material-symbols-outlined text-[18px]" data-arrow>check</span>
+                    </button>
+
+                    <div class="flex justify-between items-center px-1 font-body-sm text-body-sm">
+                        <button id="btnBack" class="text-on-surface-variant/70 hover:text-on-surface transition-colors flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[16px]">arrow_back</span>
+                            Change number
+                        </button>
+                        <button id="btnResend" class="text-primary hover:text-primary-fixed-dim transition-colors disabled:text-on-surface-variant/40 disabled:pointer-events-none" disabled>
+                            Resend Code
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dev Helper Box for verification in non-production environments -->
+    <div id="devCodeBox" class="hidden bg-surface-container-low border border-outline-variant/30 rounded-xl p-4 mt-6 text-center text-on-surface-variant/80 text-body-sm relative z-10 shadow-lg">
+        <span class="font-bold text-primary mr-1">DEV CODE:</span>
+        <span id="devCodeValue" class="font-mono text-base font-bold tracking-widest select-all text-on-surface">------</span>
+    </div>
+
+    <div class="text-center mt-8 font-body-sm text-body-sm text-on-surface-variant/50">
+        <p>Authorized session required · Powered by GYM Flow</p>
+    </div>
+</main>
+
+<script>
+    let activePhone = '';
+    let resendTimer = null;
+    let secondsLeft = 0;
+
+    const errorBanner = document.getElementById('errorBanner');
+    const errorText = document.getElementById('errorText');
+
+    const stepCapture = document.getElementById('stepCapture');
+    const stepVerify = document.getElementById('stepVerify');
+
+    const countryCode = document.getElementById('countryCode');
+    const phoneNumber = document.getElementById('phoneNumber');
+
+    const btnSendOtp = document.getElementById('btnSendOtp');
+    const btnVerifyOtp = document.getElementById('btnVerifyOtp');
+    const btnBack = document.getElementById('btnBack');
+    const btnResend = document.getElementById('btnResend');
+
+    const displayPhone = document.getElementById('displayPhone');
+    const devCodeBox = document.getElementById('devCodeBox');
+    const devCodeValue = document.getElementById('devCodeValue');
+
+    const inputs = document.querySelectorAll('.otp-input');
+
+    function showError(msg) {
+        if (!msg) {
+            errorBanner.classList.add('hidden');
+        } else {
+            errorText.textContent = msg;
+            errorBanner.classList.remove('hidden');
+        }
+    }
+
+    function setBtnLoading(btn, on, labelStr, origStr) {
+        btn.disabled = on;
+        btn.querySelector('[data-spinner]').classList.toggle('hidden', !on);
+        btn.querySelector('[data-arrow]').classList.toggle('hidden', on);
+        btn.querySelector('[data-label]').textContent = on ? labelStr : origStr;
+    }
+
+    // OTP Boxes Focus Shift
+    inputs.forEach((input, index) => {
+        input.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (val.length > 1) {
+                e.target.value = val.slice(-1);
+            }
+            if (val && index < inputs.length - 1) {
+                inputs[index + 1].disabled = false;
+                inputs[index + 1].focus();
+            }
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                inputs[index - 1].focus();
+            }
+        });
+    });
+
+    async function sendOtp(isResend = false) {
+        showError('');
+        const phone = countryCode.value + phoneNumber.value.trim().replace(/[\s-]/g, '');
+        if (!phone || phone.length < 10) {
+            showError('Please enter a valid phone number.');
+            return;
+        }
+
+        activePhone = phone;
+        const targetBtn = isResend ? btnResend : btnSendOtp;
+        
+        if (!isResend) {
+            setBtnLoading(btnSendOtp, true, 'SENDING', 'SEND CODE');
+        } else {
+            btnResend.disabled = true;
+            btnResend.textContent = 'Sending...';
+        }
+
+        try {
+            const res = await window.api.fetch('/auth/phone/request-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                displayPhone.textContent = phone;
+                stepCapture.classList.add('hidden');
+                stepVerify.classList.remove('hidden');
+
+                // If devCode is returned (non-production environment)
+                if (data.devCode) {
+                    devCodeBox.classList.remove('hidden');
+                    devCodeValue.textContent = data.devCode;
+                } else {
+                    devCodeBox.classList.add('hidden');
+                }
+
+                // Focus first OTP box
+                inputs[0].disabled = false;
+                inputs[0].focus();
+
+                // Start countdown
+                startCooldown(data.cooldown || 60);
+            } else {
+                showError(data.error || 'Failed to send verification code.');
+            }
+        } catch (err) {
+            showError('Network error. Failed to connect to verification server.');
+        } finally {
+            setBtnLoading(btnSendOtp, false, 'SENDING', 'SEND CODE');
+            if (isResend) {
+                updateResendButtonText();
+            }
+        }
+    }
+
+    function startCooldown(sec) {
+        clearInterval(resendTimer);
+        secondsLeft = sec;
+        btnResend.disabled = true;
+        updateResendButtonText();
+        
+        resendTimer = setInterval(() => {
+            secondsLeft--;
+            if (secondsLeft <= 0) {
+                clearInterval(resendTimer);
+                btnResend.disabled = false;
+                btnResend.textContent = 'Resend Code';
+            } else {
+                updateResendButtonText();
+            }
+        }, 1000);
+    }
+
+    function updateResendButtonText() {
+        if (secondsLeft > 0) {
+            btnResend.textContent = `Resend in ${secondsLeft}s`;
+        }
+    }
+
+    btnSendOtp.addEventListener('click', () => sendOtp(false));
+    btnResend.addEventListener('click', () => sendOtp(true));
+
+    btnBack.addEventListener('click', () => {
+        showError('');
+        stepVerify.classList.add('hidden');
+        stepCapture.classList.remove('hidden');
+        devCodeBox.classList.add('hidden');
+        inputs.forEach(i => { i.value = ''; if (i !== inputs[0]) i.disabled = true; });
+    });
+
+    btnVerifyOtp.addEventListener('click', async () => {
+        showError('');
+        const code = Array.from(inputs).map(i => i.value).join('');
+        if (code.length < 6) {
+            showError('Please enter the full 6-digit code.');
+            return;
+        }
+
+        setBtnLoading(btnVerifyOtp, true, 'VERIFYING', 'VERIFY CODE');
+
+        try {
+            const res = await window.api.fetch('/auth/phone/verify-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: activePhone, code })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                // Success: Phone is verified. We redirect to / to let the system evaluate select-role step.
+                window.location.href = '/';
+            } else {
+                showError(data.error || 'Invalid code.');
+            }
+        } catch (err) {
+            showError('Verification request failed. Please check connection.');
+        } finally {
+            setBtnLoading(btnVerifyOtp, false, 'VERIFYING', 'VERIFY CODE');
+        }
+    });
+</script>
+</body>
+</html>

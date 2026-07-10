@@ -1,0 +1,10 @@
+{
+  "ignore": [
+    "public/models/*",
+    "public/assets/*",
+    "node_modules/*",
+    "*.log",
+    "*.task",
+    "tests/*"
+  ]
+}

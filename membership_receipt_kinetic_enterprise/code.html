@@ -10,6 +10,20 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
 <script src="/assets/js/utils.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <title>Gym Flow - Receipt</title>
@@ -24,7 +38,7 @@
     </style>
 
 </head>
-<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-surface flex flex-col items-center py-12 px-4 sm:px-8">
+<body class="shell-locked font-body text-body-md antialiased md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-surface flex flex-col items-center py-12 px-4 sm:px-8">
 <div id="jsb-header" data-page-title="Receipt"></div>
 <div id="jsb-sidebar"></div>
 
@@ -99,12 +113,12 @@
 <span class="material-symbols-outlined text-[16px]">account_balance_wallet</span> Payment Details
                     </p>
 <div class="flex items-center gap-stack-sm text-primary mb-1">
-<span class="material-symbols-outlined text-[24px]">qr_code_scanner</span>
-<p class="font-title-lg text-title-lg">UPI Transaction</p>
+<span id="rcpt-method-icon" class="material-symbols-outlined text-[24px]">account_balance_wallet</span>
+<p class="font-title-lg text-title-lg">Payment</p>
 </div>
 <div class="flex flex-col gap-1 text-on-surface-variant font-body-md text-body-md">
-<p>Txn ID: UPI/329810482910</p>
-<p>Status: Successful verified</p>
+<p>Txn ID: --</p>
+<p>Status: --</p>
 </div>
 </div>
 </div>
@@ -242,10 +256,21 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
 
-    // 3. Payment Details
+    // 3. Payment Details — driven entirely by the real transaction so a Cash
+    // payment never prints as "UPI Transaction" (or a mock UPI txn id). The
+    // method icon is matched too.
     const paymentCard = document.querySelectorAll('.grid-cols-1.sm\\:grid-cols-2 > div')[1];
     if (paymentCard) {
-      paymentCard.querySelector('p.font-title-lg').innerText = `${txt(data.method)} Transaction`;
+      const method = (data.method && String(data.method).trim()) || '';
+      paymentCard.querySelector('p.font-title-lg').innerText = method ? `${method} Transaction` : 'Payment';
+      const iconEl = document.getElementById('rcpt-method-icon');
+      if (iconEl) {
+        const m = method.toLowerCase();
+        iconEl.innerText = m === 'cash' ? 'payments'
+          : m === 'card' ? 'credit_card'
+          : m === 'upi' ? 'qr_code_scanner'
+          : 'account_balance_wallet';
+      }
       const details = paymentCard.querySelectorAll('div.font-body-md p');
       if (details.length >= 2) {
         details[0].innerText = `Txn ID: ${txt(data.transaction_reference)}`;

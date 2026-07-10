@@ -96,10 +96,13 @@
     { id: 'nav-dashboard',  label: 'Dashboard',           icon: 'dashboard',    href: '/dashboard',     mobileSlot: 1,  aliases: ['/'] },
     { id: 'nav-members',    label: 'Members',             icon: 'group',        href: '/members',       mobileSlot: 2,  aliases: ['/member-profile','/member-timeline','/member-communication','/member-qr','/add-member','/add-member-step-1'] },
     { id: 'nav-crm',        label: 'Lead CRM',            icon: 'person_add',   href: '/lead-crm',      mobileSlot: 0 },
+    // [NAV] Attendance promoted to first-class bottom-dock slot 4 (was overflow).
+    { id: 'nav-attendance', label: 'Attendance',          icon: 'event_available', href: '/attendance',  mobileSlot: 4,  aliases: ['/attendance/logs', '/attendance/summary'] },
     { id: 'nav-finance',    label: 'Payments & Finance',  mobileLabel: 'Finance', icon: 'payments',   href: '/finance',       mobileSlot: 3,  aliases: ['/payment-center','/renew','/receipt'] },
     { id: 'nav-closing',    label: 'Closing Reports',     icon: 'receipt_long',  href: '/daily-closing', mobileSlot: 0 },
     { id: 'nav-marketing',  label: 'Marketing Center',    icon: 'campaign',     href: '/marketing',     mobileSlot: 0 },
-    { id: 'nav-tasks',      label: 'Tasks',               icon: 'assignment',   href: '/tasks',         mobileSlot: 4 },
+    // [NAV] Tasks relocated out of the bottom dock into the "More" drawer (slot 0).
+    { id: 'nav-tasks',      label: 'Tasks',               icon: 'assignment',   href: '/tasks',         mobileSlot: 0 },
     { id: 'nav-bi',          label: 'Analytics',           icon: 'monitoring',   href: '/bi',            mobileSlot: 0,  aliases: ['/business-dashboard','/executive-dashboard','/retention','/expiry-management'] },
     { id: 'nav-settings',   label: 'Settings',            icon: 'settings',     href: '/settings',      mobileSlot: 5,  aliases: ['/staff','/equipment','/notifications'] }
   ];
@@ -493,5 +496,23 @@
     var onboardingScript = document.createElement('script');
     onboardingScript.src = '/assets/js/onboarding.js';
     document.body.appendChild(onboardingScript);
+
+    // Auto-inject the reusable card 3-dot context-menu handler globally so any
+    // card/list/table row using the [data-card-menu] convention just works.
+    if (!document.querySelector('script[data-gf-card-menu]')) {
+      var cardMenuScript = document.createElement('script');
+      cardMenuScript.src = '/assets/js/cardMenu.js';
+      cardMenuScript.setAttribute('data-gf-card-menu', '1');
+      document.body.appendChild(cardMenuScript);
+    }
+
+    // Auto-inject the subscription tier gate (nav hiding + upsell on locked
+    // modules). Loads after api.js is already present on the page.
+    if (!document.querySelector('script[data-gf-plan-gate]')) {
+      var planGateScript = document.createElement('script');
+      planGateScript.src = '/assets/js/planGate.js';
+      planGateScript.setAttribute('data-gf-plan-gate', '1');
+      document.body.appendChild(planGateScript);
+    }
   });
 })();

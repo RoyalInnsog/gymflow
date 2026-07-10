@@ -10,6 +10,20 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
 <script src="/assets/js/utils.js"></script>
 <title>Gym Flow - Communication Center</title>
 
@@ -51,7 +65,7 @@
     </style>
 
 </head>
-<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-surface">
+<body class="shell-locked font-body text-body-md antialiased md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-surface">
 <div id="jsb-header" data-page-title="Communication Center"></div>
 <div id="jsb-sidebar"></div>
 
@@ -68,13 +82,13 @@
 <h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-unit">Communication Center</h2>
 <p class="font-body-md text-body-md text-on-surface-variant">Manage alerts and track outgoing member communications.</p>
 </div>
-<div class="flex gap-stack-sm overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0 hide-scrollbar">
-<button class="whitespace-nowrap px-4 py-2 rounded-full bg-primary text-on-primary font-label-md text-label-md transition-colors">Internal Alerts</button>
-<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md" id="tab-outbox">WhatsApp Outbox</button>
-<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md" onclick="window.location.href='/members'">Membership</button>
-<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md">Attendance</button>
-<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md">Payment</button>
-<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md">System</button>
+<div class="grid grid-cols-2 lg:grid-cols-4 items-center justify-items-stretch gap-4 mb-2">
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-primary text-on-primary font-label-md text-label-md transition-colors flex items-center justify-center text-center">Internal Alerts</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md flex items-center justify-center text-center" id="tab-outbox">WhatsApp Outbox</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md flex items-center justify-center text-center" onclick="window.location.href='/members'">Membership</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md flex items-center justify-center text-center">Attendance</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md flex items-center justify-center text-center">Payment</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md flex items-center justify-center text-center">System</button>
 </div>
 </div>
 
@@ -126,10 +140,15 @@
                 </h3>
 <!-- Critical Notification -->
 <div class="glass-card rounded-xl p-6 critical-glow relative overflow-hidden group">
-<div class="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-<button class="text-on-surface-variant hover:text-on-surface">
+<div class="gf-card-menu absolute top-3 right-3 z-10" data-card-menu>
+<button type="button" class="gf-card-menu-trigger text-on-surface-variant hover:text-on-surface p-1.5 rounded-lg hover:bg-white/5 transition-colors" aria-haspopup="true" aria-expanded="false" aria-label="Notification actions">
 <span class="material-symbols-outlined">more_vert</span>
 </button>
+<div class="gf-card-menu-panel" role="menu">
+<button role="menuitem" onclick="if(window.toast)window.toast('Notification marked as read')"><span class="material-symbols-outlined">done_all</span> Mark as read</button>
+<button role="menuitem" onclick="if(window.toast)window.toast('Snoozed for 1 day')"><span class="material-symbols-outlined">snooze</span> Snooze</button>
+<button role="menuitem" class="gf-danger" onclick="var c=this.closest('.glass-card'); if(c) c.remove(); if(window.toast)window.toast('Notification dismissed')"><span class="material-symbols-outlined">close</span> Dismiss</button>
+</div>
 </div>
 <div class="flex items-start gap-4">
 <div class="w-12 h-12 rounded-full bg-error/10 border border-error/20 flex items-center justify-center shrink-0">
@@ -152,10 +171,15 @@
 </div>
 <!-- High Priority Notification -->
 <div class="glass-card rounded-xl p-6 high-glow relative overflow-hidden group">
-<div class="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-<button class="text-on-surface-variant hover:text-on-surface">
+<div class="gf-card-menu absolute top-3 right-3 z-10" data-card-menu>
+<button type="button" class="gf-card-menu-trigger text-on-surface-variant hover:text-on-surface p-1.5 rounded-lg hover:bg-white/5 transition-colors" aria-haspopup="true" aria-expanded="false" aria-label="Notification actions">
 <span class="material-symbols-outlined">more_vert</span>
 </button>
+<div class="gf-card-menu-panel" role="menu">
+<button role="menuitem" onclick="if(window.toast)window.toast('Notification marked as read')"><span class="material-symbols-outlined">done_all</span> Mark as read</button>
+<button role="menuitem" onclick="if(window.toast)window.toast('Snoozed for 1 day')"><span class="material-symbols-outlined">snooze</span> Snooze</button>
+<button role="menuitem" class="gf-danger" onclick="var c=this.closest('.glass-card'); if(c) c.remove(); if(window.toast)window.toast('Notification dismissed')"><span class="material-symbols-outlined">close</span> Dismiss</button>
+</div>
 </div>
 <div class="flex items-start gap-4">
 <div class="w-12 h-12 rounded-full bg-tertiary/10 border border-tertiary/20 flex items-center justify-center shrink-0">
@@ -177,10 +201,15 @@
 </div>
 <!-- High Priority Notification 2 -->
 <div class="glass-card rounded-xl p-6 high-glow relative overflow-hidden group">
-<div class="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-<button class="text-on-surface-variant hover:text-on-surface">
+<div class="gf-card-menu absolute top-3 right-3 z-10" data-card-menu>
+<button type="button" class="gf-card-menu-trigger text-on-surface-variant hover:text-on-surface p-1.5 rounded-lg hover:bg-white/5 transition-colors" aria-haspopup="true" aria-expanded="false" aria-label="Notification actions">
 <span class="material-symbols-outlined">more_vert</span>
 </button>
+<div class="gf-card-menu-panel" role="menu">
+<button role="menuitem" onclick="if(window.toast)window.toast('Notification marked as read')"><span class="material-symbols-outlined">done_all</span> Mark as read</button>
+<button role="menuitem" onclick="if(window.toast)window.toast('Snoozed for 1 day')"><span class="material-symbols-outlined">snooze</span> Snooze</button>
+<button role="menuitem" class="gf-danger" onclick="var c=this.closest('.glass-card'); if(c) c.remove(); if(window.toast)window.toast('Notification dismissed')"><span class="material-symbols-outlined">close</span> Dismiss</button>
+</div>
 </div>
 <div class="flex items-start gap-4">
 <div class="w-12 h-12 rounded-full bg-tertiary/10 border border-tertiary/20 flex items-center justify-center shrink-0">
@@ -274,7 +303,7 @@ let currentFilter = 'All';
     filterButtons.forEach(btn => {
         btn.addEventListener("click", () => {
             filterButtons.forEach(b => {
-                b.className = "whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md";
+                b.className = "whitespace-nowrap px-4 py-2 rounded-full bg-surface-container border border-white/10 text-on-surface hover:bg-surface-variant transition-colors font-label-md text-label-md flex items-center justify-center text-center";
             });
             btn.className = "whitespace-nowrap px-4 py-2 rounded-full bg-primary text-on-primary font-label-md text-label-md transition-colors";
             

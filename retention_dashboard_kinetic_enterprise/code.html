@@ -10,6 +10,20 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
 <script src="/assets/js/utils.js"></script>
 <title>Gym Flow - Retention Dashboard</title>
 
@@ -33,7 +47,7 @@
     </style>
 
 </head>
-<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
+<body class="shell-locked font-body text-body-md antialiased md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
 <div id="jsb-header" data-page-title="Retention Dashboard"></div>
 <div id="jsb-sidebar"></div>
 
@@ -167,9 +181,16 @@
 <div class="text-xs text-tertiary">24 Days Absent</div>
 </div>
 </div>
-<button class="text-on-surface-variant hover:text-primary transition-colors p-1">
+<div class="gf-card-menu" data-card-menu>
+<button type="button" class="gf-card-menu-trigger text-on-surface-variant hover:text-primary transition-colors p-1" aria-haspopup="true" aria-expanded="false" aria-label="Member actions">
 <span class="material-symbols-outlined text-[20px]">more_vert</span>
 </button>
+<div class="gf-card-menu-panel" role="menu">
+<a role="menuitem" href="/members"><span class="material-symbols-outlined">person</span> View profile</a>
+<button role="menuitem" onclick="if(window.toast)window.toast('Re-engagement reminder queued')"><span class="material-symbols-outlined">chat</span> Send reminder</button>
+<button role="menuitem" class="gf-danger" onclick="var r=this.closest('.gf-card-menu').parentElement; if(r) r.remove()"><span class="material-symbols-outlined">close</span> Dismiss</button>
+</div>
+</div>
 </div>
 <!-- Minimal Member Row -->
 <div class="flex items-center justify-between p-3 bg-surface-container/30 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
@@ -180,9 +201,16 @@
 <div class="text-xs text-tertiary">21 Days Absent</div>
 </div>
 </div>
-<button class="text-on-surface-variant hover:text-primary transition-colors p-1">
+<div class="gf-card-menu" data-card-menu>
+<button type="button" class="gf-card-menu-trigger text-on-surface-variant hover:text-primary transition-colors p-1" aria-haspopup="true" aria-expanded="false" aria-label="Member actions">
 <span class="material-symbols-outlined text-[20px]">more_vert</span>
 </button>
+<div class="gf-card-menu-panel" role="menu">
+<a role="menuitem" href="/members"><span class="material-symbols-outlined">person</span> View profile</a>
+<button role="menuitem" onclick="if(window.toast)window.toast('Re-engagement reminder queued')"><span class="material-symbols-outlined">chat</span> Send reminder</button>
+<button role="menuitem" class="gf-danger" onclick="var r=this.closest('.gf-card-menu').parentElement; if(r) r.remove()"><span class="material-symbols-outlined">close</span> Dismiss</button>
+</div>
+</div>
 </div>
 <!-- Minimal Member Row -->
 <div class="flex items-center justify-between p-3 bg-surface-container/30 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
@@ -193,9 +221,16 @@
 <div class="text-xs text-tertiary">20 Days Absent</div>
 </div>
 </div>
-<button class="text-on-surface-variant hover:text-primary transition-colors p-1">
+<div class="gf-card-menu" data-card-menu>
+<button type="button" class="gf-card-menu-trigger text-on-surface-variant hover:text-primary transition-colors p-1" aria-haspopup="true" aria-expanded="false" aria-label="Member actions">
 <span class="material-symbols-outlined text-[20px]">more_vert</span>
 </button>
+<div class="gf-card-menu-panel" role="menu">
+<a role="menuitem" href="/members"><span class="material-symbols-outlined">person</span> View profile</a>
+<button role="menuitem" onclick="if(window.toast)window.toast('Re-engagement reminder queued')"><span class="material-symbols-outlined">chat</span> Send reminder</button>
+<button role="menuitem" class="gf-danger" onclick="var r=this.closest('.gf-card-menu').parentElement; if(r) r.remove()"><span class="material-symbols-outlined">close</span> Dismiss</button>
+</div>
+</div>
 </div>
 </div>
 </div>

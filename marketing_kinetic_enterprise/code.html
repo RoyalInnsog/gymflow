@@ -10,6 +10,20 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
 <script src="/assets/js/utils.js"></script>
   <title>Gym Flow - Marketing Center</title>
   
@@ -30,7 +44,7 @@
   
 
 </head>
-<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
+<body class="shell-locked font-body text-body-md antialiased md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
 <div id="jsb-header" data-page-title="Marketing Center"></div>
 <div id="jsb-sidebar"></div>
 
@@ -49,7 +63,7 @@
 <!-- Main Workspace Content -->
 <main class="max-w-[1440px] mx-auto p-margin">
   <!-- Header -->
-  <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-stack-md">
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-stack-md">
     <div>
       <h2 class="font-display-lg text-display-lg break-words min-w-0 text-on-background mb-2">Marketing &amp; Communications Center</h2>
       <p class="font-body-lg text-body-lg text-on-surface-variant">Broadcast campaigns, WhatsApp alerts, automated templates, and real-time logs.</p>

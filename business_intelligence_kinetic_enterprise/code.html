@@ -11,6 +11,20 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
 <script src="/assets/js/utils.js"></script>
 <title>Gym Flow - Business Intelligence</title>
 
@@ -24,7 +38,7 @@
 </style>
 
 </head>
-<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
+<body class="shell-locked font-body text-body-md antialiased md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
 <div id="jsb-header" data-page-title="Business Intelligence"></div>
 <div id="jsb-sidebar"></div>
 
@@ -54,7 +68,7 @@
   <!-- Key Metrics Bento -->
   <div class="col-span-1 md:col-span-12 grid grid-cols-1 md:grid-cols-4 gap-gutter mb-stack-lg">
     <!-- Metric 1: Active Members -->
-    <div class="glass-panel rounded-xl p-6 flex flex-col justify-between">
+    <div class="glass-panel rounded-xl p-6 flex flex-col justify-between kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('members', 'Active Members Detail')">
       <div class="flex justify-between items-start mb-4">
         <span class="font-body-md text-body-md text-on-surface-variant">Active Members</span>
         <span class="material-symbols-outlined text-secondary bg-secondary/10 p-2 rounded-lg">group</span>
@@ -71,7 +85,7 @@
     </div>
 
     <!-- Metric 2: Retention Rate -->
-    <div class="glass-panel rounded-xl p-6 flex flex-col justify-between">
+    <div class="glass-panel rounded-xl p-6 flex flex-col justify-between kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('members', 'Retention Rate Detail')">
       <div class="flex justify-between items-start mb-4">
         <span class="font-body-md text-body-md text-on-surface-variant">Member Retention Rate</span>
         <span class="material-symbols-outlined text-tertiary bg-tertiary/10 p-2 rounded-lg">speed</span>
@@ -85,7 +99,7 @@
     </div>
 
     <!-- Metric 3: ARPM -->
-    <div class="glass-panel rounded-xl p-6 flex flex-col justify-between">
+    <div class="glass-panel rounded-xl p-6 flex flex-col justify-between kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('revenue', 'Average Revenue (ARPM) Detail')">
       <div class="flex justify-between items-start mb-4">
         <span class="font-body-md text-body-md text-on-surface-variant">ARPM (Average Revenue)</span>
         <span class="material-symbols-outlined text-primary bg-primary/10 p-2 rounded-lg">currency_rupee</span>
@@ -99,7 +113,7 @@
     </div>
 
     <!-- Metric 4: Expired Members -->
-    <div class="glass-panel rounded-xl p-6 flex flex-col justify-between">
+    <div class="glass-panel rounded-xl p-6 flex flex-col justify-between kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('members', 'Expired Members List')">
       <div class="flex justify-between items-start mb-4">
         <span class="font-body-md text-body-md text-on-surface-variant">Expired Members</span>
         <span class="material-symbols-outlined text-error bg-error/10 p-2 rounded-lg">person_off</span>
@@ -117,7 +131,7 @@
   <div class="col-span-1 md:col-span-8 flex flex-col gap-gutter">
     
     <!-- Member Segmentation Doughnut -->
-    <div class="glass-panel rounded-xl p-6 flex flex-col">
+    <div class="glass-panel rounded-xl p-6 flex flex-col kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('members', 'Member Segmentation Analysis')">
       <div class="flex justify-between items-center mb-4 border-b border-white/5 pb-4">
         <div>
           <h3 class="font-title-lg text-title-lg text-on-background">Member Segmentation</h3>
@@ -168,7 +182,7 @@
   <div class="col-span-1 md:col-span-4 flex flex-col gap-gutter">
     
     <!-- Revenue Trend Chart -->
-    <div class="glass-panel rounded-xl p-6">
+    <div class="glass-panel rounded-xl p-6 kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('revenue', 'Revenue Trend Analysis')">
       <div class="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
         <h3 class="font-title-lg text-title-lg text-on-background">Revenue Trend</h3>
       </div>
@@ -370,8 +384,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Fetch member segments for donut chart
       const resSegments = await window.api.fetch('/analytics/member-segments');
-      const segmentsData = await resSegments.json();
-      
+      const segmentsData = (resSegments.ok ? await resSegments.json() : {}) || {};
+
       const segArr = Array.isArray(segmentsData.segments) ? segmentsData.segments : [];
       const segLabels = segArr.map(s => s.label);
       const segValues = segArr.map(s => Number(s.count) || 0);
@@ -423,7 +437,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Generate segments legend
       const legendContainer = document.getElementById('segments-legend');
       legendContainer.innerHTML = '';
-      segmentsData.segments.forEach((seg, idx) => {
+      segArr.forEach((seg, idx) => {
         const row = document.createElement('div');
         row.className = 'flex justify-between items-center border-b border-white/5 pb-1';
         row.innerHTML = `

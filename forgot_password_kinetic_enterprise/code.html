@@ -1,115 +1,405 @@
-<!DOCTYPE html><html class="dark" lang="en"><head>
-<meta charset="utf-8">
-<meta content="width=device-width, initial-scale=1.0" name="viewport">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-<link href="/assets/css/shared.css" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script src="/assets/js/designSystem.js"></script>
-<script src="/assets/js/api.js"></script>
-<script src="/assets/js/utils.js"></script>
-<title>Gym Flow - Forgot Password</title>
-
-<style>
-    .material-symbols-outlined {
-        font-family: 'Material Symbols Outlined';
-        font-weight: normal;
-        font-style: normal;
-        font-size: 24px;
-        line-height: 1;
-        letter-spacing: normal;
-        text-transform: none;
-        display: inline-block;
-        white-space: nowrap;
-        word-wrap: normal;
-        direction: ltr;
-        -webkit-font-feature-settings: 'liga';
-        -webkit-font-smoothing: antialiased;
-    }
-    .bg-mesh {
-        background-color: #131313;
-        background-image: 
-            radial-gradient(at 0% 0%, rgba(53, 53, 53, 0.4) 0px, transparent 50%),
-            radial-gradient(at 100% 100%, rgba(31, 31, 31, 0.5) 0px, transparent 50%);
-    }
-</style>
-
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link href="/assets/css/shared.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/assets/js/designSystem.js"></script>
+    <script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
+    <script src="/assets/js/utils.js"></script>
+    <title>Gym Flow - Reset Password</title>
+    <style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-smoothing: antialiased;
+        }
+        .bg-mesh {
+            background-color: #131313;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(53, 53, 53, 0.4) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(31, 31, 31, 0.5) 0px, transparent 50%);
+        }
+        .otp-input::-webkit-outer-spin-button,
+        .otp-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .otp-input {
+            -moz-appearance: textfield;
+        }
+    </style>
 </head>
 <body class="bg-mesh min-h-screen flex items-center justify-center p-margin-mobile md:p-margin-desktop text-on-surface font-body-md antialiased selection:bg-primary/30 selection:text-primary">
 
+<!-- Background lights -->
 <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-surface-variant/20 rounded-full blur-[120px] pointer-events-none"></div>
 <div class="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[150px] pointer-events-none"></div>
 
-<main class="w-full max-w-[440px] relative z-10 flex flex-col">
-<div class="bg-surface-container/60 backdrop-blur-xl border border-outline-variant/30 rounded-xl p-8 md:p-10 shadow-2xl flex flex-col relative overflow-hidden">
-<div class="absolute inset-0 bg-gradient-to-br from-surface-bright/10 to-transparent pointer-events-none"></div>
-<div class="relative z-10">
+<main class="w-full max-w-[460px] relative z-10 flex flex-col">
+    <!-- Glassmorphic Card -->
+    <div class="bg-surface-container/60 backdrop-blur-xl border border-outline-variant/30 rounded-xl p-8 md:p-10 shadow-2xl flex flex-col relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-surface-bright/10 to-transparent pointer-events-none"></div>
+        <div class="relative z-10">
+            <!-- Logo -->
+            <div class="flex justify-center mb-xl">
+                <div class="h-16 w-16 flex items-center justify-center rounded-lg bg-surface-container-highest border border-outline-variant/50 shadow-inner">
+                    <span class="material-symbols-outlined text-4xl text-primary" style="font-variation-settings: 'FILL' 1;">lock_reset</span>
+                </div>
+            </div>
 
-<div class="flex justify-center mb-xl">
-<div class="h-16 w-16 flex items-center justify-center rounded-lg bg-surface-container-highest border border-outline-variant/50 shadow-inner">
-<span class="material-symbols-outlined text-4xl text-primary" style="font-variation-settings: 'FILL' 1;">password</span>
-</div>
-</div>
+            <!-- Header -->
+            <div class="text-center mb-xl">
+                <h1 class="font-headline-lg text-headline-lg text-on-surface mb-xs uppercase">Reset Password</h1>
+                <p id="sub-header" class="font-body-sm text-body-sm text-on-surface-variant">Verify your phone number to reset your password.</p>
+            </div>
 
-<div class="text-center mb-xl">
-<h1 class="font-headline-lg text-headline-lg text-on-surface mb-xs"><span class="dynamic-gym-name uppercase"></span></h1>
-<p class="font-body-sm text-body-sm text-on-surface-variant">Reset your password</p>
-</div>
+            <!-- Error Banner -->
+            <div id="errorBanner" class="hidden bg-error/15 border border-error/30 rounded-lg p-4 mb-xl flex items-start gap-3">
+                <span class="material-symbols-outlined text-error text-[20px] mt-0.5">error</span>
+                <p id="errorText" class="font-body-sm text-body-sm text-error"></p>
+            </div>
 
-<form action="#" class="flex flex-col gap-md" method="POST">
-<div class="flex flex-col gap-base">
-<label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest pl-1" for="email">Email Address</label>
-<div class="relative flex items-center">
-<span class="material-symbols-outlined absolute left-4 text-on-surface-variant/70 text-[20px] pointer-events-none">mail</span>
-<input class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg py-3 pl-12 pr-4 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/30 focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all outline-none shadow-inner" id="email" name="email" placeholder="you@example.com" required="" type="email">
-</div>
-</div>
+            <!-- Step 1: Phone Input -->
+            <div id="stepPhone" class="flex flex-col gap-xl">
+                <div class="flex flex-col gap-base">
+                    <label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest pl-1">Registered Phone</label>
+                    <div class="flex gap-2">
+                        <!-- Country Code Select -->
+                        <div class="relative w-1/3">
+                            <select id="countryCode" class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg py-3 pl-3 pr-8 font-body-md text-body-md text-on-surface outline-none appearance-none focus:border-primary focus:ring-1 focus:ring-primary/50 shadow-inner cursor-pointer">
+                                <option value="+91" selected>🇮🇳 +91</option>
+                                <option value="+1">🇺🇸 +1</option>
+                                <option value="+44">🇬🇧 +44</option>
+                                <option value="+61">🇦🇺 +61</option>
+                                <option value="+971">🇦🇪 +971</option>
+                            </select>
+                            <span class="material-symbols-outlined absolute right-3 top-3 text-on-surface-variant/70 text-[18px] pointer-events-none">arrow_drop_down</span>
+                        </div>
+                        <!-- Phone input -->
+                        <div class="relative flex-1">
+                            <input id="phoneNumber" class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg py-3 px-4 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/30 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none shadow-inner" placeholder="98765 43210" type="tel" required>
+                        </div>
+                    </div>
+                </div>
 
-<button class="w-full bg-primary text-on-primary py-4 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-primary-fixed-dim hover:scale-[0.98] active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/10 border border-primary-fixed/20 mt-4" type="submit">
-<span>SEND RESET LINK</span>
-<span class="material-symbols-outlined text-[18px]">send</span>
-</button>
-</form>
+                <button id="btnSendOtp" class="w-full bg-primary text-on-primary py-4 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-primary-fixed-dim hover:shadow-primary/20 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/10 border border-primary-fixed/20">
+                    <span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner>progress_activity</span>
+                    <span data-label>SEND OTP CODE</span>
+                    <span class="material-symbols-outlined text-[18px]" data-arrow>send</span>
+                </button>
+            </div>
 
-<div class="flex items-center gap-4 my-xl">
-<div class="h-px bg-outline-variant/30 flex-1"></div>
-<span class="font-label-caps text-label-caps text-on-surface-variant/60 tracking-widest">OR</span>
-<div class="h-px bg-outline-variant/30 flex-1"></div>
-</div>
+            <!-- Step 2: OTP + New Password Form -->
+            <div id="stepReset" class="hidden flex flex-col gap-xl">
+                <div class="text-center">
+                    <p class="font-body-sm text-body-sm text-on-surface-variant">Enter the OTP sent to <span id="displayPhone" class="font-semibold text-on-surface"></span></p>
+                </div>
 
-<button class="w-full bg-surface-container-low border border-outline-variant/40 text-on-surface py-3.5 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-surface-container hover:border-outline-variant transition-all flex items-center justify-center gap-3" onclick="window.location.href='/login'" type="button">
-<span class="material-symbols-outlined text-[20px] text-primary">login</span>
-<span>RETURN TO SIGN IN</span>
-</button>
-</div>
-</div>
+                <!-- OTP Input Grid -->
+                <div class="flex flex-col gap-base">
+                    <label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest text-center">OTP Code</label>
+                    <div class="flex justify-between gap-2 mt-2" id="otpContainer">
+                        <input class="otp-input w-12 h-14 bg-surface-container-lowest border border-outline-variant/40 rounded-lg text-center font-body-lg text-headline-md text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-inner" type="number" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                        <input class="otp-input w-12 h-14 bg-surface-container-lowest border border-outline-variant/40 rounded-lg text-center font-body-lg text-headline-md text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-inner" type="number" maxlength="1" pattern="[0-9]" inputmode="numeric" disabled>
+                        <input class="otp-input w-12 h-14 bg-surface-container-lowest border border-outline-variant/40 rounded-lg text-center font-body-lg text-headline-md text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-inner" type="number" maxlength="1" pattern="[0-9]" inputmode="numeric" disabled>
+                        <input class="otp-input w-12 h-14 bg-surface-container-lowest border border-outline-variant/40 rounded-lg text-center font-body-lg text-headline-md text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-inner" type="number" maxlength="1" pattern="[0-9]" inputmode="numeric" disabled>
+                        <input class="otp-input w-12 h-14 bg-surface-container-lowest border border-outline-variant/40 rounded-lg text-center font-body-lg text-headline-md text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-inner" type="number" maxlength="1" pattern="[0-9]" inputmode="numeric" disabled>
+                        <input class="otp-input w-12 h-14 bg-surface-container-lowest border border-outline-variant/40 rounded-lg text-center font-body-lg text-headline-md text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-inner" type="number" maxlength="1" pattern="[0-9]" inputmode="numeric" disabled>
+                    </div>
+                </div>
+
+                <!-- New Password Field -->
+                <div class="flex flex-col gap-base">
+                    <label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest pl-1" for="newPassword">New Password</label>
+                    <div class="relative flex items-center">
+                        <span class="material-symbols-outlined absolute left-4 text-on-surface-variant/70 text-[20px] pointer-events-none">lock</span>
+                        <input class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg py-3 pl-12 pr-12 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/30 focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all outline-none shadow-inner" id="newPassword" placeholder="••••••••" required minlength="8" type="password">
+                        <button class="absolute right-4 text-on-surface-variant/70 hover:text-on-surface transition-colors focus:outline-none flex items-center justify-center" onclick="const p=document.getElementById('newPassword'); p.type=p.type==='password'?'text':'password';" type="button">
+                            <span class="material-symbols-outlined text-[20px]">visibility</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Confirm Password Field -->
+                <div class="flex flex-col gap-base">
+                    <label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest pl-1" for="confirmPassword">Confirm Password</label>
+                    <div class="relative flex items-center">
+                        <span class="material-symbols-outlined absolute left-4 text-on-surface-variant/70 text-[20px] pointer-events-none">lock</span>
+                        <input class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg py-3 pl-12 pr-12 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/30 focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all outline-none shadow-inner" id="confirmPassword" placeholder="••••••••" required minlength="8" type="password">
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button id="btnResetPassword" class="w-full bg-primary text-on-primary py-4 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-primary-fixed-dim hover:shadow-primary/20 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/10 border border-primary-fixed/20">
+                    <span class="material-symbols-outlined text-[18px] animate-spin hidden" data-spinner>progress_activity</span>
+                    <span data-label>RESET PASSWORD</span>
+                    <span class="material-symbols-outlined text-[18px]" data-arrow>check_circle</span>
+                </button>
+
+                <div class="flex justify-between items-center px-1 font-body-sm text-body-sm">
+                    <button id="btnBack" class="text-on-surface-variant/70 hover:text-on-surface transition-colors flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[16px]">arrow_back</span>
+                        Back
+                    </button>
+                    <button id="btnResend" class="text-primary hover:text-primary-fixed-dim transition-colors disabled:text-on-surface-variant/40 disabled:pointer-events-none" disabled>
+                        Resend OTP
+                    </button>
+                </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="flex items-center gap-4 my-xl">
+                <div class="h-px bg-outline-variant/30 flex-1"></div>
+                <span class="font-label-caps text-label-caps text-on-surface-variant/60 tracking-widest">OR</span>
+                <div class="h-px bg-outline-variant/30 flex-1"></div>
+            </div>
+
+            <!-- Return to sign in -->
+            <button class="w-full bg-surface-container-low border border-outline-variant/40 text-on-surface py-3.5 rounded-lg font-label-caps text-label-caps tracking-widest hover:bg-surface-container hover:border-outline-variant transition-all flex items-center justify-center gap-3" onclick="window.location.href='/login'" type="button">
+                <span class="material-symbols-outlined text-[20px] text-primary">login</span>
+                <span>RETURN TO SIGN IN</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Dev Helper Box for OTP value in non-production environments -->
+    <div id="devCodeBox" class="hidden bg-surface-container-low border border-outline-variant/30 rounded-xl p-4 mt-6 text-center text-on-surface-variant/80 text-body-sm relative z-10 shadow-lg">
+        <span class="font-bold text-primary mr-1">DEV CODE:</span>
+        <span id="devCodeValue" class="font-mono text-base font-bold tracking-widest select-all text-on-surface">------</span>
+    </div>
+
+    <div class="text-center mt-8 font-body-sm text-body-sm text-on-surface-variant/50">
+        <p>Password recovery portal · Powered by GYM Flow</p>
+    </div>
 </main>
 
 <script>
-document.querySelector('form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const email = document.getElementById('email').value;
-  
-  try {
-    const response = await window.api.fetch('/auth/forgot-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    });
-    
-    const data = await response.json();
-    if (response.ok) {
-      alert("If an account with that email exists, we have sent a reset link.");
-      window.location.href = '/login';
-    } else {
-      alert(data.error || 'Failed to send reset link.');
+    let activePhone = '';
+    let resendTimer = null;
+    let secondsLeft = 0;
+
+    const errorBanner = document.getElementById('errorBanner');
+    const errorText = document.getElementById('errorText');
+
+    const stepPhone = document.getElementById('stepPhone');
+    const stepReset = document.getElementById('stepReset');
+    const subHeader = document.getElementById('sub-header');
+
+    const countryCode = document.getElementById('countryCode');
+    const phoneNumber = document.getElementById('phoneNumber');
+
+    const btnSendOtp = document.getElementById('btnSendOtp');
+    const btnResetPassword = document.getElementById('btnResetPassword');
+    const btnBack = document.getElementById('btnBack');
+    const btnResend = document.getElementById('btnResend');
+
+    const displayPhone = document.getElementById('displayPhone');
+    const devCodeBox = document.getElementById('devCodeBox');
+    const devCodeValue = document.getElementById('devCodeValue');
+
+    const inputs = document.querySelectorAll('.otp-input');
+
+    function showError(msg) {
+        if (!msg) {
+            errorBanner.classList.add('hidden');
+        } else {
+            errorText.textContent = msg;
+            errorBanner.classList.remove('hidden');
+        }
     }
-  } catch (err) {
-    console.error(err);
-    alert('System offline.');
-  }
-});
+
+    function setBtnLoading(btn, on, labelStr, origStr) {
+        btn.disabled = on;
+        btn.querySelector('[data-spinner]').classList.toggle('hidden', !on);
+        btn.querySelector('[data-arrow]').classList.toggle('hidden', on);
+        btn.querySelector('[data-label]').textContent = on ? labelStr : origStr;
+    }
+
+    // OTP Boxes Focus Shift
+    inputs.forEach((input, index) => {
+        input.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (val.length > 1) {
+                e.target.value = val.slice(-1);
+            }
+            if (val && index < inputs.length - 1) {
+                inputs[index + 1].disabled = false;
+                inputs[index + 1].focus();
+            }
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                inputs[index - 1].focus();
+            }
+        });
+    });
+
+    async function sendOtp(isResend = false) {
+        showError('');
+        const phone = countryCode.value + phoneNumber.value.trim().replace(/[\s-]/g, '');
+        if (!phone || phone.length < 10) {
+            showError('Please enter a valid registered phone number.');
+            return;
+        }
+
+        activePhone = phone;
+        
+        if (!isResend) {
+            setBtnLoading(btnSendOtp, true, 'SENDING', 'SEND OTP CODE');
+        } else {
+            btnResend.disabled = true;
+            btnResend.textContent = 'Sending...';
+        }
+
+        try {
+            const res = await window.api.fetch('/auth/forgot-password-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                displayPhone.textContent = phone;
+                stepPhone.classList.add('hidden');
+                stepReset.classList.remove('hidden');
+                subHeader.textContent = "Verify the OTP and set your new password.";
+
+                // If devCode is returned
+                if (data.devCode) {
+                    devCodeBox.classList.remove('hidden');
+                    devCodeValue.textContent = data.devCode;
+                } else {
+                    devCodeBox.classList.add('hidden');
+                }
+
+                // Focus first OTP box
+                inputs[0].disabled = false;
+                inputs[0].focus();
+
+                // Start countdown
+                startCooldown(data.cooldown || 60);
+            } else {
+                showError(data.error || 'Failed to request OTP code.');
+            }
+        } catch (err) {
+            showError('Network error. Failed to connect to server.');
+        } finally {
+            setBtnLoading(btnSendOtp, false, 'SENDING', 'SEND OTP CODE');
+            if (isResend) {
+                updateResendButtonText();
+            }
+        }
+    }
+
+    function startCooldown(sec) {
+        clearInterval(resendTimer);
+        secondsLeft = sec;
+        btnResend.disabled = true;
+        updateResendButtonText();
+        
+        resendTimer = setInterval(() => {
+            secondsLeft--;
+            if (secondsLeft <= 0) {
+                clearInterval(resendTimer);
+                btnResend.disabled = false;
+                btnResend.textContent = 'Resend OTP';
+            } else {
+                updateResendButtonText();
+            }
+        }, 1000);
+    }
+
+    function updateResendButtonText() {
+        if (secondsLeft > 0) {
+            btnResend.textContent = `Resend in ${secondsLeft}s`;
+        }
+    }
+
+    btnSendOtp.addEventListener('click', () => sendOtp(false));
+    btnResend.addEventListener('click', () => sendOtp(true));
+
+    btnBack.addEventListener('click', () => {
+        showError('');
+        stepReset.classList.add('hidden');
+        stepPhone.classList.remove('hidden');
+        subHeader.textContent = "Verify your phone number to reset your password.";
+        devCodeBox.classList.add('hidden');
+        inputs.forEach(i => { i.value = ''; if (i !== inputs[0]) i.disabled = true; });
+    });
+
+    btnResetPassword.addEventListener('click', async () => {
+        showError('');
+        const code = Array.from(inputs).map(i => i.value).join('');
+        if (code.length < 6) {
+            showError('Please enter the full 6-digit code.');
+            return;
+        }
+
+        const password = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (!password || password.length < 8) {
+            showError('Password must be at least 8 characters long.');
+            return;
+        }
+        if (password !== confirmPassword) {
+            showError('Passwords do not match.');
+            return;
+        }
+
+        setBtnLoading(btnResetPassword, true, 'RESETTING', 'RESET PASSWORD');
+
+        try {
+            const res = await window.api.fetch('/auth/reset-password-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: activePhone, code, password })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                alert('Password reset successful. Please login with your new password.');
+                window.location.href = '/login';
+            } else {
+                showError(data.error || 'Password reset failed.');
+            }
+        } catch (err) {
+            showError('Request failed. Please check connection.');
+        } finally {
+            setBtnLoading(btnResetPassword, false, 'RESETTING', 'RESET PASSWORD');
+        }
+    });
 </script>
-</body></html>
+</body>
+</html>

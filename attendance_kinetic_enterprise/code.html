@@ -10,7 +10,22 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
 <script src="/assets/js/utils.js"></script>
+<script src="/assets/js/geofenceCheckin.js"></script>
 <title>Gym Flow - Attendance</title>
 <!-- Google Fonts -->
 
@@ -52,14 +67,14 @@
     </style>
 
 </head>
-<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300">
+<body class="shell-locked font-body text-body-md antialiased md:pl-[280px] pt-16 transition-all duration-300">
 <div id="jsb-header" data-page-title="Attendance"></div>
 <div id="jsb-sidebar"></div>
 
 <!-- TopAppBar -->
 
 <!-- Main Content Canvas -->
-<main class="flex-grow px-margin-mobile md:px-margin-desktop w-full max-w-7xl mx-auto flex flex-col gap-gutter">
+<main class="flex-1 overflow-y-auto px-margin-mobile md:px-margin-desktop w-full max-w-7xl mx-auto flex flex-col gap-gutter">
 <!-- Header Section -->
 <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mt-sm">
 <div>
@@ -79,7 +94,7 @@
 <!-- Summary & Primary Action (Spans 8 cols on desktop) -->
 <div class="md:col-span-8 flex flex-col gap-gutter">
 <!-- Metrics Card -->
-<div class="bg-surface-container-lowest border border-surface-container-high rounded-xl p-gutter relative overflow-hidden group">
+<div class="bg-surface-container-lowest border border-surface-container-high rounded-xl p-gutter relative overflow-hidden group kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('attendance', 'Attendance & Capacity Analysis')">
 <div class="absolute top-0 right-0 p-4 opacity-10 pointer-events-none transition-opacity group-hover:opacity-20">
 <span class="material-symbols-outlined text-9xl">groups</span>
 </div>
@@ -111,7 +126,7 @@
 <!-- Trend & Secondary Info (Spans 4 cols on desktop) -->
 <div class="md:col-span-4 flex flex-col gap-gutter">
 <!-- Sparkline Card -->
-<div class="bg-surface-container-lowest border border-surface-container-high rounded-xl p-gutter h-full flex flex-col justify-between">
+<div class="bg-surface-container-lowest border border-surface-container-high rounded-xl p-gutter h-full flex flex-col justify-between kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('attendance', 'Hourly Capacity Trend Analysis')">
 <div>
 <h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest mb-2">Hourly Trend</h3>
 <div class="flex items-center gap-2">
@@ -137,6 +152,55 @@
 <span>6 AM</span>
 <span>Now</span>
 </div>
+</div>
+</div>
+<!-- Geofenced Auto Check-in Configuration (Full width) -->
+<div class="md:col-span-12 bg-surface-container-lowest border border-surface-container-high rounded-xl p-gutter mt-sm">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-md border-b border-surface-container-high pb-4">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-0.5">my_location</span>
+<div>
+<h3 class="font-title-md text-on-surface font-semibold">Geofenced Auto Check-in</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-xl">Members are checked in automatically when their phone enters the gym radius. Every check-in is re-verified on the server, so location cannot be spoofed from the client.</p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer shrink-0" title="Enable geofenced check-in">
+<input type="checkbox" id="geo-enabled" class="sr-only peer">
+<div class="w-11 h-6 bg-surface-container rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary"></div>
+</label>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-1.5" for="geo-lat">Latitude</label>
+<input id="geo-lat" type="number" step="any" inputmode="decimal" placeholder="12.971600" class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 font-body-md text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-1.5" for="geo-lng">Longitude</label>
+<input id="geo-lng" type="number" step="any" inputmode="decimal" placeholder="77.594600" class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 font-body-md text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-1.5" for="geo-radius">Radius</label>
+<input id="geo-radius" type="number" min="1" step="1" inputmode="numeric" placeholder="50" class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 font-body-md text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-1.5" for="geo-unit">Unit</label>
+<select id="geo-unit" class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 font-body-md text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
+<option value="m">Meters</option>
+<option value="ft">Feet</option>
+</select>
+</div>
+</div>
+<div class="flex flex-wrap items-center gap-3 mt-4">
+<button id="geo-use-current" type="button" class="bg-surface-container border border-outline-variant text-on-surface px-4 py-2 rounded-lg font-body-sm hover:bg-surface-container-high transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">gps_fixed</span> Use my current location
+</button>
+<button id="geo-save" type="button" class="bg-primary text-on-primary px-4 py-2 rounded-lg font-body-sm font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">save</span> Save configuration
+</button>
+<button id="geo-test" type="button" class="bg-transparent border border-primary text-primary px-4 py-2 rounded-lg font-body-sm hover:bg-primary/10 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">where_to_vote</span> Test GPS check-in
+</button>
+<span id="geo-status" class="font-body-sm text-body-sm text-on-surface-variant" role="status" aria-live="polite"></span>
 </div>
 </div>
 <!-- Recent Log List (Full width) -->
@@ -343,6 +407,99 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     };
   }
+
+  // ── Geofenced Auto Check-in — admin configuration + test ──
+  (function initGeofenceConfig() {
+    var byId = function (id) { return document.getElementById(id); };
+    var enabledEl = byId('geo-enabled');
+    if (!enabledEl) return; // card not on this page
+    var latEl = byId('geo-lat'), lngEl = byId('geo-lng'), radiusEl = byId('geo-radius'), unitEl = byId('geo-unit');
+    var statusEl = byId('geo-status');
+
+    function setStatus(msg, tone) {
+      if (!statusEl) return;
+      statusEl.textContent = msg || '';
+      statusEl.className = 'font-body-sm text-body-sm ' +
+        (tone === 'error' ? 'text-error' : tone === 'ok' ? 'text-secondary' : 'text-on-surface-variant');
+    }
+
+    // Load existing config into the form.
+    window.api.get('/attendance/geofence').then(function (c) {
+      if (!c) return;
+      enabledEl.checked = !!c.enabled;
+      if (c.latitude != null) latEl.value = c.latitude;
+      if (c.longitude != null) lngEl.value = c.longitude;
+      unitEl.value = c.unit === 'ft' ? 'ft' : 'm';
+      radiusEl.value = c.radiusDisplay != null ? c.radiusDisplay : c.radiusMeters;
+    }).catch(function () {});
+
+    var useCur = byId('geo-use-current');
+    if (useCur) useCur.onclick = function () {
+      if (!navigator.geolocation) { setStatus('Geolocation is not available on this device.', 'error'); return; }
+      setStatus('Getting your location…');
+      navigator.geolocation.getCurrentPosition(function (p) {
+        latEl.value = p.coords.latitude.toFixed(6);
+        lngEl.value = p.coords.longitude.toFixed(6);
+        setStatus('Location captured (±' + Math.round(p.coords.accuracy) + ' m).', 'ok');
+      }, function (err) {
+        setStatus('Could not get location: ' + (err && err.message || 'permission denied'), 'error');
+      }, { enableHighAccuracy: true, timeout: 15000 });
+    };
+
+    var saveBtn = byId('geo-save');
+    if (saveBtn) saveBtn.onclick = async function () {
+      var body = {
+        enabled: enabledEl.checked,
+        latitude: parseFloat(latEl.value),
+        longitude: parseFloat(lngEl.value),
+        radius: parseFloat(radiusEl.value),
+        unit: unitEl.value
+      };
+      if (isNaN(body.latitude) || isNaN(body.longitude)) { setStatus('Enter a valid latitude and longitude.', 'error'); return; }
+      if (isNaN(body.radius) || body.radius <= 0) { setStatus('Enter a valid radius.', 'error'); return; }
+      setStatus('Saving…');
+      try {
+        var r = await window.api.fetch('/attendance/geofence', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        var data = await r.json();
+        if (r.ok) {
+          setStatus('Saved · radius ' + data.radiusDisplay + ' ' + data.unit + (data.enabled ? ' · active' : ' · disabled') + '.', 'ok');
+          if (window.toast) window.toast('Geofence configuration saved');
+        } else {
+          setStatus(data.error || 'Save failed.', 'error');
+        }
+      } catch (e) { setStatus('Save failed — are you offline?', 'error'); }
+    };
+
+    var testBtn = byId('geo-test');
+    if (testBtn) testBtn.onclick = async function () {
+      var mid = await window.promptDialog('Member ID to auto check-in using your current location.', {
+        title: 'Test Geofence Check-In', placeholder: 'e.g. m1, m2, m3', confirmText: 'Check In', required: true
+      });
+      if (!mid) return;
+      if (!navigator.geolocation) { setStatus('Geolocation is not available.', 'error'); return; }
+      setStatus('Verifying your position against the geofence…');
+      navigator.geolocation.getCurrentPosition(async function (p) {
+        try {
+          var r = await window.api.fetch('/attendance/geo-check-in', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ member_id: mid, latitude: p.coords.latitude, longitude: p.coords.longitude, accuracy: p.coords.accuracy })
+          });
+          var data = await r.json();
+          if (r.ok && data.within) {
+            setStatus(data.message + (data.distanceMeters != null ? ' (' + data.distanceMeters + ' m from centre)' : ''), 'ok');
+            if (window.toast) window.toast(data.message);
+            loadSummary(); loadLogs();
+          } else {
+            setStatus((data.error || 'Outside the check-in zone') + (data.distanceMeters != null ? ' — ' + data.distanceMeters + ' m from centre' : ''), 'error');
+          }
+        } catch (e) { setStatus('Test check-in failed.', 'error'); }
+      }, function (err) {
+        setStatus('Could not get location: ' + (err && err.message || ''), 'error');
+      }, { enableHighAccuracy: true, timeout: 15000 });
+    };
+  })();
 
   loadSummary();
   loadLogs();

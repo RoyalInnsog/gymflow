@@ -187,6 +187,13 @@ async function initializeDatabase() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    // [ORG] Org-scoped custom roles. tenant_id NULL = global system role (r1–r5);
+    // non-NULL = a role an owner created for their own org. is_system protects the
+    // built-ins from edit/delete. permissions JSON is kept for back-compat but the
+    // normalized role_permissions table (below) is now the source of truth.
+    try { await runQuery(`ALTER TABLE roles ADD COLUMN tenant_id TEXT`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE roles ADD COLUMN is_system INTEGER DEFAULT 0`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE roles ADD COLUMN description TEXT`); } catch (e) {}
 
     // 2. Users table
     await runQuery(`
@@ -236,6 +243,19 @@ async function initializeDatabase() {
     try { await runQuery(`ALTER TABLE users ADD COLUMN phone_verified_at DATETIME`); } catch (e) {}
     try { await runQuery(`ALTER TABLE users ADD COLUMN password_set INTEGER DEFAULT 1`); } catch (e) {}
     try { await runQuery(`ALTER TABLE users ADD COLUMN password_changed_at DATETIME`); } catch (e) {}
+
+    let usersNeedMigration = false;
+    try {
+      await getQuery(`SELECT platform_role FROM users LIMIT 1`);
+    } catch (e) {
+      usersNeedMigration = true;
+    }
+    try { await runQuery(`ALTER TABLE users ADD COLUMN platform_role TEXT`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE users ADD COLUMN phone_verified INTEGER DEFAULT 0`); } catch (e) {}
+    if (usersNeedMigration) {
+      console.log('[migration] Backfilling platform_role = ADMIN and phone_verified = 1 for all existing accounts.');
+      await runQuery(`UPDATE users SET platform_role = 'ADMIN', phone_verified = 1, phone_verified_at = COALESCE(phone_verified_at, CURRENT_TIMESTAMP)`);
+    }
 
     // 2b. [ROLES] user_roles — one identity can hold MULTIPLE roles across
     // tenants (e.g. Owner of gym A and Member of gym B), so role is a junction
@@ -293,6 +313,16 @@ async function initializeDatabase() {
     }
     await runQuery(`CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id)`);
     await runQuery(`CREATE INDEX IF NOT EXISTS idx_user_roles_tenant ON user_roles(tenant_id)`);
+    // [ORG] Membership lifecycle on the account↔org↔role junction. user_roles IS
+    // "organization membership" — status gates access (only 'active' grants it),
+    // and invited_by/joined_at/suspended_at/left_at + membership_history give the
+    // full join/suspend/transfer/leave story without a parallel table.
+    try { await runQuery(`ALTER TABLE user_roles ADD COLUMN status TEXT DEFAULT 'active'`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE user_roles ADD COLUMN invited_by TEXT`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE user_roles ADD COLUMN joined_at DATETIME`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE user_roles ADD COLUMN suspended_at DATETIME`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE user_roles ADD COLUMN left_at DATETIME`); } catch (e) {}
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_user_roles_member ON user_roles(member_id)`);
 
     // 3. Staff table
     await runQuery(`
@@ -362,6 +392,10 @@ async function initializeDatabase() {
     try { await runQuery(`ALTER TABLE membership_plans ADD COLUMN freeze_allowed INTEGER DEFAULT 0`); } catch (e) {}
     try { await runQuery(`ALTER TABLE membership_plans ADD COLUMN pt_included INTEGER DEFAULT 0`); } catch (e) {}
     try { await runQuery(`ALTER TABLE membership_plans ADD COLUMN is_active INTEGER DEFAULT 1`); } catch (e) {}
+    // Soft-delete flag: plans are referenced by memberships/invoices, so a hard
+    // DELETE trips FK constraints. Archived plans set is_deleted=1 and are
+    // excluded from every active listing while history still resolves.
+    try { await runQuery(`ALTER TABLE membership_plans ADD COLUMN is_deleted INTEGER DEFAULT 0`); } catch (e) {}
 
     // 6. Memberships table
     await runQuery(`
@@ -522,6 +556,9 @@ async function initializeDatabase() {
     // the outbound queue performed before reaching a terminal state.
     try { await runQuery(`ALTER TABLE notifications ADD COLUMN failure_reason TEXT`); } catch (e) {}
     try { await runQuery(`ALTER TABLE notifications ADD COLUMN retry_count INTEGER DEFAULT 0`); } catch (e) {}
+    // [WHATSAPP-CLOUD] Store the Cloud API message id (wamid) so inbound delivery-
+    // status webhooks can reconcile the matching outbox row.
+    try { await runQuery(`ALTER TABLE notifications ADD COLUMN provider_message_id TEXT`); } catch (e) {}
     try { await runQuery(`ALTER TABLE campaigns ADD COLUMN image_data TEXT`); } catch (e) {}
     
     // Schema alterations for Phase 3
@@ -858,6 +895,23 @@ async function initializeDatabase() {
       )
     `);
 
+    // [BILLING] WhatsApp credit ledger + tier metadata on the per-tenant sub row.
+    //   allowance  = messages included in the plan this cycle
+    //   used       = messages consumed this cycle (reset on renewal/authenticated)
+    //   extra_credits = purchased top-up balance (₹1/msg), NOT reset on renewal
+    //   extra_credits_this_cycle = top-ups bought this cycle (enforces Pro's cap)
+    //   plan_type/subscription_status mirror tenants for a single billing read
+    //   has_multiple_gyms = Enterprise multi-gym capability
+    try { await runQuery(`ALTER TABLE subscriptions ADD COLUMN plan_type TEXT`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE subscriptions ADD COLUMN subscription_status TEXT`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE subscriptions ADD COLUMN whatsapp_message_allowance INTEGER DEFAULT 0`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE subscriptions ADD COLUMN whatsapp_message_used INTEGER DEFAULT 0`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE subscriptions ADD COLUMN whatsapp_extra_credits INTEGER DEFAULT 0`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE subscriptions ADD COLUMN extra_credits_this_cycle INTEGER DEFAULT 0`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE subscriptions ADD COLUMN has_multiple_gyms INTEGER DEFAULT 0`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE subscriptions ADD COLUMN trial_ends_at DATETIME`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE subscriptions ADD COLUMN current_period_start DATETIME`); } catch (e) {}
+
     // subscription_history: immutable ledger of plan changes.
     await runQuery(`
       CREATE TABLE IF NOT EXISTS subscription_history (
@@ -897,10 +951,71 @@ async function initializeDatabase() {
     try { await runQuery(`ALTER TABLE tenants ADD COLUMN next_billing_date DATETIME`); } catch (e) {}
     try { await runQuery(`ALTER TABLE tenants ADD COLUMN cancelled_at DATETIME`); } catch (e) {}
 
+    // [GPS Geofence] Coordinates & Geofencing parameters for member attendance checks
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN latitude REAL`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN longitude REAL`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN geofence_radius REAL DEFAULT 50.0`); } catch (e) {}
+    // Geofence auto check-in: master switch + the admin's preferred radius unit
+    // ('m' metres | 'ft' feet). radius is ALWAYS stored canonically in metres;
+    // the unit only drives how the UI displays/collects it.
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN geofence_enabled INTEGER DEFAULT 0`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE tenants ADD COLUMN geofence_unit TEXT DEFAULT 'm'`); } catch (e) {}
+
+    // Set default coordinates (Bangalore center) for any legacy/null tenant entries
+    try {
+      await runQuery(`
+        UPDATE tenants 
+        SET latitude = COALESCE(latitude, 12.9715987),
+            longitude = COALESCE(longitude, 77.5945627),
+            geofence_radius = COALESCE(geofence_radius, 50.0)
+        WHERE latitude IS NULL OR longitude IS NULL OR geofence_radius IS NULL
+      `);
+    } catch (e) {
+      console.error('[GPS Geofence] failed to backfill coordinates:', e.message);
+    }
+
     await runQuery(`CREATE INDEX IF NOT EXISTS idx_subscriptions_tenant ON subscriptions(tenant_id)`);
     await runQuery(`CREATE INDEX IF NOT EXISTS idx_subscriptions_rzp_sub ON subscriptions(razorpay_subscription_id)`);
     await runQuery(`CREATE INDEX IF NOT EXISTS idx_subscription_history_tenant ON subscription_history(tenant_id, created_at DESC)`);
     await runQuery(`CREATE INDEX IF NOT EXISTS idx_billing_events_tenant ON billing_events(tenant_id, created_at DESC)`);
+
+    // [BILLING] Backfill: guarantee EVERY tenant has a subscriptions row carrying the
+    // credit ledger, seeded from tenants.subscription_plan and the plan catalog. Runs
+    // once per boot; idempotent (INSERT OR IGNORE + a one-time allowance sync for rows
+    // that predate the ledger columns). Legacy plan names are normalized by the
+    // catalog (enterprise -> enterprise_low, trial -> pro-level allowance).
+    try {
+      const { resolvePlan, getPlan } = require('./lib/billingPlans');
+      const tenantsForBackfill = await allQuery(`SELECT id, subscription_plan, subscription_status, trial_end FROM tenants`);
+      for (const t of tenantsForBackfill) {
+        const canonical = resolvePlan(t.subscription_plan);
+        const plan = getPlan(canonical);
+        const status = t.subscription_status || (String(t.subscription_plan || '') === 'trial' ? 'trial' : 'active');
+        await runQuery(
+          `INSERT OR IGNORE INTO subscriptions (id, tenant_id, plan, status, plan_type, subscription_status,
+             whatsapp_message_allowance, whatsapp_message_used, whatsapp_extra_credits, extra_credits_this_cycle,
+             has_multiple_gyms, trial_ends_at, current_period_start, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          ['sub_' + t.id, t.id, canonical, status, canonical, status,
+           plan.whatsappAllowance, plan.multiGym ? 1 : 0, t.trial_end || null]
+        );
+        // For rows that existed BEFORE the ledger columns: fill NULL allowance/plan_type
+        // without clobbering any live used/credits counters.
+        await runQuery(
+          `UPDATE subscriptions
+              SET plan_type = COALESCE(plan_type, ?),
+                  subscription_status = COALESCE(subscription_status, ?),
+                  whatsapp_message_allowance = COALESCE(whatsapp_message_allowance, ?),
+                  has_multiple_gyms = COALESCE(has_multiple_gyms, ?),
+                  trial_ends_at = COALESCE(trial_ends_at, ?)
+            WHERE tenant_id = ? AND whatsapp_message_allowance IS NULL`,
+          [canonical, status, plan.whatsappAllowance, plan.multiGym ? 1 : 0, t.trial_end || null, t.id]
+        );
+      }
+      console.log(`[billing] Ledger backfill complete for ${tenantsForBackfill.length} tenant(s).`);
+    } catch (e) {
+      console.error('[billing] ledger backfill failed:', e.message);
+    }
 
     // 19. Email Logs table
     await runQuery(`
@@ -1063,6 +1178,310 @@ async function initializeDatabase() {
       )
     `);
 
+    // ==========================================================
+    // [ORG] Organization & Identity Graph tables (see ORG_PLATFORM.md).
+    // All additive; the RBAC backfill below reproduces today's permission
+    // arrays exactly, so authorize() behavior is unchanged.
+    // ==========================================================
+
+    // 28. Permission catalog — one row per assignable capability.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS permissions (
+        key TEXT PRIMARY KEY,
+        label TEXT,
+        category TEXT,
+        description TEXT,
+        is_system INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // 29. role_permissions — the DB-driven RBAC join (supersedes roles.permissions
+    // JSON as the source of truth; the JSON stays for back-compat/fallback).
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS role_permissions (
+        id TEXT PRIMARY KEY,
+        role_id TEXT NOT NULL,
+        permission_key TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (role_id, permission_key),
+        FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE CASCADE
+      )
+    `);
+
+    // 30. Staff invitations — email + role, hashed token, expiring, single pending
+    // per (org, email). Detected at login by the invitee's verified email.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS invitations (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        email TEXT NOT NULL,
+        role_id TEXT NOT NULL,
+        token_hash TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        invited_by TEXT,
+        accepted_by_user_id TEXT,
+        expires_at DATETIME NOT NULL,
+        decided_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+        FOREIGN KEY (role_id) REFERENCES roles (id)
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email, status)`);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_invitations_tenant ON invitations(tenant_id, status)`);
+
+    // 31. Member claims — links a logging-in account to an existing member profile
+    // by email/phone match. Confidence gates auto-link vs. manual approval; never
+    // silently merges, never duplicates (UNIQUE below).
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS member_claims (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        member_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        match_basis TEXT,
+        confidence TEXT,
+        decided_by TEXT,
+        decided_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (tenant_id, member_id, user_id),
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+        FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_member_claims_user ON member_claims(user_id, status)`);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_member_claims_tenant ON member_claims(tenant_id, status)`);
+
+    // 32. Claim history — audit of each claim's state transitions.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS claim_history (
+        id TEXT PRIMARY KEY,
+        claim_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        actor_user_id TEXT,
+        meta TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_claim_history_claim ON claim_history(claim_id, created_at)`);
+
+    // 33. Membership history — join/role-change/suspend/leave/ownership-transfer log.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS membership_history (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        from_role TEXT,
+        to_role TEXT,
+        actor_user_id TEXT,
+        meta TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_membership_history_tenant ON membership_history(tenant_id, created_at DESC)`);
+
+    // 34. Organization audit logs — org-scoped audit (distinct from account-level
+    // security_events): who did what to which target inside an organization.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS org_audit_logs (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        actor_user_id TEXT,
+        action TEXT NOT NULL,
+        target_type TEXT,
+        target_id TEXT,
+        meta TEXT,
+        ip TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_org_audit_tenant ON org_audit_logs(tenant_id, created_at DESC)`);
+
+    // 35. Geofences — GPS/attendance FOUNDATION ONLY. No engine, no logic reads this
+    // yet; it exists so the future attendance/geofencing/anti-spoof layer needs no
+    // migration. Per-branch location + radius the attendance engine will consume.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS geofences (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        branch_id TEXT,
+        name TEXT,
+        latitude REAL,
+        longitude REAL,
+        radius_m INTEGER DEFAULT 100,
+        enabled INTEGER DEFAULT 0,
+        anti_spoof_enabled INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE
+      )
+    `);
+
+    // 36. [U1] Member App foundation — self-service fitness data. All additive.
+    // Doc-style exercises_json keeps offline sync one-record-per-plan (LWW), so a
+    // plan edited on a phone in airplane mode never half-merges with the server.
+    // created_by distinguishes member-authored plans from future trainer-built
+    // ones ('staff') — the trainer builder plugs in without a migration.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS workout_plans (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        member_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        day_of_week TEXT,
+        exercises_json TEXT DEFAULT '[]',
+        trainer_notes TEXT,
+        created_by TEXT DEFAULT 'member',
+        is_active INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME,
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+        FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_workout_plans_member ON workout_plans(tenant_id, member_id)`);
+
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS workout_sessions (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        member_id TEXT NOT NULL,
+        plan_id TEXT,
+        plan_name TEXT,
+        session_date TEXT,
+        duration_min INTEGER DEFAULT 0,
+        completed_json TEXT DEFAULT '[]',
+        total_volume_kg REAL DEFAULT 0,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+        FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_workout_sessions_member ON workout_sessions(tenant_id, member_id, session_date DESC)`);
+
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS personal_records (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        member_id TEXT NOT NULL,
+        exercise TEXT NOT NULL,
+        weight_kg REAL DEFAULT 0,
+        reps INTEGER DEFAULT 1,
+        achieved_on TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+        FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_prs_member ON personal_records(tenant_id, member_id)`);
+
+    // One row per member per day; POST /member/health upserts against this key so
+    // offline replays of the same day's log can never create duplicates server-side.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS health_logs (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        member_id TEXT NOT NULL,
+        log_date TEXT NOT NULL,
+        weight_kg REAL,
+        water_ml INTEGER DEFAULT 0,
+        calories INTEGER DEFAULT 0,
+        protein_g REAL DEFAULT 0,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME,
+        UNIQUE(tenant_id, member_id, log_date),
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+        FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_health_logs_member ON health_logs(tenant_id, member_id, log_date DESC)`);
+
+    // [Health Connect] Add columns for Health Connect metrics
+    try { await runQuery(`ALTER TABLE health_logs ADD COLUMN steps INTEGER DEFAULT 0`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE health_logs ADD COLUMN sleep_minutes INTEGER DEFAULT 0`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE health_logs ADD COLUMN heart_rate REAL`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE health_logs ADD COLUMN systolic REAL`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE health_logs ADD COLUMN diastolic REAL`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE members ADD COLUMN health_connect_linked INTEGER DEFAULT 0`); } catch (e) {}
+
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS body_measurements (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        member_id TEXT NOT NULL,
+        measured_on TEXT,
+        chest_cm REAL,
+        waist_cm REAL,
+        hips_cm REAL,
+        biceps_cm REAL,
+        thigh_cm REAL,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+        FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_measurements_member ON body_measurements(tenant_id, member_id, measured_on DESC)`);
+
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS member_goals (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        member_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        target_value TEXT,
+        status TEXT DEFAULT 'active',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME,
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+        FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_member_goals_member ON member_goals(tenant_id, member_id)`);
+
+    // Helpful indexes for claim matching (email/phone lookups against members).
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_members_email ON members(email)`);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_members_phone ON members(phone)`);
+
+    // [WHATSAPP-CLOUD] Per-gym WhatsApp automation preferences.
+    // -------------------------------------------------------------------------
+    // The platform sends every WhatsApp message from ONE centralized Meta Cloud
+    // API number (Gymflow-managed credentials in env). This table does NOT hold
+    // those global credentials — it holds each gym's independent on/off switches
+    // for the four automation categories plus their custom message templates.
+    // tenant_id is the gym id (one row per gym). api_key_placeholder is reserved
+    // (nullable) for a future per-gym override / custom routing / BYO number.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS gym_whatsapp_settings (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT UNIQUE,
+        api_key_placeholder TEXT,
+        fee_reminder_enabled INTEGER DEFAULT 0,
+        festival_greetings_enabled INTEGER DEFAULT 0,
+        health_check_enabled INTEGER DEFAULT 0,
+        welcome_invoice_enabled INTEGER DEFAULT 0,
+        fee_reminder_template TEXT,
+        festival_greetings_template TEXT,
+        health_check_template TEXT,
+        welcome_invoice_template TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_gym_whatsapp_settings_tenant ON gym_whatsapp_settings(tenant_id)`);
+    // Additive template columns (safe on pre-existing databases — ignore if present).
+    try { await runQuery(`ALTER TABLE gym_whatsapp_settings ADD COLUMN fee_reminder_template TEXT`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE gym_whatsapp_settings ADD COLUMN festival_greetings_template TEXT`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE gym_whatsapp_settings ADD COLUMN health_check_template TEXT`); } catch (e) {}
+    try { await runQuery(`ALTER TABLE gym_whatsapp_settings ADD COLUMN welcome_invoice_template TEXT`); } catch (e) {}
+
     console.log('All tables and indexes created.');
 
     // Seed Roles
@@ -1099,6 +1518,55 @@ async function initializeDatabase() {
     if (roleBackfill && roleBackfill.changes > 0) {
       console.log(`[roles] Backfilled ${roleBackfill.changes} user role assignment(s) into user_roles.`);
     }
+
+    // [ORG] ---- Database-driven RBAC migration (non-regressive by construction) ----
+    // 1) Curated permission catalog (nice labels for a future custom-role editor).
+    const PERMISSION_CATALOG = [
+      ['all', 'Full access', 'Organization', 'Every capability in the organization'],
+      ['members:read', 'View members', 'Members', 'See member profiles and lists'],
+      ['members:write', 'Manage members', 'Members', 'Add, edit and remove members'],
+      ['members:claim:approve', 'Approve member claims', 'Members', 'Review and approve member self-claims'],
+      ['payments:write', 'Collect payments', 'Finance', 'Record payments, renewals and collections'],
+      ['finance:read', 'View finance', 'Finance', 'See financial summaries and transactions'],
+      ['bi:read', 'View analytics', 'Analytics', 'See business intelligence dashboards'],
+      ['attendance:write', 'Manage attendance', 'Attendance', 'Record and edit attendance'],
+      ['tasks:write', 'Manage tasks', 'Operations', 'Create and complete tasks'],
+      ['settings:write', 'Manage settings', 'Settings', 'Change gym settings, plans and exports'],
+      ['staff:write', 'Manage staff', 'Staff', 'Add and edit staff records'],
+      ['staff:invite', 'Invite staff', 'Staff', 'Send email invitations to staff'],
+      ['roles:manage', 'Manage roles', 'Staff', 'Create custom roles and assign permissions'],
+      ['branches:write', 'Manage branches', 'Organization', 'Add and edit branches'],
+      ['org:manage', 'Manage organization', 'Organization', 'Membership, ownership and org settings'],
+      ['member:self', 'Member self-service', 'Member', 'A member managing their own profile']
+    ];
+    for (const [key, label, category, description] of PERMISSION_CATALOG) {
+      await runQuery(`INSERT OR IGNORE INTO permissions (key, label, category, description, is_system) VALUES (?, ?, ?, ?, 1)`,
+        [key, label, category, description]);
+    }
+    // 2) Populate role_permissions from each role's existing permissions JSON, so
+    //    resolvePermissions() reproduces the current JWT array EXACTLY. Any string
+    //    not already in the catalog is added (union), guaranteeing completeness.
+    //    Only runs while role_permissions is empty (first migration) — after that
+    //    the table is the source of truth and must not be clobbered by JSON edits.
+    const rpCount = await getQuery(`SELECT COUNT(*) AS c FROM role_permissions`);
+    if (!rpCount || rpCount.c === 0) {
+      const allRoles = await allQuery(`SELECT id, permissions FROM roles`);
+      for (const role of allRoles) {
+        let perms = [];
+        try { perms = JSON.parse(role.permissions || '[]'); } catch (e) { perms = []; }
+        for (const key of perms) {
+          await runQuery(`INSERT OR IGNORE INTO permissions (key, label, category, is_system) VALUES (?, ?, 'Other', 1)`, [key, key]);
+          await runQuery(`INSERT OR IGNORE INTO role_permissions (id, role_id, permission_key) VALUES (?, ?, ?)`,
+            ['rp_' + role.id + '_' + key.replace(/[^a-z0-9]/gi, ''), role.id, key]);
+        }
+      }
+      console.log('[org] Backfilled role_permissions from role JSON (RBAC now DB-driven).');
+    }
+    // 3) Mark the built-in roles as system (protect from edit/delete).
+    await runQuery(`UPDATE roles SET is_system = 1 WHERE id IN ('r1','r2','r3','r4','r5') AND (is_system IS NULL OR is_system = 0)`);
+    // 4) Backfill membership lifecycle on existing user_roles rows.
+    await runQuery(`UPDATE user_roles SET status = 'active' WHERE status IS NULL`);
+    await runQuery(`UPDATE user_roles SET joined_at = created_at WHERE joined_at IS NULL`);
 
     // [IDENTITY] Normalize legacy emails to lowercase so lookups (which now
     // normalize their input) always match and the password/Google paths can never

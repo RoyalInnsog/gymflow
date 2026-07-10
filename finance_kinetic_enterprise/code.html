@@ -9,8 +9,24 @@
 <link href="/assets/css/shared.css" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
+<script src="/assets/js/upiQr.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
 <script src="/assets/js/utils.js"></script>
 <title>Gym Flow - Finance Dashboard</title>
 
@@ -24,12 +40,12 @@
 </style>
 
 </head>
-<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
+<body class="shell-locked font-body text-body-md antialiased md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background">
 <div id="jsb-header" data-page-title="Finance Dashboard"></div>
 <div id="jsb-sidebar"></div>
 
 <!-- Main Canvas -->
-<main class="flex-grow pt-6 pb-24 md:pb-12 px-margin-mobile md:px-margin-desktop max-w-[1440px] mx-auto w-full flex flex-col gap-lg">
+<main class="flex-1 overflow-y-auto pt-6 pb-24 md:pb-12 px-margin-mobile md:px-margin-desktop max-w-[1440px] mx-auto w-full flex flex-col gap-lg">
   
   <!-- Header & Filters -->
   <div class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-4">
@@ -55,7 +71,7 @@
     <!-- Summary Column (KPI Cards) -->
     <div class="lg:col-span-4 flex flex-col gap-gutter">
       <!-- Total Month Revenue Card -->
-      <div class="glass-card p-6 rounded-xl border border-outline-variant/30 relative overflow-hidden group">
+      <div class="glass-card p-6 rounded-xl border border-outline-variant/30 relative overflow-hidden group kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('revenue', 'Revenue & Collections')">
         <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
           <span class="material-symbols-outlined text-[64px] text-primary">account_balance</span>
         </div>
@@ -68,7 +84,7 @@
       </div>
 
       <!-- Outstanding Dues Card -->
-      <div class="glass-card p-6 rounded-xl border border-outline-variant/30 flex items-center justify-between hover:border-primary/50 transition-colors">
+      <div class="glass-card p-6 rounded-xl border border-outline-variant/30 flex items-center justify-between hover:border-primary/50 transition-colors kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('finance', 'Outstanding Dues Analytics')">
         <div>
           <p class="font-label-caps text-label-caps text-on-surface-variant mb-1">Outstanding Dues</p>
           <h4 class="font-headline-md text-headline-md text-error" id="metric-dues">₹0</h4>
@@ -80,7 +96,7 @@
       </div>
 
       <!-- Forecasted Revenue Card -->
-      <div class="glass-card p-6 rounded-xl border border-outline-variant/30 flex items-center justify-between hover:border-primary/50 transition-colors">
+      <div class="glass-card p-6 rounded-xl border border-outline-variant/30 flex items-center justify-between hover:border-primary/50 transition-colors kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('revenue', 'Revenue Forecast Analytics')">
         <div>
           <p class="font-label-caps text-label-caps text-on-surface-variant mb-1">Next Month Forecast</p>
           <h4 class="font-headline-md text-headline-md text-[#81c995]" id="metric-forecast">₹0</h4>
@@ -93,7 +109,7 @@
     </div>
 
     <!-- Main Chart Area -->
-    <div class="lg:col-span-8 glass-card p-6 rounded-xl border border-outline-variant/30 flex flex-col min-h-[300px]">
+    <div class="lg:col-span-8 glass-card p-6 rounded-xl border border-outline-variant/30 flex flex-col min-h-[300px] kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('revenue', 'Revenue & Collections Trend')">
       <h3 class="font-title-lg text-title-lg text-on-surface mb-6">Revenue &amp; Collections Trend</h3>
       <div class="flex-grow relative h-64">
         <canvas id="chart-revenue-collections"></canvas>
@@ -104,7 +120,7 @@
   <!-- Row for Payment Distribution & Dues Trend -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter mb-6">
     <!-- Payment Methods -->
-    <div class="lg:col-span-5 glass-card p-6 rounded-xl border border-outline-variant/30 flex flex-col">
+    <div class="lg:col-span-5 glass-card p-6 rounded-xl border border-outline-variant/30 flex flex-col kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('finance', 'Payment Methods Distribution')">
       <h3 class="font-title-lg text-title-lg text-on-surface mb-6">Payment Methods (Current Month)</h3>
       <div class="h-56 relative flex items-center justify-center">
         <canvas id="chart-payment-methods"></canvas>
@@ -115,7 +131,7 @@
     </div>
 
     <!-- Dues Trend -->
-    <div class="lg:col-span-7 glass-card p-6 rounded-xl border border-outline-variant/30 flex flex-col">
+    <div class="lg:col-span-7 glass-card p-6 rounded-xl border border-outline-variant/30 flex flex-col kpi-card-interactive hover:scale-[1.01] duration-200 transition-all" onclick="window.openAnalyticsDrilldown('finance', 'Outstanding Dues Trend')">
       <h3 class="font-title-lg text-title-lg text-on-surface mb-6">Outstanding Dues Trend</h3>
       <div class="h-64 relative">
         <canvas id="chart-dues-trend"></canvas>
@@ -127,7 +143,7 @@
   <div class="flex flex-col gap-4">
     <div class="flex justify-between items-center">
       <h3 class="font-headline-md text-headline-md text-on-surface">Recent Transactions</h3>
-      <button onclick="window.location.href='/expiry-management'" class="px-4 py-1.5 bg-primary/10 border border-primary text-primary hover:bg-primary/20 rounded-lg text-xs font-bold transition-all">Collect Payment</button>
+      <button type="button" onclick="window.openCollectModal && window.openCollectModal()" class="px-4 py-1.5 bg-primary/10 border border-primary text-primary hover:bg-primary/20 rounded-lg text-xs font-bold transition-all">Collect Payment</button>
     </div>
     <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden">
       <div class="overflow-x-auto">
@@ -382,6 +398,149 @@ document.addEventListener("DOMContentLoaded", () => {
   rangeSelect.addEventListener("change", (e) => {
     loadFinanceData(e.target.value);
   });
+  // ── Collect Payment modal (isPaymentModalOpen state controller) ──
+  (function initCollectPayment() {
+    var modal = document.getElementById('collect-modal');
+    if (!modal) return;
+    var selInvoice = document.getElementById('collect-invoice');
+    var statusEl = document.getElementById('collect-status');
+    var confirmBtn = document.getElementById('collect-confirm');
+    var qrWrap = document.getElementById('collect-qr');
+    var qrImg = document.getElementById('collect-qr-img');
+    var qrAmt = document.getElementById('collect-qr-amount');
+    var method = 'Cash';
+    var pending = [];           // full unpaid-invoice objects (for amount lookup)
+    var isPaymentModalOpen = false;
+
+    function setStatus(msg, tone) {
+      if (!statusEl) return;
+      statusEl.textContent = msg || '';
+      statusEl.className = 'font-body-sm text-body-sm min-h-[1.25rem] ' +
+        (tone === 'error' ? 'text-error' : tone === 'ok' ? 'text-secondary' : 'text-on-surface-variant');
+    }
+    function selectedInvoice() {
+      var id = selInvoice.value;
+      for (var i = 0; i < pending.length; i++) if (String(pending[i].id) === String(id)) return pending[i];
+      return null;
+    }
+    // Renders the shared UPI QR when the UPI channel is active — the same
+    // component used by the member-creation / payment-center flows.
+    function refreshQr() {
+      if (method !== 'UPI') { if (qrWrap) qrWrap.classList.add('hidden'); return; }
+      var inv = selectedInvoice();
+      if (!inv || !window.GymUPIQR) { if (qrWrap) qrWrap.classList.add('hidden'); return; }
+      if (qrAmt) qrAmt.textContent = '₹' + Number(inv.total_amount || 0).toLocaleString('en-IN');
+      window.GymUPIQR.fetchGymUpi().then(function (upi) {
+        if (!upi || !upi.upiId) {
+          if (qrWrap) qrWrap.classList.add('hidden');
+          setStatus('No gym UPI ID set (Settings → UPI) — you can still confirm a manual UPI payment.', 'error');
+          return;
+        }
+        window.GymUPIQR.render(qrImg, { upiId: upi.upiId, upiName: upi.upiName, amount: inv.total_amount, note: 'Invoice-' + (inv.invoice_number || inv.id), size: 220 });
+        if (qrWrap) qrWrap.classList.remove('hidden');
+        setStatus('');
+      });
+    }
+    function setMethod(m) {
+      method = m;
+      document.querySelectorAll('[data-collect-method]').forEach(function (b) {
+        var on = b.getAttribute('data-collect-method') === m;
+        b.classList.toggle('border-primary', on);
+        b.classList.toggle('text-primary', on);
+        b.classList.toggle('bg-primary/10', on);
+        b.classList.toggle('border-outline-variant', !on);
+      });
+      refreshQr();
+    }
+
+    function open() {
+      isPaymentModalOpen = true;
+      modal.classList.remove('hidden');
+      setMethod('Cash');
+      setStatus('Loading unpaid invoices…');
+      confirmBtn.disabled = true;
+      window.api.fetch('/finance/pending').then(function (r) { return r.json(); }).then(function (list) {
+        pending = Array.isArray(list) ? list : [];
+        selInvoice.innerHTML = '';
+        if (!pending.length) {
+          var o = document.createElement('option'); o.value = ''; o.textContent = 'No unpaid invoices';
+          selInvoice.appendChild(o); setStatus('No outstanding invoices to collect.'); return;
+        }
+        pending.forEach(function (inv) {
+          var o = document.createElement('option');
+          o.value = inv.id;
+          o.textContent = (inv.full_name || 'Member') + ' · ₹' + Number(inv.total_amount || 0).toLocaleString('en-IN') + (inv.invoice_number ? ' · ' + inv.invoice_number : '');
+          selInvoice.appendChild(o);
+        });
+        confirmBtn.disabled = false; setStatus('');
+        refreshQr();
+      }).catch(function () { setStatus('Could not load invoices.', 'error'); });
+    }
+    function close() { isPaymentModalOpen = false; modal.classList.add('hidden'); if (qrWrap) qrWrap.classList.add('hidden'); }
+
+    window.openCollectModal = open;
+    modal.addEventListener('click', function (e) { if (e.target === modal || e.target.hasAttribute('data-collect-backdrop')) close(); });
+    document.getElementById('collect-close').onclick = close;
+    document.querySelectorAll('[data-collect-method]').forEach(function (b) {
+      b.onclick = function () { setMethod(b.getAttribute('data-collect-method')); };
+    });
+    selInvoice.addEventListener('change', refreshQr);
+
+    confirmBtn.onclick = async function () {
+      var invoiceId = selInvoice.value;
+      if (!invoiceId) { setStatus('Select an invoice first.', 'error'); return; }
+      confirmBtn.disabled = true; setStatus('Recording payment…');
+      try {
+        // manual:true → desk-confirmed collection settles as Successful now
+        // (Cash, or a UPI QR the member just scanned) — never a stuck Pending.
+        var r = await window.api.fetch('/finance/collect', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invoice_id: invoiceId, method: method, manual: true })
+        });
+        var data = await r.json();
+        if (r.ok && data.transactionReference) {
+          setStatus('Payment recorded · ' + data.transactionReference, 'ok');
+          if (window.toast) window.toast('Payment collected');
+          // Immediate re-validation so no stale cached baseline lingers.
+          loadFinanceData(rangeSelect.value); loadTransactions();
+          setTimeout(close, 900);
+        } else {
+          setStatus(data.error || 'Could not record payment.', 'error');
+          confirmBtn.disabled = false;
+        }
+      } catch (e) { setStatus('Payment failed — are you offline?', 'error'); confirmBtn.disabled = false; }
+    };
+  })();
 });
 </script>
+
+<!-- Collect Payment modal -->
+<div id="collect-modal" class="hidden fixed inset-0 z-[9999] flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" data-collect-backdrop></div>
+  <div class="relative z-10 w-full max-w-md mx-auto bg-surface-container-low border border-white/10 rounded-2xl shadow-2xl p-6 flex flex-col gap-4">
+    <div class="flex items-center justify-between">
+      <h3 class="font-headline-md text-headline-md text-on-surface">Collect Payment</h3>
+      <button type="button" id="collect-close" class="text-on-surface-variant hover:text-on-surface p-1.5 rounded-lg hover:bg-white/5"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div>
+      <label class="block font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-1.5" for="collect-invoice">Unpaid invoice</label>
+      <select id="collect-invoice" class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 font-body-md text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"></select>
+    </div>
+    <div>
+      <label class="block font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-1.5">Payment method</label>
+      <div class="grid grid-cols-2 gap-3">
+        <button type="button" data-collect-method="Cash" class="border border-outline-variant rounded-lg px-3 py-2 flex items-center justify-center gap-2 font-body-md text-on-surface transition-colors"><span class="material-symbols-outlined text-[18px]">payments</span> Cash</button>
+        <button type="button" data-collect-method="UPI" class="border border-outline-variant rounded-lg px-3 py-2 flex items-center justify-center gap-2 font-body-md text-on-surface transition-colors"><span class="material-symbols-outlined text-[18px]">qr_code_scanner</span> UPI</button>
+      </div>
+    </div>
+    <div id="collect-qr" class="hidden flex flex-col items-center gap-2 py-1">
+      <div class="bg-white p-2 rounded-xl shadow-lg"><img id="collect-qr-img" src="" alt="UPI payment QR" class="w-40 h-40 object-contain"></div>
+      <p class="font-body-sm text-body-sm text-on-surface-variant text-center">Scan to pay <span id="collect-qr-amount" class="font-bold text-on-surface"></span>, then tap “Confirm Payment Received”.</p>
+    </div>
+    <span id="collect-status" class="font-body-sm text-body-sm text-on-surface-variant min-h-[1.25rem]"></span>
+    <button type="button" id="collect-confirm" class="w-full max-w-md mx-auto bg-primary text-on-primary font-semibold px-4 py-3 rounded-xl hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+      <span class="material-symbols-outlined text-[18px]">check_circle</span> Confirm Payment Received
+    </button>
+  </div>
+</div>
 </body></html>

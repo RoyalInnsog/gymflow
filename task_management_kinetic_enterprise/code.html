@@ -10,6 +10,20 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
 <script src="/assets/js/utils.js"></script>
 <title>Gym Flow - Tasks</title>
 
@@ -52,7 +66,7 @@
     </style>
 
 </head>
-<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background antialiased flex transition-all duration-300">
+<body class="shell-locked font-body text-body-md antialiased md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-background antialiased flex transition-all duration-300">
 <div id="jsb-header" data-page-title="Tasks"></div>
 <div id="jsb-sidebar"></div>
 
@@ -106,7 +120,7 @@
 </div>
 <!-- Today's Tasks Box -->
 <div class="glass-panel rounded-xl flex flex-col h-full">
-<div class="p-6 border-b border-white/5 flex justify-between items-center">
+<div class="p-6 border-b border-white/5 flex justify-between items-center cursor-pointer hover:bg-white/5 transition-all" onclick="window.openAnalyticsDrilldown('tasks', 'Tasks & Agenda Operations')">
 <div class="flex items-center gap-3">
 <span class="material-symbols-outlined text-primary">checklist</span>
 <h3 class="font-title-lg text-title-lg text-on-surface">Today's Agenda</h3>
@@ -125,12 +139,20 @@
 <div class="md:col-span-4 flex flex-col gap-stack-md">
 <!-- Renewals Glass Card -->
 <div class="glass-panel rounded-xl p-6">
-<div class="flex items-center justify-between mb-6">
+<div class="flex items-center justify-between mb-6 cursor-pointer hover:opacity-80 transition-all" onclick="window.openAnalyticsDrilldown('members', 'Membership Renewals Detail')">
 <h3 class="font-title-lg text-title-lg text-on-surface flex items-center gap-2">
 <span class="material-symbols-outlined text-secondary">autorenew</span>
                                 Pending Renewals
                             </h3>
-<button class="text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined">more_horiz</span></button>
+<div class="gf-card-menu" data-card-menu>
+<button type="button" class="gf-card-menu-trigger text-on-surface-variant hover:text-on-surface" aria-haspopup="true" aria-expanded="false" aria-label="Renewals actions">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+<div class="gf-card-menu-panel" role="menu">
+<button role="menuitem" onclick="window.openAnalyticsDrilldown('members', 'Membership Renewals Detail')"><span class="material-symbols-outlined">open_in_full</span> View details</button>
+<button role="menuitem" onclick="if(typeof loadRenewals==='function'){loadRenewals();} if(window.toast)window.toast('Refreshing renewals…')"><span class="material-symbols-outlined">refresh</span> Refresh</button>
+</div>
+</div>
 </div>
 <div id="renewals-list" class="space-y-4">
 <p id="renewals-loading" class="text-center text-xs text-on-surface-variant py-4">Loading renewals…</p>
@@ -141,7 +163,7 @@
 </div>
 <!-- Absent Members (Follow-ups) -->
 <div class="glass-panel rounded-xl p-6 flex-1 min-h-[200px] flex flex-col">
-<div class="flex items-center justify-between mb-4">
+<div class="flex items-center justify-between mb-4 cursor-pointer hover:opacity-80 transition-all" onclick="window.openAnalyticsDrilldown('attendance', 'Absent Members Analysis')">
 <h3 class="font-title-lg text-title-lg text-on-surface flex items-center gap-2">
 <span class="material-symbols-outlined text-error">person_off</span>
                                 Absent Members

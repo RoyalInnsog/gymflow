@@ -2,8 +2,6 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const path = require('path');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 require('dotenv').config();
 const { initializeDatabase, getQuery, runQuery, allQuery, seedTenantDefaults } = require('./database');
@@ -74,10 +72,7 @@ app.use((req, res, next) => {
 // Auth ENDPOINTS live in routes/auth.js, mounted further below.
 const identity = require('./lib/identity/core');
 const { resolvePageAuth } = require('./lib/identity/refresh');
-const {
-  authenticateToken, requireTenant, requireStaffRole, shellRedirectFor, shellForRole, authLimiter, GOOGLE_ENABLED, EMAIL_ENABLED,
-  getUserRoles, setAuthCookie, signScopedToken, signPendingToken, rolesForClient, verifyToken, revokeToken, DUMMY_PW_HASH
-} = identity;
+const { authenticateToken, requireTenant, requireStaffRole, shellRedirectFor, shellForRole } = identity;
 
 
 // Member/staff photos are uploaded inline as base64 data URLs (front-end caps
@@ -159,6 +154,64 @@ app.post('/webhooks/razorpay', express.raw({ type: '*/*', limit: '1mb' }), async
   } catch (err) {
     console.error('[razorpay webhook] processing error:', err);
     return res.status(500).json({ error: 'Webhook processing failed.' });
+  }
+});
+
+// ── [WHATSAPP-CLOUD] Public webhook + signed invoice PDF ─────────────────────
+// Mounted BEFORE the JSON body parser (like the Razorpay webhook) so the webhook
+// receiver gets the RAW body for X-Hub-Signature-256 verification, and BEFORE
+// the auth mounts so Meta / the Cloud API can reach them un-authenticated.
+const whatsappCloudController = require('./controllers/whatsappCloud.controller');
+const invoicePdf = require('./lib/invoicePdf');
+
+// Meta subscription handshake + inbound message / delivery-status callbacks.
+app.get('/api/whatsapp/webhook', whatsappCloudController.webhookVerify);
+app.post('/api/whatsapp/webhook', express.raw({ type: '*/*', limit: '2mb' }), whatsappCloudController.webhookReceive);
+
+// The centralized Cloud API fetches the welcome invoice PDF from this signed,
+// short-lived, un-authenticated link (it acts as our "cloud storage" media URL).
+app.get('/whatsapp/invoice/:token', async (req, res) => {
+  try {
+    const parsed = invoicePdf.verifyInvoiceToken(req.params.token);
+    if (!parsed) return res.status(403).type('text/plain').send('Invalid or expired invoice link.');
+    const { tenant_id, invoice_id } = parsed;
+
+    const inv = await getQuery(
+      `SELECT i.*, m.full_name, m.phone, m.email, mp.name AS plan_name
+         FROM invoices i
+         LEFT JOIN members m ON i.member_id = m.id
+         LEFT JOIN memberships ms ON i.membership_id = ms.id
+         LEFT JOIN membership_plans mp ON ms.plan_id = mp.id
+        WHERE i.id = ? AND i.tenant_id = ?`,
+      [invoice_id, tenant_id]
+    );
+    if (!inv) return res.status(404).type('text/plain').send('Invoice not found.');
+
+    const rows = await allQuery(
+      `SELECT setting_key, setting_value FROM settings
+        WHERE setting_key IN ('gym_name','support_phone','address','currency','gst_percent') AND tenant_id = ?`,
+      [tenant_id]
+    );
+    const b = {}; rows.forEach((r) => { b[r.setting_key] = r.setting_value; });
+    let cur = b.currency || '₹';
+    if (cur && String(cur).trim().startsWith('{')) { try { cur = JSON.parse(cur).symbol || '₹'; } catch (e) { cur = '₹'; } }
+
+    const pdf = invoicePdf.generateInvoicePdf({
+      gymName: b.gym_name || 'Your Gym', gymAddress: b.address || '', gymPhone: b.support_phone || '',
+      invoiceNumber: inv.invoice_number, dateStr: String(inv.created_at || '').slice(0, 10), status: inv.status,
+      member: { name: inv.full_name, phone: inv.phone, email: inv.email, id: inv.member_id },
+      planName: inv.plan_name || 'Membership', currency: cur,
+      subtotal: inv.subtotal, tax: inv.tax_amount, taxPercent: b.gst_percent || null,
+      total: inv.total_amount, amountDue: inv.amount_due != null ? inv.amount_due : inv.total_amount
+    });
+
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', `inline; filename="Invoice-${inv.invoice_number || invoice_id}.pdf"`);
+    res.set('Cache-Control', 'private, max-age=600');
+    res.send(pdf);
+  } catch (e) {
+    console.error('[whatsapp invoice pdf]', e && e.message);
+    res.status(500).type('text/plain').send('Could not render invoice.');
   }
 });
 
@@ -250,13 +303,18 @@ const pages = [
   { route: '/settings', dir: 'settings_kinetic_enterprise' },
   // [IDENTITY] Account Security Center (sessions, providers, verification).
   { route: '/security', dir: 'security_center_kinetic_enterprise' },
+  // [ORG] Invitation acceptance + member-claim confirmation + org switcher.
+  { route: '/join', dir: 'join_kinetic_enterprise' },
   { route: '/staff', dir: 'staff_management_kinetic_enterprise' },
   { route: '/tasks', dir: 'task_management_kinetic_enterprise' },
   { route: '/notifications', dir: 'notifications_kinetic_enterprise' },
   { route: '/equipment', dir: 'equipment_inventory_kinetic_enterprise' },
   // [ROLES] Role picker (multi-role accounts) + member shell stub.
   { route: '/select-role', dir: 'select_role_kinetic_enterprise' },
-  { route: '/member', dir: 'member_area_kinetic_enterprise' }
+  { route: '/member', dir: 'member_area_kinetic_enterprise' },
+  // [IDENTITY] Phone verification and platform role screens
+  { route: '/verify-phone', dir: 'verify_phone' },
+  { route: '/member-coming-soon', dir: 'member_coming_soon' }
 ];
 
 // Direct page redirects (Phase 2.5 route consolidation)
@@ -300,418 +358,289 @@ app.get('/daily_closing_report_kinetic_enterprise/print.html', async (req, res) 
 });
 
 // ==========================================
-// AUTHENTICATION APIs
+// [IDENTITY] AUTHENTICATION APIs
 // ==========================================
+// Every /api/v1/auth/* endpoint now lives in routes/auth.js on top of the
+// lib/identity services. Mounted WITHOUT the tenant/staff gates — identity is
+// account-level, not tenant-scoped. (The tenant API below keeps those gates.)
+app.use("/api/v1/auth", require("./routes/auth"));
 
-// Login API
-app.post('/api/v1/auth/login', authLimiter, async (req, res) => {
-  const { email, password, remember } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required.' });
-  }
+// [ORG] Organization & Identity Graph API. Account-level (auth only) like /auth —
+// members and pending invitees must reach /org/context, invitations and claims.
+// Admin routes inside the router add requireTenant + a permission guard.
+app.use('/api/v1/org', authenticateToken, require('./routes/org'));
+
+// [U1] Member self-service API — the r5 mirror of the staff surface below.
+// Mounted BEFORE the '/api/v1' staff router so /api/v1/member/* resolves here;
+// requireMemberRole is fail-closed (staff/pending tokens get 403), and member
+// tokens remain physically unable to reach any staff endpoint.
+app.use('/api/v1/member', authenticateToken, requireTenant, identity.requireMemberRole, require('./routes/member'));
+
+// [GPS Attendance] Geofenced member checkin endpoint. Mounted before the staff-only router
+// so it is accessible by both members (r5) and staff (r1-r4) via their authenticated token.
+app.post('/api/v1/attendance/checkin', authenticateToken, requireTenant, async (req, res) => {
+  const { latitude, longitude, timestamp, isMocked, mocked } = req.body;
+  let memberId = req.body.member_id;
 
   try {
-    // [ROLES] No role JOIN here — the role(s) come from user_roles below, so an
-    // identity whose only role lives in user_roles (no legacy primary) still works.
-    const user = await getQuery(`SELECT * FROM users WHERE email = ?`, [email]);
-
-    // [SEC] Constant-ish-time auth: always run bcrypt.compare (against a dummy hash
-    // when the email is unknown) so response timing can't be used to enumerate which
-    // emails are registered. The error message is identical for "no such user" and
-    // "wrong password".
-    const match = await bcrypt.compare(password, user ? user.password_hash : DUMMY_PW_HASH);
-    if (!user || !match) {
-      return res.status(401).json({ error: 'Invalid credentials.' });
+    // 1. Resolve member context. If it's a member (r5), force their own linked member ID.
+    if (req.user.role_id === 'r5') {
+      const link = await getQuery(
+        `SELECT member_id FROM user_roles
+         WHERE user_id = ? AND tenant_id = ? AND role_id = 'r5'
+           AND (status IS NULL OR status = 'active')`,
+        [req.user.id, req.tenant_id]
+      );
+      if (!link || !link.member_id) {
+        return res.status(403).json({ error: 'No active membership linked to this account.', code: 'NOT_LINKED' });
+      }
+      memberId = link.member_id;
     }
 
-    if (!user.is_active || user.status !== 'active') {
-      return res.status(403).json({ error: 'This account has been suspended.' });
+    if (!memberId) {
+      return res.status(400).json({ error: 'Member ID is required.' });
     }
 
-    // [AUTH FIX] Only enforce email verification when email delivery is actually
-    // configured. Without EMAIL_API_KEY no verification mail can ever be sent, so a
-    // hard verify-gate permanently locks out everyone who signs up. When email is
-    // unavailable we treat accounts as usable (soft gate) instead of a dead end.
-    if (EMAIL_ENABLED && !user.email_verified) {
-      return res.status(403).json({ error: 'Please verify your email address before logging in.', verificationRequired: true });
+    // 2. Fetch member & check expiry
+    const member = await getQuery(`SELECT * FROM members WHERE id = ? AND tenant_id = ?`, [memberId, req.tenant_id]);
+    if (!member) {
+      return res.status(404).json({ error: 'Member not found.' });
+    }
+    if (member.status === 'Expired') {
+      return res.status(403).json({ error: 'Access card restricted. Membership has expired.' });
     }
 
-    // Update last login
-    await runQuery(`UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?`, [user.id]);
-
-    // [ROLES] Role is decided SERVER-SIDE from user_roles — never from the
-    // request. Exactly one role → scoped token straight into that shell.
-    // Multiple roles → pending token that can only reach the picker.
-    const roles = await getUserRoles(user.id);
-    if (roles.length === 0) {
-      return res.status(403).json({ error: 'This account has no active access. Please contact your gym.' });
+    // 3. Validation and spoofing checks
+    if (latitude === undefined || longitude === undefined || !timestamp) {
+      return res.status(400).json({ error: 'Latitude, longitude, and timestamp are required.' });
     }
 
-    if (roles.length === 1) {
-      // [H5] Cookie hardening (SameSite=Lax + Secure in production) lives in setAuthCookie.
-      setAuthCookie(res, signScopedToken(user, roles[0], remember), remember, false);
-      return res.json({
-        message: 'Authorization successful.',
-        redirect: shellForRole(roles[0].role_id),
-        user: { email: user.email, role_id: roles[0].role_id },
-        roles: rolesForClient(roles)
+    if (isMocked || mocked) {
+      return res.status(400).json({ error: 'Mock location/GPS spoofing detected.' });
+    }
+
+    const clientTime = Number(timestamp);
+    const serverTime = Date.now();
+    const bufferSeconds = 60;
+    if (Math.abs(serverTime - clientTime) > bufferSeconds * 1000) {
+      return res.status(400).json({ error: 'Spoofing/Replay check failed. Time synchronization mismatch.' });
+    }
+
+    // 4. Geofencing calculations
+    const gym = await getQuery(`SELECT latitude, longitude, geofence_radius, gym_name FROM tenants WHERE id = ?`, [req.tenant_id]);
+    if (!gym || gym.latitude === null || gym.longitude === null) {
+      return res.status(500).json({ error: 'Gym geofence location is not configured.' });
+    }
+
+    function haversineDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3; // Earth's radius in meters
+      const phi1 = (lat1 * Math.PI) / 180;
+      const phi2 = (lat2 * Math.PI) / 180;
+      const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+      const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+      const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+                Math.cos(phi1) * Math.cos(phi2) *
+                Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    const distance = haversineDistance(Number(latitude), Number(longitude), Number(gym.latitude), Number(gym.longitude));
+    const radius = Number(gym.geofence_radius || 50);
+
+    if (distance > radius) {
+      return res.status(400).json({
+        error: 'Geofence check failed. You must be physically inside the gym to check in.',
+        distance: Math.round(distance),
+        radius: radius
       });
     }
 
-    setAuthCookie(res, signPendingToken(user, remember), false, true);
+    // 5. Database state update
+    const checkInId = 'a' + Date.now();
+    await runQuery(`
+      INSERT INTO attendance (id, tenant_id, member_id, check_in, access_method)
+      VALUES (?, ?, ?, datetime('now', 'localtime'), 'GPS')
+    `, [checkInId, req.tenant_id, member.id]);
+
     res.json({
-      message: 'Select a role to continue.',
-      redirect: '/select-role',
-      user: { email: user.email },
-      roles: rolesForClient(roles)
+      message: `Checked in successfully at ${gym.gym_name}. Welcome, ${member.full_name}!`,
+      distance: Math.round(distance),
+      check_in_time: new Date().toISOString()
     });
+
   } catch (err) {
-    console.error('Login error:', err);
-    res.status(500).json({ error: 'Internal system authorization failure.' });
+    console.error('[GPS Checkin Error]:', err);
+    res.status(500).json({ error: 'Internal validation failure.' });
   }
 });
 
-app.post('/api/v1/auth/signup', authLimiter, async (req, res) => {
-  const { full_name, email, password, phone } = req.body;
-  if (!full_name || !email || !password) return res.status(400).json({ error: 'All fields are required.' });
-  // [M3] Minimum password policy.
-  if (String(password).length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(email))) return res.status(400).json({ error: 'Please enter a valid email address.' });
-  // [ROLES] Phone is required at registration — it is (with email) the linking
-  // key for the future member-claim flow.
-  const normPhone = identity.normalizePhone(phone);
-  if (!normPhone) return res.status(400).json({ error: 'A valid phone number (10-15 digits) is required.' });
+// [Health Connect Sync] Bulk synchronize client biometrics from Google Health Connect
+app.post('/api/v1/health/sync', authenticateToken, requireTenant, async (req, res) => {
+  const { biometrics } = req.body;
+  if (!Array.isArray(biometrics)) {
+    return res.status(400).json({ error: 'Biometrics array is required.' });
+  }
+
+  let memberId = req.body.member_id;
 
   try {
-    const existingUser = await getQuery('SELECT id FROM users WHERE email = ?', [email]);
-    if (existingUser) return res.status(400).json({ error: 'Email already exists.' });
-    
-    const hash = await bcrypt.hash(password, 10);
-    const userId = 'u_' + Date.now();
-    const vToken = crypto.randomBytes(32).toString('hex');
-    const hashedVToken = crypto.createHash('sha256').update(vToken).digest('hex');
-    
-    const trialStart = new Date().toISOString();
-    const trialEnd = new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(); // 21 days
-    
-    const tenantId = 't_' + Date.now() + Math.floor(Math.random() * 1000);
-    const gymName = full_name.split(' ')[0] + "'s Gym";
-    const subdomain = full_name.toLowerCase().replace(/[^a-z0-9]/g, '') + Math.floor(Math.random() * 1000);
-    
-    await runQuery(`INSERT INTO tenants (id, gym_name, subdomain, owner_user_id, subscription_plan, trial_start, trial_end, subscription_status) VALUES (?, ?, ?, ?, 'trial', ?, ?, 'trial')`, 
-      [tenantId, gymName, subdomain, userId, trialStart, trialEnd]);
-    
-    // [AUTH FIX] When email delivery is not configured, verification is impossible,
-    // so create the owner already-verified — otherwise every signup is a dead end.
-    const initialVerified = EMAIL_ENABLED ? 0 : 1;
-
-    // Create owner user
-    await runQuery(`INSERT INTO users (id, role_id, tenant_id, email, password_hash, full_name, phone, email_verified, status, verification_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)`,
-      [userId, 'r1', tenantId, email, hash, full_name, normPhone, initialVerified, hashedVToken]); // r1 = System Owner
-
-    // [ROLES] Mirror the owner role into user_roles (multi-role source of truth).
-    await runQuery(`INSERT OR IGNORE INTO user_roles (id, user_id, tenant_id, role_id) VALUES (?, ?, ?, 'r1')`,
-      ['ur_' + userId + '_' + tenantId + '_r1', userId, tenantId]);
-
-    // Seed the FULL per-tenant default settings + discount-rule scaffold (not just
-    // gym_name/currency) so a new gym's dashboards, reminders, GST and payment
-    // toggles all have real values from day one.
-    await seedTenantDefaults(tenantId, gymName);
-
-    // No email provider configured → account is usable immediately.
-    if (!EMAIL_ENABLED) {
-      return res.status(201).json({ message: 'Account created. You can sign in now.', verificationPending: false });
+    // 1. Resolve member ID if calling user is a member (r5)
+    if (req.user.role_id === 'r5') {
+      const link = await getQuery(
+        `SELECT member_id FROM user_roles
+         WHERE user_id = ? AND tenant_id = ? AND role_id = 'r5'
+           AND (status IS NULL OR status = 'active')`,
+        [req.user.id, req.tenant_id]
+      );
+      if (!link || !link.member_id) {
+        return res.status(403).json({ error: 'No active membership linked to this account.', code: 'NOT_LINKED' });
+      }
+      memberId = link.member_id;
     }
 
-    const emailResult = await emailService.sendVerificationEmail(email, vToken, tenantId, PORT);
-    if (!emailResult.success) {
-      // [H4] Do NOT strand the user with a dead 502. The account exists; tell the
-      // UI verification is pending and offer a resend path instead of "contact support".
-      return res.status(201).json({
-        message: 'Account created, but we could not send the verification email. Use Resend Verification to try again.',
-        verificationPending: true,
-        emailFailed: true
-      });
+    if (!memberId) {
+      return res.status(400).json({ error: 'Member ID is required.' });
     }
 
-    res.status(201).json({ message: 'Signup successful. Please verify email.', verificationPending: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to create account.' });
-  }
-});
+    // Group metric items by calendar date
+    const dailyData = {};
 
-app.get('/api/v1/auth/verify-email', async (req, res) => {
-  const { token } = req.query;
-  if (!token) return res.status(400).json({ error: 'Missing token' });
-  try {
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-    const user = await getQuery('SELECT id FROM users WHERE verification_token = ?', [hashedToken]);
-    if (!user) return res.status(400).json({ error: 'Invalid or expired token' });
-    
-    await runQuery(`UPDATE users SET email_verified = 1, verification_token = NULL WHERE id = ?`, [user.id]);
-    res.json({ message: 'Email verified successfully.' });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to verify email.' });
-  }
-});
-
-// [H4] Resend verification email for an unverified account. Always responds 200
-// (does not reveal whether the email exists) and is rate-limited against abuse.
-app.post('/api/v1/auth/resend-verification', authLimiter, async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email required' });
-  try {
-    const user = await getQuery('SELECT id, tenant_id, email_verified FROM users WHERE email = ?', [email]);
-    if (user && !user.email_verified) {
-      const vToken = crypto.randomBytes(32).toString('hex');
-      const hashedVToken = crypto.createHash('sha256').update(vToken).digest('hex');
-      await runQuery('UPDATE users SET verification_token = ? WHERE id = ?', [hashedVToken, user.id]);
-      await emailService.sendVerificationEmail(email, vToken, user.tenant_id, PORT);
-    }
-    res.json({ message: 'If that account exists and is unverified, a new verification email has been sent.' });
-  } catch (err) {
-    console.error('Resend verification error:', err);
-    res.status(500).json({ error: 'Failed to resend verification email.' });
-  }
-});
-
-app.post('/api/v1/auth/forgot-password', authLimiter, async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email required' });
-  try {
-    const user = await getQuery('SELECT id FROM users WHERE email = ?', [email]);
-    if (user) {
-      const resetToken = crypto.randomBytes(32).toString('hex');
-      const hashedResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-      const expiry = new Date(Date.now() + 3600000).toISOString(); // 1 hr
-      await runQuery('UPDATE users SET reset_token = ?, token_expiry = ? WHERE id = ?', [hashedResetToken, expiry, user.id]);
+    biometrics.forEach(item => {
+      const ts = Number(item.timestamp) || Date.now();
+      const dateStr = new Date(ts).toISOString().slice(0, 10); // YYYY-MM-DD
       
-      const emailResult = await emailService.sendPasswordReset(email, resetToken, user.tenant_id, PORT);
-      // [SEC] Do NOT surface send success/failure to the caller — a 502 only for
-      // existing accounts is an enumeration oracle. Log server-side and always return
-      // the same generic response below.
-      if (!emailResult.success) {
-        console.error('[forgot-password] reset email dispatch failed for an existing account.');
+      if (!dailyData[dateStr]) {
+        dailyData[dateStr] = {
+          steps: null,
+          sleep_minutes: null,
+          heart_rate: [],
+          calories: null,
+          weight_kg: null,
+          systolic: null,
+          diastolic: null
+        };
+      }
+
+      const day = dailyData[dateStr];
+      const val = Number(item.value);
+
+      if (isNaN(val)) return;
+
+      switch (item.type) {
+        case 'steps':
+          day.steps = (day.steps || 0) + val;
+          break;
+        case 'calories':
+          day.calories = (day.calories || 0) + val;
+          break;
+        case 'sleep':
+          day.sleep_minutes = (day.sleep_minutes || 0) + val;
+          break;
+        case 'heart_rate':
+          day.heart_rate.push(val);
+          break;
+        case 'weight':
+          day.weight_kg = val;
+          break;
+        case 'blood_pressure':
+          if (typeof item.value === 'string' && item.value.includes('/')) {
+            const parts = item.value.split('/');
+            day.systolic = Number(parts[0]) || null;
+            day.diastolic = Number(parts[1]) || null;
+          } else if (item.systolic && item.diastolic) {
+            day.systolic = Number(item.systolic);
+            day.diastolic = Number(item.diastolic);
+          }
+          break;
+      }
+    });
+
+    // Upsert aggregated records into health_logs
+    for (const logDate of Object.keys(dailyData)) {
+      const data = dailyData[logDate];
+      const avgHr = data.heart_rate.length 
+        ? data.heart_rate.reduce((a, b) => a + b, 0) / data.heart_rate.length 
+        : null;
+
+      // Select existing log for this date to preserve other manually entered values (like water_ml)
+      const existing = await getQuery(
+        `SELECT * FROM health_logs WHERE tenant_id = ? AND member_id = ? AND log_date = ?`,
+        [req.tenant_id, memberId, logDate]
+      );
+
+      if (existing) {
+        const steps = data.steps !== null ? data.steps : (existing.steps || 0);
+        const sleep_minutes = data.sleep_minutes !== null ? data.sleep_minutes : (existing.sleep_minutes || 0);
+        const calories = data.calories !== null ? data.calories : (existing.calories || 0);
+        const weight = data.weight_kg !== null ? data.weight_kg : existing.weight_kg;
+        const hr = avgHr !== null ? avgHr : existing.heart_rate;
+        const sys = data.systolic !== null ? data.systolic : existing.systolic;
+        const dia = data.diastolic !== null ? data.diastolic : existing.diastolic;
+
+        await runQuery(
+          `UPDATE health_logs 
+           SET steps = ?, sleep_minutes = ?, calories = ?, weight_kg = ?, heart_rate = ?, systolic = ?, diastolic = ?, updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?`,
+          [steps, sleep_minutes, calories, weight, hr, sys, dia, existing.id]
+        );
+      } else {
+        const steps = data.steps !== null ? data.steps : 0;
+        const sleep_minutes = data.sleep_minutes !== null ? data.sleep_minutes : 0;
+        const calories = data.calories !== null ? data.calories : 0;
+        const weight = data.weight_kg;
+        const hr = avgHr;
+        const sys = data.systolic;
+        const dia = data.diastolic;
+        const id = 'hl_' + crypto.randomBytes(8).toString('hex');
+
+        await runQuery(
+          `INSERT INTO health_logs (id, tenant_id, member_id, log_date, steps, sleep_minutes, calories, weight_kg, heart_rate, systolic, diastolic, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+          [id, req.tenant_id, memberId, logDate, steps, sleep_minutes, calories, weight, hr, sys, dia]
+        );
       }
     }
-    res.json({ message: 'Reset link sent if email exists.' });
+
+    res.json({ success: true, message: `Synchronized ${Object.keys(dailyData).length} days of metrics successfully.` });
+
   } catch (err) {
-    console.error('[forgot-password] error:', err && err.message);
-    res.status(500).json({ error: 'Error processing request.' });
+    console.error('[Health Sync Error]:', err);
+    res.status(500).json({ error: 'Failed to synchronize biometrics.' });
   }
 });
 
-app.post('/api/v1/auth/reset-password', authLimiter, async (req, res) => {
-  const { token, password } = req.body;
-  if (!token || !password) return res.status(400).json({ error: 'Token and password required' });
-  // [M3] Enforce the same minimum password policy on reset.
-  if (String(password).length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+// [Health Connect Bind] Set permanently linked state in the DB
+app.post('/api/v1/health/bind', authenticateToken, requireTenant, async (req, res) => {
+  let memberId = req.body.member_id;
+
   try {
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-    const user = await getQuery('SELECT id FROM users WHERE reset_token = ? AND token_expiry > CURRENT_TIMESTAMP', [hashedToken]);
-    if (!user) return res.status(400).json({ error: 'Invalid or expired token.' });
-    
-    const hash = await bcrypt.hash(password, 10);
-    await runQuery('UPDATE users SET password_hash = ?, reset_token = NULL, token_expiry = NULL WHERE id = ?', [hash, user.id]);
-    res.json({ message: 'Password updated successfully.' });
-  } catch (err) {
-    res.status(500).json({ error: 'Error resetting password.' });
-  }
-});
-
-// Logout API
-// [H8] Actually revoke the token (add its jti to the deny-list) instead of only
-// clearing the cookie — a copied/stolen token is now rejected after logout.
-app.post('/api/v1/auth/logout', (req, res) => {
-  const token = req.cookies.auth_token;
-  if (token) {
-    try {
-      const decoded = verifyToken(token);
-      revokeToken(decoded);
-    } catch (e) { /* already invalid/expired — nothing to revoke */ }
-  }
-  res.clearCookie('auth_token');
-  res.json({ message: 'Session terminated successfully.' });
-});
-
-// [ROLES] Finalize (or switch) the active role for a multi-role account.
-// The client only names a (tenant_id, role_id) pair — the pair is re-verified
-// against user_roles in the DB before any scoped token is issued, so a client
-// cannot grant itself a role it does not hold. The previous token (pending or
-// scoped) is revoked: role selection is a token exchange, not a mutation.
-app.post('/api/v1/auth/select-role', authLimiter, authenticateToken, async (req, res) => {
-  const { tenant_id, role_id } = req.body || {};
-  if (!tenant_id || !role_id) return res.status(400).json({ error: 'tenant_id and role_id are required.' });
-  try {
-    const user = await getQuery(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
-    if (!isAccountActive(user)) return res.status(403).json({ error: 'This account has been suspended.' });
-
-    const roles = await getUserRoles(user.id);
-    const role = roles.find(r => r.tenant_id === tenant_id && r.role_id === role_id);
-    if (!role) return res.status(403).json({ error: 'You do not hold that role.' });
-
-    revokeToken(req.authToken);
-    const remember = !!req.user.remember;
-    setAuthCookie(res, signScopedToken(user, role, remember), remember, false);
-    res.json({
-      message: 'Role selected.',
-      redirect: shellForRole(role.role_id),
-      role: { tenant_id: role.tenant_id, role_id: role.role_id, role_name: role.role_name, gym_name: role.gym_name }
-    });
-  } catch (err) {
-    console.error('Select-role error:', err);
-    res.status(500).json({ error: 'Failed to select role.' });
-  }
-});
-
-// [ROLES] One-time phone backfill for accounts created before phone was
-// captured at registration. Add-once: refuses to overwrite an existing phone
-// (the linking key must not be silently re-pointable from a session).
-app.post('/api/v1/auth/phone', authLimiter, authenticateToken, async (req, res) => {
-  const normPhone = identity.normalizePhone(req.body && req.body.phone);
-  if (!normPhone) return res.status(400).json({ error: 'A valid phone number (10-15 digits) is required.' });
-  try {
-    const user = await getQuery(`SELECT id, phone FROM users WHERE id = ?`, [req.user.id]);
-    if (!user) return res.status(404).json({ error: 'Account not found.' });
-    if (user.phone) return res.status(409).json({ error: 'A phone number is already linked to this account.' });
-    await runQuery(`UPDATE users SET phone = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [normPhone, user.id]);
-    res.json({ message: 'Phone number linked to your account.', phone: normPhone });
-  } catch (err) {
-    console.error('Phone backfill error:', err);
-    res.status(500).json({ error: 'Failed to save phone number.' });
-  }
-});
-
-// Public auth-config: lets the login page know which providers to show.
-app.get('/api/v1/auth/config', (req, res) => {
-  res.json({ google: GOOGLE_ENABLED, emailVerification: EMAIL_ENABLED });
-});
-
-// ==========================================
-// GOOGLE OAUTH (standard account-picker sign-in)
-// ==========================================
-// Token issuing is shared with the password path (signScopedToken /
-// signPendingToken + setAuthCookie) so the two sign-in paths can never diverge
-// on role handling.
-
-// Step 1 — redirect to Google's consent screen. prompt=select_account forces the
-// familiar Google account picker that standard apps show.
-app.get('/api/v1/auth/google', authLimiter, (req, res) => {
-  if (!GOOGLE_ENABLED) return res.status(503).json({ error: 'Google sign-in is not configured on this server.' });
-  const state = crypto.randomBytes(16).toString('hex');
-  res.cookie('g_oauth_state', state, { httpOnly: true, sameSite: 'lax', maxAge: 10 * 60 * 1000, secure: process.env.NODE_ENV === 'production' });
-  const params = new URLSearchParams({
-    client_id: GOOGLE_CLIENT_ID,
-    redirect_uri: `${APP_BASE_URL}/api/v1/auth/google/callback`,
-    response_type: 'code',
-    scope: 'openid email profile',
-    access_type: 'online',
-    include_granted_scopes: 'true',
-    prompt: 'select_account',
-    state
-  });
-  res.redirect('https://accounts.google.com/o/oauth2/v2/auth?' + params.toString());
-});
-
-// Step 2 — handle Google's redirect: verify state, exchange code, find/create the
-// user+tenant, issue our own session cookie, then land on the dashboard.
-app.get('/api/v1/auth/google/callback', async (req, res) => {
-  if (!GOOGLE_ENABLED) return res.redirect('/login');
-  const { code, state } = req.query;
-  if (!code || !state || state !== req.cookies.g_oauth_state) {
-    res.clearCookie('g_oauth_state');
-    return res.redirect('/login?error=google_state');
-  }
-  res.clearCookie('g_oauth_state');
-  try {
-    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        code: String(code),
-        client_id: GOOGLE_CLIENT_ID,
-        client_secret: GOOGLE_CLIENT_SECRET,
-        redirect_uri: `${APP_BASE_URL}/api/v1/auth/google/callback`,
-        grant_type: 'authorization_code'
-      })
-    });
-    const tokens = await tokenRes.json();
-    if (!tokens.access_token) return res.redirect('/login?error=google_token');
-
-    const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${tokens.access_token}` }
-    });
-    const profile = await profileRes.json();
-    const email = (profile.email || '').toLowerCase();
-    if (!email || profile.email_verified === false) return res.redirect('/login?error=google_email');
-
-    let user = await getQuery(`SELECT * FROM users WHERE email = ?`, [email]);
-    if (!user) {
-      // First Google sign-in → provision a new tenant + owner (already verified).
-      const userId = 'u_' + Date.now();
-      const tenantId = 't_' + Date.now() + Math.floor(Math.random() * 1000);
-      const fullName = profile.name || email.split('@')[0];
-      const gymName = (fullName.split(' ')[0] || 'My') + "'s Gym";
-      const subdomain = fullName.toLowerCase().replace(/[^a-z0-9]/g, '') + Math.floor(Math.random() * 1000);
-      const trialStart = new Date().toISOString();
-      const trialEnd = new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString();
-      const randomPw = await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 10);
-      await runQuery(`INSERT INTO tenants (id, gym_name, subdomain, owner_user_id, subscription_plan, trial_start, trial_end, subscription_status) VALUES (?, ?, ?, ?, 'trial', ?, ?, 'trial')`,
-        [tenantId, gymName, subdomain, userId, trialStart, trialEnd]);
-      await runQuery(`INSERT INTO users (id, role_id, tenant_id, email, password_hash, full_name, email_verified, status) VALUES (?, 'r1', ?, ?, ?, ?, 1, 'active')`,
-        [userId, tenantId, email, randomPw, fullName]);
-      // [ROLES] Mirror the owner role into user_roles. Google supplies no phone
-      // number — these accounts add it later via the one-time /auth/phone backfill.
-      await runQuery(`INSERT OR IGNORE INTO user_roles (id, user_id, tenant_id, role_id) VALUES (?, ?, ?, 'r1')`,
-        ['ur_' + userId + '_' + tenantId + '_r1', userId, tenantId]);
-      await seedTenantDefaults(tenantId, gymName);
-      user = await getQuery(`SELECT * FROM users WHERE id = ?`, [userId]);
+    if (req.user.role_id === 'r5') {
+      const link = await getQuery(
+        `SELECT member_id FROM user_roles
+         WHERE user_id = ? AND tenant_id = ? AND role_id = 'r5'
+           AND (status IS NULL OR status = 'active')`,
+        [req.user.id, req.tenant_id]
+      );
+      if (!link || !link.member_id) {
+        return res.status(403).json({ error: 'No active membership linked to this account.', code: 'NOT_LINKED' });
+      }
+      memberId = link.member_id;
     }
 
-    if (!user.is_active && user.status !== 'active') return res.redirect('/login?error=suspended');
-    await runQuery(`UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?`, [user.id]);
-
-    // [ROLES] Same server-side role decision as the password path.
-    const roles = await getUserRoles(user.id);
-    if (roles.length === 0) return res.redirect('/login?error=suspended');
-    if (roles.length === 1) {
-      setAuthCookie(res, signScopedToken(user, roles[0], false), false, false);
-      return res.redirect(shellForRole(roles[0].role_id));
+    if (!memberId) {
+      return res.status(400).json({ error: 'Member ID is required.' });
     }
-    setAuthCookie(res, signPendingToken(user, false), false, true);
-    res.redirect('/select-role');
-  } catch (err) {
-    console.error('Google OAuth callback error:', err);
-    res.redirect('/login?error=google');
-  }
-});
 
-// Session Check API
-app.get('/api/v1/auth/session', authenticateToken, async (req, res) => {
-  try {
-    // id + gym_name ride along so the setup wizard can prefill and key its
-    // per-tenant resume draft. Both are the tenant's own data — no leak.
-    const tenant = req.user.tenant_id
-      ? await getQuery(`SELECT id, gym_name, subscription_plan, trial_start, trial_end, subscription_status, tour_completed, onboarding_completed, tutorial_step FROM tenants WHERE id = ?`, [req.user.tenant_id])
-      : null;
-    // [ROLES] Every role this identity holds and which tenant it belongs to —
-    // fresh from the DB, so the picker/member stub always show server truth.
-    const roles = await getUserRoles(req.user.id);
-    const userRow = await getQuery(`SELECT phone FROM users WHERE id = ?`, [req.user.id]);
-    res.json({
-      user: { ...req.user, phone: (userRow && userRow.phone) || null },
-      pending_role_selection: !!req.user.pending_role_selection,
-      roles: rolesForClient(roles),
-      tenant: tenant || { subscription_plan: 'trial', subscription_status: 'trial', tour_completed: 0, onboarding_completed: 0, tutorial_step: 0 }
-    });
+    await runQuery(
+      `UPDATE members SET health_connect_linked = 1 WHERE id = ?`,
+      [memberId]
+    );
+
+    res.json({ success: true, message: 'Google Health Connect linked permanently.' });
   } catch (err) {
-    res.json({
-      user: req.user,
-      pending_role_selection: !!req.user.pending_role_selection,
-      roles: [],
-      tenant: { subscription_plan: 'trial', subscription_status: 'trial', tour_completed: 0, onboarding_completed: 0, tutorial_step: 0 }
-    });
+    console.error('[Health Bind Error]:', err);
+    res.status(500).json({ error: 'Failed to bind Health Connect state.' });
   }
 });
 
@@ -721,31 +650,14 @@ app.get('/api/v1/auth/session', authenticateToken, async (req, res) => {
 const apiRouter = require('./routes/api');
 app.use('/api/v1', authenticateToken, requireTenant, requireStaffRole, apiRouter);
 
-// [WHATSAPP] Real WhatsApp automation (whatsapp-web.js). Connection management
-// lives in its own router but reuses the SAME auth + tenant isolation as the rest
-// of the API, so QR/status/connect are manager/admin-only and tenant-scoped.
-const whatsappService = require('./services/whatsapp.service');
-require('./services/whatsapp.queue'); // wires the service->queue resume hook
-const whatsappRouter = require('./routes/whatsapp.routes');
+// [WHATSAPP-CLOUD] Centralized WhatsApp Cloud API. There is no per-gym QR/session
+// anymore — the platform sends from ONE Gymflow-managed number and each gym only
+// controls its own automation toggles. Same auth + tenant isolation as the rest
+// of the API; mutations require the settings:write permission (owner/manager).
+const whatsappRouter = require('./routes/whatsappCloud.routes');
 app.use('/api/v1/whatsapp', authenticateToken, requireTenant, requireStaffRole, whatsappRouter);
-// Also expose the SAME router at /api/whatsapp so the Android WebView can open
-// /api/whatsapp/qr directly (it returns a scannable HTML page) without the /v1
-// prefix. Same auth + tenant isolation; the QR is resolved from the logged-in
-// manager's session cookie.
+// Also exposed at /api/whatsapp (no /v1 prefix) for the Android WebView.
 app.use('/api/whatsapp', authenticateToken, requireTenant, requireStaffRole, whatsappRouter);
-
-// Restore any gym that already linked WhatsApp so it reconnects WITHOUT a new QR
-// after a server restart (LocalAuth session persistence). Non-blocking.
-// WHATSAPP_ENABLED=false disables this on hosts that can't run headless Chromium
-// (e.g. Render's free tier) so the server never tries to launch a browser there.
-if (process.env.WHATSAPP_ENABLED !== 'false') {
-  setTimeout(() => {
-    try { whatsappService.restorePersistedSessions(); }
-    catch (e) { console.error('[whatsapp] session restore error:', e.message); }
-  }, 5 * 1000);
-} else {
-  console.log('[whatsapp] Disabled (WHATSAPP_ENABLED=false) — skipping session restore.');
-}
 
 // [M6] Run automation scans (expiry alerts, payment-due tasks, absent-member
 // alerts) on a background interval for ALL tenants instead of on every dashboard
@@ -777,18 +689,29 @@ app.use((err, req, res, next) => {
 // ==========================================
 // START SERVER
 // ==========================================
-const server = app.listen(PORT, () => {
-  console.log(`Gym Flow management server running at http://localhost:${PORT}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+  const os = require('os');
+  const nets = os.networkInterfaces();
+  let lanIP = 'localhost';
+  for (const iface of Object.values(nets)) {
+    for (const cfg of iface) {
+      if (cfg.family === 'IPv4' && !cfg.internal) { lanIP = cfg.address; break; }
+    }
+    if (lanIP !== 'localhost') break;
+  }
+  console.log(`Gym Flow management server running at:`);
+  console.log(`  ➜  Local:   http://localhost:${PORT}`);
+  console.log(`  ➜  Network: http://${lanIP}:${PORT}`);
 });
 
-// [WHATSAPP] Graceful shutdown — destroy all WhatsApp/Chromium clients so headless
-// browser processes are not orphaned when the server stops.
+// Graceful shutdown — close the HTTP server cleanly. The centralized WhatsApp
+// Cloud API is stateless (plain HTTPS requests), so there are no per-gym browser
+// sessions to tear down anymore.
 let shuttingDown = false;
 async function gracefulShutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
-  console.log(`\n[shutdown] ${signal} received — closing WhatsApp clients...`);
-  try { await whatsappService.shutdown(); } catch (e) { /* best effort */ }
+  console.log(`\n[shutdown] ${signal} received — closing server...`);
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 8000).unref();
 }

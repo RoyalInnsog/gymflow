@@ -10,6 +10,20 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="/assets/js/designSystem.js"></script>
 <script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
 <script src="/assets/js/utils.js"></script>
 <title>Gym Flow - Equipment</title>
 
@@ -25,7 +39,7 @@
     </style>
 
 </head>
-<body class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300">
+<body class="shell-locked font-body text-body-md antialiased md:pl-[280px] pt-16 transition-all duration-300">
 <div id="jsb-header" data-page-title="Equipment"></div>
 <div id="jsb-sidebar"></div>
 
@@ -218,7 +232,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <td class="py-4 px-4 text-on-surface-variant">${esc(e.zone || '--')}</td>
         <td class="py-4 px-4"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${cls} font-label-md text-label-md"><span class="w-1.5 h-1.5 rounded-full ${dotCls}"></span> ${esc(status)}</span></td>
         <td class="py-4 px-4 text-on-surface-variant">${fmtDate(e.last_serviced_at)}</td>
-        <td class="py-4 px-4 text-right"><button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">more_vert</span></button></td>
+        <td class="py-4 px-4 text-right"><div class="gf-card-menu" data-card-menu><button type="button" class="gf-card-menu-trigger text-on-surface-variant hover:text-primary" aria-haspopup="true" aria-expanded="false" aria-label="Equipment actions"><span class="material-symbols-outlined">more_vert</span></button><div class="gf-card-menu-panel" role="menu"><button role="menuitem" onclick="if(window.toast)window.toast('Edit equipment')"><span class="material-symbols-outlined">edit</span> Edit</button><button role="menuitem" onclick="if(window.toast)window.toast('Marked as serviced')"><span class="material-symbols-outlined">build</span> Mark serviced</button><button role="menuitem" class="gf-danger" onclick="var r=this.closest('tr'); if(r) r.remove(); if(window.toast)window.toast('Equipment removed')"><span class="material-symbols-outlined">delete</span> Remove</button></div></div></td>
       </tr>`;
     }).join('');
   } catch (err) {

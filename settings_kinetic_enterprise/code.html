@@ -15,8 +15,23 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="/assets/js/designSystem.js"></script>
     <script src="/assets/js/api.js"></script>
+    <!-- Gym Flow Offline-First layer (Phase F4A) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/assets/js/offline/idb.js"></script>
+    <script src="/assets/js/offline/localdb.js"></script>
+    <script src="/assets/js/offline/netTransport.js"></script>
+    <script src="/assets/js/offline/routeRegistry.js"></script>
+    <script src="/assets/js/offline/outbox.js"></script>
+    <script src="/assets/js/offline/syncEngine.js"></script>
+    <script src="/assets/js/offline/networkWatcher.js"></script>
+    <script src="/assets/js/offline/repositories.js"></script>
+    <script src="/assets/js/offline/apiOffline.js"></script>
+    <script src="/assets/js/offline/offlineBootstrap.js"></script>
+    <!-- /Gym Flow Offline-First layer -->
     <script src="/assets/js/utils.js"></script>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <title>Gym Flow - Business Control Center</title>
     <style>
         .nav-tab.active {
@@ -56,72 +71,73 @@
 </head>
 
 <body
-    class="font-body text-body-md antialiased min-h-screen md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-surface">
+    class="shell-locked font-body text-body-md antialiased md:pl-[280px] pt-16 transition-all duration-300 bg-background text-on-surface">
     <div id="jsb-header" data-page-title="Control Center"></div>
     <div id="jsb-sidebar"></div>
 
-    <main class="max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop mt-4 md:mt-8 pb-24">
-        <!-- Header -->
-        <div class="mb-xl flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-outline-variant/30 pb-6">
-            <div class="flex items-center gap-4">
-                <a href="/dashboard" class="flex items-center gap-3 group hover:opacity-80 transition-all duration-200" title="Return to Dashboard">
-                    <div class="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-lg shadow-primary/5 group-hover:scale-105 transition-transform duration-200">
-                        <span class="material-symbols-outlined text-[28px] font-bold">fitness_center</span>
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="font-headline-xl text-headline-xl text-on-surface font-extrabold tracking-tight">GYM Flow</span>
-                            <span class="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase">Portal</span>
-                        </div>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Business Control Center</p>
-                    </div>
-                </a>
-            </div>
-            <button id="globalSaveBtn"
-                class="bg-primary text-on-primary px-6 py-3 rounded-lg font-label-lg hover:bg-primary/90 transition-colors shadow-panel flex items-center gap-2"
-                style="display: none;">
-                <span class="material-symbols-outlined text-[20px]">save</span> Save Changes
-            </button>
-        </div>
-
+    <main class="flex-1 overflow-y-auto max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop mt-4 md:mt-8 pb-24 w-full">
         <div class="flex flex-col md:flex-row gap-8 items-start">
-            <!-- Vertical Navigation -->
-            <nav class="w-full md:w-64 shrink-0 flex flex-row md:flex-col overflow-x-auto md:overflow-visible gap-2 sticky top-24 z-10 glass-panel md:bg-transparent md:border-none p-2 md:p-0 rounded-xl md:rounded-none md:min-h-[70vh]">
-                <button class="nav-tab active flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap animate-fade-in" data-target="gym">
-                    <span class="material-symbols-outlined">storefront</span>
-                    <span class="font-label-lg">🏢 Gym</span>
-                </button>
-                <button class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap" data-target="plans">
-                    <span class="material-symbols-outlined">style</span>
-                    <span class="font-label-lg">🏷️ Plans</span>
-                </button>
-                <button class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap" data-target="team">
-                    <span class="material-symbols-outlined">group</span>
-                    <span class="font-label-lg">👥 Team</span>
-                </button>
-                <button class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap" data-target="appearance">
-                    <span class="material-symbols-outlined">palette</span>
-                    <span class="font-label-lg">🎨 Appearance</span>
-                </button>
-                <button class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap" data-target="security">
-                    <span class="material-symbols-outlined">lock</span>
-                    <span class="font-label-lg">🔐 Security</span>
-                </button>
-                <button class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap" data-target="billing">
-                    <span class="material-symbols-outlined">credit_card</span>
-                    <span class="font-label-lg">💳 Billing</span>
-                </button>
-                <div class="border-t border-outline-variant/30 mt-auto pt-4 w-full hidden md:block">
-                    <button onclick="performLogout()" type="button" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-error hover:bg-error/10 transition-colors whitespace-nowrap">
+            <!-- Left Column: Branding Card & Vertical Navigation -->
+            <div class="w-full md:w-64 shrink-0 flex flex-col gap-4 md:sticky md:top-4 z-10">
+                <!-- Embedded portal brand card -->
+                <div class="glass-panel p-4 rounded-xl flex flex-col gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                            <span class="material-symbols-outlined text-[22px] font-bold">fitness_center</span>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-headline text-body-lg text-on-surface font-extrabold tracking-tight">GYM Flow</span>
+                                <span class="bg-primary/10 text-primary border border-primary/10 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider">Portal</span>
+                            </div>
+                            <p class="text-[11px] text-on-surface-variant leading-none mt-1">Control Center</p>
+                        </div>
+                    </div>
+                    <button id="globalSaveBtn"
+                        class="w-full bg-primary text-on-primary py-2.5 rounded-lg font-label-md hover:bg-primary/90 transition-colors shadow-md flex items-center justify-center gap-1.5"
+                        style="display: none;">
+                        <span class="material-symbols-outlined text-[18px]">save</span> Save Changes
+                    </button>
+                </div>
+
+                <!-- Vertical Navigation -->
+                <nav class="w-full flex flex-row md:flex-col overflow-x-auto md:overflow-visible gap-2 glass-panel md:bg-transparent md:border-none p-2 md:p-0 rounded-xl md:rounded-none">
+                    <button class="nav-tab active flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap animate-fade-in" data-target="gym">
+                        <span class="material-symbols-outlined">storefront</span>
+                        <span class="font-label-lg">🏢 Gym</span>
+                    </button>
+                    <button class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap" data-target="plans">
+                        <span class="material-symbols-outlined">style</span>
+                        <span class="font-label-lg">🏷️ Plans</span>
+                    </button>
+                    <button class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap" data-target="team">
+                        <span class="material-symbols-outlined">group</span>
+                        <span class="font-label-lg">👥 Team</span>
+                    </button>
+                    <button class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap" data-target="appearance">
+                        <span class="material-symbols-outlined">palette</span>
+                        <span class="font-label-lg">🎨 Appearance</span>
+                    </button>
+                    <button class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap" data-target="security">
+                        <span class="material-symbols-outlined">lock</span>
+                        <span class="font-label-lg">🔐 Security</span>
+                    </button>
+                    <button class="nav-tab flex items-center gap-3 px-4 py-3 rounded-lg text-left text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap" data-target="billing">
+                        <span class="material-symbols-outlined">credit_card</span>
+                        <span class="font-label-lg">💳 Billing</span>
+                    </button>
+                    <div class="border-t border-outline-variant/30 mt-auto pt-4 w-full hidden md:block">
+                        <button onclick="performLogout()" type="button" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-error hover:bg-error/10 transition-colors whitespace-nowrap">
+                            <span class="material-symbols-outlined text-error">logout</span>
+                            <span class="font-label-lg">Logout</span>
+                        </button>
+                    </div>
+                    <button onclick="performLogout()" type="button" class="md:hidden flex items-center gap-3 px-4 py-3 rounded-lg text-left text-error hover:bg-error/10 transition-colors whitespace-nowrap">
                         <span class="material-symbols-outlined text-error">logout</span>
                         <span class="font-label-lg">Logout</span>
                     </button>
-                </div>
-                <button onclick="performLogout()" type="button" class="md:hidden flex items-center gap-3 px-4 py-3 rounded-lg text-left text-error hover:bg-error/10 transition-colors whitespace-nowrap">
-                    <span class="material-symbols-outlined text-error">logout</span>
-                    <span class="font-label-lg">Logout</span>
-                </button>
-            </nav>
+                </nav>
+            </div>
 
             <!-- Content Area -->
             <div class="flex-1 w-full min-w-0">
@@ -345,24 +361,144 @@
                             <div id="branchesList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                         </div>
 
-                        <!-- 6. WhatsApp Connect -->
+                        <!-- 6. WhatsApp Automation (centralized Cloud API — system managed) -->
                         <div class="glass-panel p-lg rounded-2xl flex flex-col gap-6" id="whatsapp-connect">
-                            <div>
-                                <h2 class="font-headline-md text-headline-md text-on-surface">WhatsApp Connection</h2>
-                                <p class="text-on-surface-variant text-sm mt-1">Link your gym's WhatsApp account to send alerts/campaigns from your own number.</p>
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <h2 class="font-headline-md text-headline-md text-on-surface">WhatsApp Automation</h2>
+                                    <p class="text-on-surface-variant text-sm mt-1">Automated messages are sent from Gymflow's verified business number. Switch each automation on or off for your gym.</p>
+                                </div>
+                                <span id="waSysBadge" class="text-xs font-semibold px-3 py-1 rounded-full bg-surface-container-highest text-on-surface-variant shrink-0">Checking…</span>
                             </div>
-                            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-container rounded-xl p-5 border border-outline/20">
-                                <div class="flex items-center gap-4">
-                                    <span id="waStatusDot" class="w-3 h-3 rounded-full bg-red-500 shrink-0"></span>
-                                    <div>
-                                        <p id="waStatusLabel" class="font-title-md text-title-md text-on-surface">Disconnected</p>
-                                        <p id="waStatusDesc" class="text-sm text-on-surface-variant">WhatsApp is not linked. Click Connect to scan QR code.</p>
-                                        <p id="waStatusInfo" class="text-xs text-primary mt-1 hidden"></p>
+
+                            <!-- Master setup: system-managed credentials (masked, read-only) -->
+                            <div class="bg-surface-container rounded-xl p-5 border border-outline/20">
+                                <label class="font-label-caps text-on-surface-variant mb-2 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">lock</span> WhatsApp Cloud API Configuration (Managed by System)</label>
+                                <input id="waSysConfig" type="text" readonly value="••••••••••••••••" class="w-full bg-surface-container-highest border border-outline/30 rounded-lg px-4 py-3 text-on-surface-variant font-mono text-sm cursor-not-allowed select-none tracking-widest">
+                                <p id="waSysHint" class="text-on-surface-variant text-xs mt-2">Credentials are configured centrally by Gymflow — nothing to set up here.</p>
+                            </div>
+
+                            <!-- Feature control toggles -->
+                            <div class="grid gap-3">
+                                <!-- 1. Fee Reminder -->
+                                <div class="bg-surface-container border border-outline/30 rounded-xl overflow-hidden">
+                                    <div class="flex items-center justify-between px-4 py-3">
+                                        <div class="flex items-start gap-3">
+                                            <span class="material-symbols-outlined text-primary mt-0.5">payments</span>
+                                            <div>
+                                                <h4 class="font-title-md text-on-surface">Fee Reminder Notifications</h4>
+                                                <p class="text-on-surface-variant text-xs mt-0.5">Remind members when their membership fee is due or overdue.</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-3">
+                                            <span id="waSpin_fee_reminder" class="wa-spin material-symbols-outlined animate-spin text-primary text-[18px] hidden">progress_activity</span>
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" id="waToggle_fee_reminder" onchange="onWaToggle('fee_reminder', this)" class="sr-only peer">
+                                                <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="border-t border-outline/20 px-4 py-3">
+                                        <button type="button" onclick="toggleWaTpl('fee_reminder')" class="text-xs text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">edit</span> Customize message</button>
+                                        <div id="waTplWrap_fee_reminder" class="hidden mt-2">
+                                            <textarea id="waTpl_fee_reminder" rows="3" class="w-full bg-surface-container-highest border border-outline/30 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none"></textarea>
+                                            <p class="text-[11px] text-on-surface-variant mt-1">Variables: {{member_name}}, {{gym_name}}, {{amount_due}}, {{expiry_date}}</p>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-3">
-                                    <button id="waConnectBtn" onclick="connectWhatsApp()" class="bg-primary text-on-primary px-5 py-2.5 rounded-lg font-label-lg flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">qr_code_2</span> Connect WhatsApp</button>
-                                    <button id="waDisconnectBtn" onclick="disconnectWhatsApp()" class="hidden bg-error/10 text-error border border-error/30 px-5 py-2.5 rounded-lg font-label-lg flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">link_off</span> Disconnect</button>
+
+                                <!-- 2. Festival Greetings -->
+                                <div class="bg-surface-container border border-outline/30 rounded-xl overflow-hidden">
+                                    <div class="flex items-center justify-between px-4 py-3">
+                                        <div class="flex items-start gap-3">
+                                            <span class="material-symbols-outlined text-primary mt-0.5">celebration</span>
+                                            <div>
+                                                <h4 class="font-title-md text-on-surface">Festival Greetings</h4>
+                                                <p class="text-on-surface-variant text-xs mt-0.5">Wish members on festivals to keep your gym top of mind.</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-3">
+                                            <span id="waSpin_festival_greetings" class="wa-spin material-symbols-outlined animate-spin text-primary text-[18px] hidden">progress_activity</span>
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" id="waToggle_festival_greetings" onchange="onWaToggle('festival_greetings', this)" class="sr-only peer">
+                                                <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="border-t border-outline/20 px-4 py-3">
+                                        <button type="button" onclick="toggleWaTpl('festival_greetings')" class="text-xs text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">edit</span> Customize message</button>
+                                        <div id="waTplWrap_festival_greetings" class="hidden mt-2">
+                                            <textarea id="waTpl_festival_greetings" rows="3" class="w-full bg-surface-container-highest border border-outline/30 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none"></textarea>
+                                            <p class="text-[11px] text-on-surface-variant mt-1">Variables: {{member_name}}, {{gym_name}}, {{festival_name}}</p>
+                                            <div id="waFestivalSend" class="hidden mt-3 flex flex-wrap items-center gap-2">
+                                                <input id="waFestivalName" type="text" placeholder="Festival name (e.g. Diwali)" class="flex-1 min-w-[160px] bg-surface-container-highest border border-outline/30 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none">
+                                                <button type="button" onclick="sendFestivalNow()" class="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">send</span> Send now</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 3. Health Check-in -->
+                                <div class="bg-surface-container border border-outline/30 rounded-xl overflow-hidden">
+                                    <div class="flex items-center justify-between px-4 py-3">
+                                        <div class="flex items-start gap-3">
+                                            <span class="material-symbols-outlined text-primary mt-0.5">monitor_heart</span>
+                                            <div>
+                                                <h4 class="font-title-md text-on-surface">Health Check-in</h4>
+                                                <p class="text-on-surface-variant text-xs mt-0.5">Send a caring nudge when a member is absent 3–4 days.</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-3">
+                                            <span id="waSpin_health_check" class="wa-spin material-symbols-outlined animate-spin text-primary text-[18px] hidden">progress_activity</span>
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" id="waToggle_health_check" onchange="onWaToggle('health_check', this)" class="sr-only peer">
+                                                <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="border-t border-outline/20 px-4 py-3">
+                                        <button type="button" onclick="toggleWaTpl('health_check')" class="text-xs text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">edit</span> Customize message</button>
+                                        <div id="waTplWrap_health_check" class="hidden mt-2">
+                                            <textarea id="waTpl_health_check" rows="3" class="w-full bg-surface-container-highest border border-outline/30 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none"></textarea>
+                                            <p class="text-[11px] text-on-surface-variant mt-1">Variables: {{member_name}}, {{gym_name}}, {{days_absent}}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 4. New Member Onboarding -->
+                                <div class="bg-surface-container border border-outline/30 rounded-xl overflow-hidden">
+                                    <div class="flex items-center justify-between px-4 py-3">
+                                        <div class="flex items-start gap-3">
+                                            <span class="material-symbols-outlined text-primary mt-0.5">waving_hand</span>
+                                            <div>
+                                                <h4 class="font-title-md text-on-surface">New Member Onboarding</h4>
+                                                <p class="text-on-surface-variant text-xs mt-0.5">Auto-send a welcome message + invoice PDF when a member joins.</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-3">
+                                            <span id="waSpin_welcome_invoice" class="wa-spin material-symbols-outlined animate-spin text-primary text-[18px] hidden">progress_activity</span>
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" id="waToggle_welcome_invoice" onchange="onWaToggle('welcome_invoice', this)" class="sr-only peer">
+                                                <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="border-t border-outline/20 px-4 py-3">
+                                        <button type="button" onclick="toggleWaTpl('welcome_invoice')" class="text-xs text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">edit</span> Customize message</button>
+                                        <div id="waTplWrap_welcome_invoice" class="hidden mt-2">
+                                            <textarea id="waTpl_welcome_invoice" rows="3" class="w-full bg-surface-container-highest border border-outline/30 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none"></textarea>
+                                            <p class="text-[11px] text-on-surface-variant mt-1">Variables: {{member_name}}, {{gym_name}}, {{amount_due}}, {{invoice_number}}, {{plan_name}}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Save templates + send a test -->
+                            <div class="flex flex-wrap items-center gap-3">
+                                <button id="waSaveBtn" onclick="saveWhatsAppAutomation()" class="bg-primary text-on-primary px-5 py-2.5 rounded-lg font-label-lg flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">save</span> Save Message Templates</button>
+                                <div class="flex items-center gap-2 md:ml-auto">
+                                    <input id="waTestPhone" type="tel" placeholder="Test number" class="w-40 bg-surface-container border border-outline/30 rounded-lg px-3 py-2.5 text-sm text-on-surface focus:border-primary focus:outline-none">
+                                    <button onclick="testWhatsApp()" class="bg-surface-container-highest hover:bg-surface-variant border border-outline-variant/30 text-on-surface px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">send</span> Send Test</button>
                                 </div>
                             </div>
                         </div>
@@ -628,30 +764,8 @@
                                 </div>
                             </div>
                             <!-- Plan Tiers Matrix -->
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                <div class="glass-panel p-6 rounded-2xl border border-outline-variant/30 flex flex-col justify-between relative" id="cardPlanTrial">
-                                    <div class="flex flex-col gap-4">
-                                        <div class="flex justify-between items-center">
-                                            <span class="bg-surface-container-highest px-3 py-1 rounded-full text-xs font-bold tracking-wider text-on-surface-variant">TRIAL</span>
-                                            <span class="text-xs text-primary font-semibold hidden" id="badgePlanTrial">ACTIVE</span>
-                                        </div>
-                                        <div>
-                                            <h3 class="font-headline-sm text-headline-sm text-on-surface">Free Trial</h3>
-                                            <p class="text-xs text-on-surface-variant mt-1">For getting started</p>
-                                        </div>
-                                        <div class="py-2 border-y border-outline-variant/30">
-                                            <span class="text-3xl font-extrabold">₹0</span>
-                                            <span class="text-xs text-on-surface-variant">/ 21 days</span>
-                                        </div>
-                                        <ul class="text-sm text-on-surface-variant space-y-2">
-                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> 50 members</li>
-                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span> No WhatsApp</li>
-                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span> No Marketing</li>
-                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span> No Analytics</li>
-                                        </ul>
-                                    </div>
-                                    <button onclick="upgradeSubscription('trial')" id="btnPlanTrial" class="w-full mt-6 bg-surface-container-highest text-on-surface hover:bg-surface-container-highest/80 py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200">Select Plan</button>
-                                </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <!-- Basic (Free for life) -->
                                 <div class="glass-panel p-6 rounded-2xl border border-outline-variant/30 flex flex-col justify-between relative" id="cardPlanBasic">
                                     <div class="flex flex-col gap-4">
                                         <div class="flex justify-between items-center">
@@ -660,23 +774,24 @@
                                         </div>
                                         <div>
                                             <h3 class="font-headline-sm text-headline-sm text-on-surface">Basic</h3>
-                                            <p class="text-xs text-on-surface-variant mt-1">Essential workflows</p>
+                                            <p class="text-xs text-on-surface-variant mt-1">Free for life</p>
                                         </div>
                                         <div class="py-2 border-y border-outline-variant/30">
-                                            <span class="text-3xl font-extrabold">₹299</span>
+                                            <span class="text-3xl font-extrabold">₹0</span>
                                             <span class="text-xs text-on-surface-variant">/ month</span>
                                         </div>
                                         <ul class="text-sm text-on-surface-variant space-y-2">
                                             <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> 500 members</li>
-                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Attendance</li>
                                             <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Payments & Invoicing</li>
                                             <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Reports</li>
                                             <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span> No WhatsApp</li>
-                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span> No Marketing</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span> No Marketing / CRM</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span> No GPS / Attendance</li>
                                         </ul>
                                     </div>
-                                    <button onclick="upgradeSubscription('basic')" id="btnPlanBasic" class="w-full mt-6 bg-primary text-on-primary hover:bg-primary-fixed-dim py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200">Upgrade</button>
+                                    <button onclick="downgradeToBasic()" id="btnPlanBasic" class="w-full mt-6 bg-surface-container-highest text-on-surface hover:bg-surface-container-highest/80 py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200">Select Plan</button>
                                 </div>
+                                <!-- Pro (Popular) -->
                                 <div class="glass-panel p-6 rounded-2xl border border-primary/50 flex flex-col justify-between relative shadow-lg shadow-primary/5" id="cardPlanPro">
                                     <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-primary text-on-primary text-[10px] font-bold px-3 py-0.5 rounded-full tracking-widest uppercase">Popular</div>
                                     <div class="flex flex-col gap-4">
@@ -694,15 +809,16 @@
                                         </div>
                                         <ul class="text-sm text-on-surface-variant space-y-2">
                                             <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Unlimited members</li>
-                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> 1,000 WhatsApp / mo</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> 200 WhatsApp msgs / mo</li>
                                             <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Marketing Engine</li>
                                             <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Lead CRM Pipeline</li>
-                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Advanced BI Analytics</li>
-                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span> No Multi-Branch</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> GPS & Attendance</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-surface-variant/40">cancel</span> No Multi-gym</li>
                                         </ul>
                                     </div>
-                                    <button onclick="upgradeSubscription('pro')" id="btnPlanPro" class="w-full mt-6 bg-primary text-on-primary hover:bg-primary-fixed-dim py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200">Upgrade</button>
+                                    <button onclick="subscribeToPlan('pro')" id="btnPlanPro" class="w-full mt-6 bg-primary text-on-primary hover:bg-primary-fixed-dim py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200">Upgrade</button>
                                 </div>
+                                <!-- Enterprise (single card, Tier1 <-> Tier2 toggle) -->
                                 <div class="glass-panel p-6 rounded-2xl border border-outline-variant/30 flex flex-col justify-between relative" id="cardPlanEnterprise">
                                     <div class="flex flex-col gap-4">
                                         <div class="flex justify-between items-center">
@@ -710,23 +826,56 @@
                                             <span class="text-xs text-primary font-semibold hidden" id="badgePlanEnterprise">ACTIVE</span>
                                         </div>
                                         <div>
-                                            <h3 class="font-headline-sm text-headline-sm text-on-surface">Enterprise</h3>
-                                            <p class="text-xs text-on-surface-variant mt-1">Multi-location & Scale</p>
+                                            <h3 class="font-headline-sm text-headline-sm text-on-surface" id="entTierName">Enterprise</h3>
+                                            <p class="text-xs text-on-surface-variant mt-1">Multi-gym & Scale</p>
+                                        </div>
+                                        <!-- High-fidelity segmented toggle -->
+                                        <div class="relative flex items-center bg-surface-container-highest rounded-lg p-1 text-xs font-semibold select-none" id="entToggle">
+                                            <div id="entToggleSlider" class="absolute top-1 bottom-1 left-1 w-[calc(50%-0.25rem)] bg-primary rounded-md shadow transition-transform duration-300 ease-out"></div>
+                                            <button type="button" onclick="setEnterpriseTier('low')" id="entTierLowBtn" class="relative z-10 flex-1 py-1.5 rounded-md text-on-primary transition-colors duration-300">₹999</button>
+                                            <button type="button" onclick="setEnterpriseTier('high')" id="entTierHighBtn" class="relative z-10 flex-1 py-1.5 rounded-md text-on-surface-variant transition-colors duration-300">₹3999</button>
                                         </div>
                                         <div class="py-2 border-y border-outline-variant/30">
-                                            <span class="text-3xl font-extrabold">₹999</span>
+                                            <span class="text-3xl font-extrabold" id="entPrice">₹999</span>
                                             <span class="text-xs text-on-surface-variant">/ month</span>
                                         </div>
                                         <ul class="text-sm text-on-surface-variant space-y-2">
-                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> 5,000 WhatsApp / mo</li>
-                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Multi-Branch Control</li>
-                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Unlimited Staff Profiles</li>
-                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Advanced BI Reports</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> <span id="entWhatsApp">500 WhatsApp msgs / mo</span></li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Multi-gym Control</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Unlimited members & staff</li>
+                                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Marketing, CRM, GPS, Attendance</li>
                                             <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">check_circle</span> Dedicated Support</li>
                                         </ul>
                                     </div>
-                                    <button onclick="upgradeSubscription('enterprise')" id="btnPlanEnterprise" class="w-full mt-6 bg-primary text-on-primary hover:bg-primary-fixed-dim py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200">Upgrade</button>
+                                    <button onclick="subscribeToPlan(enterpriseTier === 'high' ? 'enterprise_high' : 'enterprise_low')" id="btnPlanEnterprise" class="w-full mt-6 bg-primary text-on-primary hover:bg-primary-fixed-dim py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200">Upgrade</button>
                                 </div>
+                            </div>
+
+                            <!-- WhatsApp Wallet — Add Credits -->
+                            <div class="glass-panel p-6 rounded-2xl border border-outline-variant/30 relative overflow-hidden" id="walletPanel">
+                                <div class="absolute top-0 right-0 w-24 h-24 bg-tertiary/5 rounded-full blur-2xl pointer-events-none"></div>
+                                <div class="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h3 class="font-headline-sm text-headline-sm text-on-surface">WhatsApp Wallet — Add Credits</h3>
+                                        <p class="text-xs text-on-surface-variant mt-1">Top up at ₹1 per message. Pro is capped at 100/month; Enterprise unlimited.</p>
+                                    </div>
+                                    <span class="material-symbols-outlined text-tertiary text-[28px]">account_balance_wallet</span>
+                                </div>
+                                <div class="flex flex-col sm:flex-row sm:items-end gap-4">
+                                    <div class="flex-1">
+                                        <label class="block font-label-caps text-on-surface-variant mb-2" for="walletQty">Number of messages</label>
+                                        <input type="number" id="walletQty" min="1" value="100" oninput="updateWalletTotal()"
+                                            class="w-full bg-surface-container-highest border border-outline-variant/30 rounded-lg px-4 py-2.5 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
+                                    </div>
+                                    <div class="text-sm text-on-surface-variant">
+                                        Total: <span class="text-2xl font-extrabold text-on-surface" id="walletTotal">₹100</span>
+                                    </div>
+                                    <button onclick="buyCredits()" id="btnBuyCredits"
+                                        class="bg-tertiary text-on-tertiary hover:opacity-90 py-2.5 px-6 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200">
+                                        Buy Credits
+                                    </button>
+                                </div>
+                                <p id="walletBasicNote" class="text-xs text-error mt-3 hidden">Upgrade to Pro to buy credits.</p>
                             </div>
                         </div>
                     </div>
@@ -994,26 +1143,6 @@
         </form>
     </div>
 
-    <!-- WhatsApp QR Modal -->
-    <div id="whatsappQrModal"
-        class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-surface-container-high rounded-2xl p-6 hidden z-50 border border-outline/20 shadow-2xl">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="font-headline-sm text-on-surface">Link WhatsApp</h3>
-            <button onclick="closeWhatsAppQr()" class="text-on-surface-variant hover:text-on-surface"><span
-                    class="material-symbols-outlined">close</span></button>
-        </div>
-        <div class="flex flex-col items-center gap-4">
-            <div class="bg-white rounded-xl p-3 w-[260px] h-[260px] flex items-center justify-center">
-                <span id="waQrSpinner"
-                    class="material-symbols-outlined animate-spin text-gray-400 text-5xl">progress_activity</span>
-                <img id="waQrImg" src="" alt="WhatsApp QR code" class="w-full h-full object-contain hidden">
-            </div>
-            <p id="waQrHint" class="text-sm text-on-surface-variant text-center">Generating QR code…</p>
-            <p class="text-xs text-on-surface-variant text-center">On your phone: WhatsApp → <b>Settings</b> →
-                <b>Linked Devices</b> → <b>Link a Device</b>, then point the camera at this code.</p>
-        </div>
-    </div>
-
     <script>
         let globalSettings = {};
         window._cachedPlans = [];
@@ -1141,32 +1270,69 @@
             const memPct = memLimit === Infinity ? 100 : Math.min(100, Math.round((memCurrent / memLimit) * 100));
             document.getElementById('subMembersProgress').style.width = memPct + '%';
 
-            const waCurrent = sub.usage.whatsapp.current;
-            const waLimit = sub.usage.whatsapp.limit;
-            document.getElementById('subWhatsAppCurrent').innerText = waCurrent;
-            document.getElementById('subWhatsAppLimit').innerText = waLimit === 0 ? 'Not Included' : (waLimit === Infinity ? 'Unlimited' : waLimit);
-            const waPct = waLimit === 0 ? 0 : (waLimit === Infinity ? 100 : Math.min(100, Math.round((waCurrent / waLimit) * 100)));
+            // WhatsApp meter. Prefer the new server shape (sub.whatsapp:
+            // { allowance, used, extraCredits, remaining }); fall back gracefully
+            // to the legacy sub.usage.whatsapp { current, limit } so nothing breaks.
+            let waUsed, waTotal, waRemaining;
+            if (sub.whatsapp && typeof sub.whatsapp === 'object') {
+                const allowance = Number(sub.whatsapp.allowance) || 0;
+                const extra = Number(sub.whatsapp.extraCredits) || 0;
+                waUsed = Number(sub.whatsapp.used) || 0;
+                waTotal = allowance + extra;
+                waRemaining = (sub.whatsapp.remaining != null)
+                    ? Number(sub.whatsapp.remaining)
+                    : Math.max(0, waTotal - waUsed);
+            } else {
+                waUsed = sub.usage.whatsapp.current;
+                const legacyLimit = sub.usage.whatsapp.limit;
+                waTotal = legacyLimit === Infinity ? Infinity : legacyLimit;
+                waRemaining = legacyLimit === Infinity ? Infinity : Math.max(0, legacyLimit - waUsed);
+            }
+            document.getElementById('subWhatsAppCurrent').innerText = waUsed;
+            const waLimitEl = document.getElementById('subWhatsAppLimit');
+            if (waTotal === 0) {
+                waLimitEl.innerText = 'Not Included';
+            } else if (waTotal === Infinity) {
+                waLimitEl.innerText = 'Unlimited';
+            } else {
+                const remainTxt = (waRemaining === Infinity) ? '' : ' (' + waRemaining + ' left)';
+                waLimitEl.innerText = waTotal + remainTxt;
+            }
+            const waPct = waTotal === 0 ? 0 : (waTotal === Infinity ? 100 : Math.min(100, Math.round((waUsed / waTotal) * 100)));
             document.getElementById('subWhatsAppProgress').style.width = waPct + '%';
 
-            // 2. Active Badges & Buttons state. Reset matrices styles
-            ['trial', 'basic', 'pro', 'enterprise'].forEach(p => {
-                const card = document.getElementById('cardPlan' + p.charAt(0).toUpperCase() + p.slice(1));
-                const badge = document.getElementById('badgePlan' + p.charAt(0).toUpperCase() + p.slice(1));
-                const btn = document.getElementById('btnPlan' + p.charAt(0).toUpperCase() + p.slice(1));
+            // 2. Active Badges & Buttons state. Reset matrices styles.
+            // Map plan keys → card suffix. enterprise_low / enterprise_high both
+            // map to the single Enterprise card.
+            const planCardSuffix = { basic: 'Basic', pro: 'Pro', enterprise_low: 'Enterprise', enterprise_high: 'Enterprise', enterprise: 'Enterprise' };
+            ['Basic', 'Pro', 'Enterprise'].forEach(suffix => {
+                const card = document.getElementById('cardPlan' + suffix);
+                const badge = document.getElementById('badgePlan' + suffix);
+                const btn = document.getElementById('btnPlan' + suffix);
 
-                if (card) card.className = "glass-panel p-6 rounded-2xl border border-outline-variant/30 flex flex-col justify-between relative";
+                if (card) {
+                    const base = suffix === 'Pro'
+                        ? "glass-panel p-6 rounded-2xl border border-primary/50 flex flex-col justify-between relative shadow-lg shadow-primary/5"
+                        : "glass-panel p-6 rounded-2xl border border-outline-variant/30 flex flex-col justify-between relative";
+                    card.className = base;
+                }
                 if (badge) badge.classList.add('hidden');
                 if (btn) {
-                    btn.innerText = "Select Plan";
-                    btn.className = "w-full mt-6 bg-surface-container-highest text-on-surface hover:bg-surface-container-highest/80 py-2 rounded-lg font-label-md transition-all";
+                    btn.innerText = suffix === 'Basic' ? 'Select Plan' : 'Upgrade';
+                    if (suffix === 'Basic') {
+                        btn.className = "w-full mt-6 bg-surface-container-highest text-on-surface hover:bg-surface-container-highest/80 py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200";
+                    } else {
+                        btn.className = "w-full mt-6 bg-primary text-on-primary hover:bg-primary-fixed-dim py-2 rounded-lg font-label-md transition-all hover:scale-[0.98] active:scale-95 duration-200";
+                    }
                     btn.disabled = false;
                 }
             });
 
-            // Highlight Active Plan
-            const activeCard = document.getElementById('cardPlan' + plan.charAt(0).toUpperCase() + plan.slice(1));
-            const activeBadge = document.getElementById('badgePlan' + plan.charAt(0).toUpperCase() + plan.slice(1));
-            const activeBtn = document.getElementById('btnPlan' + plan.charAt(0).toUpperCase() + plan.slice(1));
+            // Highlight Active Plan (works for basic/pro/enterprise_low/enterprise_high)
+            const activeSuffix = planCardSuffix[plan] || planCardSuffix['basic'];
+            const activeCard = document.getElementById('cardPlan' + activeSuffix);
+            const activeBadge = document.getElementById('badgePlan' + activeSuffix);
+            const activeBtn = document.getElementById('btnPlan' + activeSuffix);
 
             if (activeCard) {
                 activeCard.className = "glass-panel p-6 rounded-2xl border-2 border-primary flex flex-col justify-between relative shadow-lg shadow-primary/10";
@@ -1176,6 +1342,232 @@
                 activeBtn.innerText = "Current Plan";
                 activeBtn.className = "w-full mt-6 bg-primary/20 text-primary py-2 rounded-lg font-label-md transition-all border border-primary/30 cursor-default";
                 activeBtn.disabled = true;
+            }
+
+            // If the active plan is an Enterprise tier, sync the toggle to it.
+            if (plan === 'enterprise_high') setEnterpriseTier('high');
+            else if (plan === 'enterprise_low' || plan === 'enterprise') setEnterpriseTier('low');
+
+            // 3. Wallet state — disable "Buy Credits" on Basic.
+            currentPlanKey = plan;
+            updateWalletState(plan);
+        }
+
+        // ---- Enterprise tier toggle (Tier1 ₹999 <-> Tier2 ₹3999) ----
+        let enterpriseTier = 'low'; // 'low' | 'high'
+        function setEnterpriseTier(tier) {
+            enterpriseTier = (tier === 'high') ? 'high' : 'low';
+            const slider = document.getElementById('entToggleSlider');
+            const lowBtn = document.getElementById('entTierLowBtn');
+            const highBtn = document.getElementById('entTierHighBtn');
+            const price = document.getElementById('entPrice');
+            const wa = document.getElementById('entWhatsApp');
+            const name = document.getElementById('entTierName');
+            if (!slider) return;
+            if (enterpriseTier === 'high') {
+                slider.style.transform = 'translateX(100%)';
+                if (lowBtn) lowBtn.className = "relative z-10 flex-1 py-1.5 rounded-md text-on-surface-variant transition-colors duration-300";
+                if (highBtn) highBtn.className = "relative z-10 flex-1 py-1.5 rounded-md text-on-primary transition-colors duration-300";
+                if (price) price.innerText = '₹3999';
+                if (wa) wa.innerText = '1500 WhatsApp msgs / mo';
+                if (name) name.innerText = 'Enterprise+';
+            } else {
+                slider.style.transform = 'translateX(0)';
+                if (lowBtn) lowBtn.className = "relative z-10 flex-1 py-1.5 rounded-md text-on-primary transition-colors duration-300";
+                if (highBtn) highBtn.className = "relative z-10 flex-1 py-1.5 rounded-md text-on-surface-variant transition-colors duration-300";
+                if (price) price.innerText = '₹999';
+                if (wa) wa.innerText = '500 WhatsApp msgs / mo';
+                if (name) name.innerText = 'Enterprise';
+            }
+        }
+
+        // ---- Wallet helpers ----
+        let currentPlanKey = 'basic';
+        function updateWalletTotal() {
+            const qty = Math.max(0, parseInt(document.getElementById('walletQty').value, 10) || 0);
+            document.getElementById('walletTotal').innerText = '₹' + qty;
+        }
+        function updateWalletState(plan) {
+            const btn = document.getElementById('btnBuyCredits');
+            const note = document.getElementById('walletBasicNote');
+            const qtyInput = document.getElementById('walletQty');
+            // Basic (and the fail-closed 'trial' default) cannot buy credits.
+            const isBasic = (plan === 'basic' || plan === 'trial');
+            if (btn) {
+                btn.disabled = isBasic;
+                btn.classList.toggle('opacity-40', isBasic);
+                btn.classList.toggle('cursor-not-allowed', isBasic);
+            }
+            if (qtyInput) qtyInput.disabled = isBasic;
+            if (note) note.classList.toggle('hidden', !isBasic);
+            updateWalletTotal();
+        }
+
+        // Raw billing fetch helper — the /api/billing/* paths live OUTSIDE the
+        // /api/v1 base that window.api uses, so we call fetch directly with cookies.
+        async function billingPost(path, body) {
+            const res = await fetch(path, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body || {})
+            });
+            let data = {};
+            try { data = await res.json(); } catch (e) { /* non-JSON */ }
+            return { ok: res.ok, status: res.status, data };
+        }
+
+        // ---- Subscribe to a PAID plan via Razorpay AutoPay / one-time ----
+        // plan ∈ 'pro' | 'enterprise_low' | 'enterprise_high'
+        async function subscribeToPlan(plan) {
+            try {
+                const { ok, data } = await billingPost('/api/billing/create-subscription', { plan });
+                if (!ok) {
+                    window.toast((data && data.error) || 'Could not start checkout.', 'error');
+                    return;
+                }
+
+                // Subscription (AutoPay mandate) mode
+                if (data.mode === 'subscription') {
+                    if (typeof Razorpay !== 'undefined' && data.subscription_id && data.key_id) {
+                        const rzp = new Razorpay({
+                            key: data.key_id,
+                            subscription_id: data.subscription_id,
+                            name: 'GymFlow',
+                            description: (data.plan || plan) + ' subscription',
+                            theme: { color: '#16c8ee' },
+                            handler: async function (response) {
+                                const verify = await billingPost('/api/billing/create-subscription/verify', {
+                                    plan,
+                                    razorpay_payment_id: response.razorpay_payment_id,
+                                    razorpay_subscription_id: response.razorpay_subscription_id,
+                                    razorpay_signature: response.razorpay_signature
+                                });
+                                if (verify.ok && verify.data && verify.data.success) {
+                                    window.toast('Subscription activated!', 'success');
+                                    await loadSubscription();
+                                } else {
+                                    window.toast((verify.data && verify.data.error) || 'Verification failed.', 'error');
+                                }
+                            }
+                        });
+                        rzp.open();
+                    } else if (data.short_url) {
+                        // No client checkout available — offer the AutoPay mandate link.
+                        window.open(data.short_url, '_blank');
+                        window.toast('Complete the AutoPay mandate in the new tab, then refresh.', 'info');
+                    } else {
+                        window.toast('Payment gateway not configured yet.', 'error');
+                    }
+                    return;
+                }
+
+                // One-time order mode
+                if (data.mode === 'order') {
+                    if (typeof Razorpay !== 'undefined' && data.order_id && data.key_id) {
+                        const rzp = new Razorpay({
+                            key: data.key_id,
+                            order_id: data.order_id,
+                            amount: data.amount,
+                            currency: data.currency || 'INR',
+                            name: 'GymFlow',
+                            description: (data.plan || plan) + ' subscription',
+                            theme: { color: '#16c8ee' },
+                            handler: async function (response) {
+                                const verify = await billingPost('/api/billing/create-subscription/verify', {
+                                    plan,
+                                    razorpay_order_id: response.razorpay_order_id,
+                                    razorpay_payment_id: response.razorpay_payment_id,
+                                    razorpay_signature: response.razorpay_signature
+                                });
+                                if (verify.ok && verify.data && verify.data.success) {
+                                    window.toast('Subscription activated!', 'success');
+                                    await loadSubscription();
+                                } else {
+                                    window.toast((verify.data && verify.data.error) || 'Verification failed.', 'error');
+                                }
+                            }
+                        });
+                        rzp.open();
+                    } else {
+                        window.toast('Payment gateway not configured yet.', 'error');
+                    }
+                    return;
+                }
+
+                // Manual / gateway unavailable
+                window.toast('Payment gateway not configured yet.', 'error');
+            } catch (err) {
+                console.error('subscribeToPlan failed:', err);
+                window.toast('Could not start checkout.', 'error');
+            }
+        }
+
+        // ---- Downgrade to Basic (free plan) ----
+        async function downgradeToBasic() {
+            const ok = await window.confirmDialog(
+                'This switches your workspace to the free Basic plan. WhatsApp, Marketing, CRM, GPS and Attendance will be disabled.',
+                { title: 'Switch to Basic?', confirmText: 'Switch to Basic', danger: true }
+            );
+            if (!ok) return;
+            try {
+                const res = await window.api.post('/subscription/change', { plan: 'basic' });
+                window.toast((res && res.message) || 'Switched to Basic plan.', 'success');
+                await loadSubscription();
+            } catch (err) {
+                window.toast((err && err.error) || 'Failed to switch plans.', 'error');
+            }
+        }
+
+        // ---- Buy WhatsApp wallet credits (₹1 / msg) ----
+        async function buyCredits() {
+            if (currentPlanKey === 'basic' || currentPlanKey === 'trial') {
+                window.toast('Upgrade to Pro to buy credits.', 'error');
+                return;
+            }
+            const quantity = Math.max(1, parseInt(document.getElementById('walletQty').value, 10) || 0);
+            if (quantity < 1) {
+                window.toast('Enter a valid number of messages.', 'error');
+                return;
+            }
+            try {
+                const { ok, status, data } = await billingPost('/api/billing/buy-credits', { quantity });
+                if (!ok) {
+                    // 403 (basic) / 400 (cap exceeded) → surface the server error message.
+                    window.toast((data && data.error) || 'Could not buy credits.', 'error');
+                    return;
+                }
+                if (data.mode === 'order' && typeof Razorpay !== 'undefined' && data.order_id && data.key_id) {
+                    const rzp = new Razorpay({
+                        key: data.key_id,
+                        order_id: data.order_id,
+                        amount: data.amount,
+                        currency: data.currency || 'INR',
+                        name: 'GymFlow',
+                        description: quantity + ' WhatsApp credits',
+                        theme: { color: '#16c8ee' },
+                        handler: async function (response) {
+                            const verify = await billingPost('/api/billing/buy-credits/verify', {
+                                quantity,
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature
+                            });
+                            if (verify.ok && verify.data && verify.data.success) {
+                                window.toast(quantity + ' credits added!', 'success');
+                                await loadSubscription();
+                            } else {
+                                window.toast((verify.data && verify.data.error) || 'Verification failed.', 'error');
+                            }
+                        }
+                    });
+                    rzp.open();
+                } else {
+                    window.toast('Payment gateway not configured yet.', 'error');
+                }
+            } catch (err) {
+                console.error('buyCredits failed:', err);
+                window.toast('Could not buy credits.', 'error');
             }
         }
 
@@ -1204,7 +1596,17 @@
             } else {
                 if (upiTabBtn) upiTabBtn.classList.remove('hidden');
                 const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${price}&cu=INR`;
-                document.getElementById('upiQrCode').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiUrl)}`;
+                const qr = new QRious({
+                    value: upiUrl,
+                    size: 200
+                });
+                const base64DataUrl = qr.toDataURL();
+                const upiQrImg = document.getElementById('upiQrCode');
+                const tempImg = new Image();
+                tempImg.onload = () => {
+                    upiQrImg.src = base64DataUrl;
+                };
+                tempImg.src = base64DataUrl;
                 document.querySelectorAll('.platform-upi-handle').forEach(el => { el.innerText = upiId; });
             }
 
@@ -1941,149 +2343,128 @@
         }
 
         // ==========================================
-        // WhatsApp Connection (real whatsapp-web.js)
+        // WhatsApp Automation (centralized Meta Cloud API)
         // ==========================================
-        let waStatusTimer = null;
-        let waConnecting = false;
+        // Messages send from Gymflow's platform number — no per-gym QR. Each gym
+        // just flips its own automation toggles; changes auto-save instantly.
+        const WA_FEATURES = ['fee_reminder', 'festival_greetings', 'health_check', 'welcome_invoice'];
 
-        function waStatusMeta(status) {
-            switch (status) {
-                case 'CONNECTED':
-                    return { color: 'bg-green-500', label: 'Connected', desc: 'Your WhatsApp is linked. Automated messages send from your number.' };
-                case 'WAITING_FOR_QR':
-                    return { color: 'bg-yellow-500', label: 'Waiting for QR scan', desc: 'Scan the QR code with WhatsApp on your phone.' };
-                case 'INITIALIZING':
-                    return { color: 'bg-yellow-500', label: 'Initializing…', desc: 'Starting the WhatsApp session — this can take a few seconds.' };
-                default:
-                    return { color: 'bg-red-500', label: 'Disconnected', desc: 'WhatsApp is not linked. Click Connect to scan a QR code.' };
-            }
-        }
-
-        function renderWhatsAppStatus(s) {
-            const meta = waStatusMeta(s && s.status);
-            const dot = document.getElementById('waStatusDot');
-            const label = document.getElementById('waStatusLabel');
-            const desc = document.getElementById('waStatusDesc');
-            const info = document.getElementById('waStatusInfo');
-            const connectBtn = document.getElementById('waConnectBtn');
-            const disconnectBtn = document.getElementById('waDisconnectBtn');
-            const connected = !!(s && s.connected);
-
-            if (dot) dot.className = 'w-3 h-3 rounded-full shrink-0 ' + meta.color;
-            if (label) label.innerText = meta.label;
-            if (desc) desc.innerText = (s && s.lastError && !connected) ? s.lastError : meta.desc;
-            if (connectBtn) connectBtn.classList.toggle('hidden', connected);
-            if (disconnectBtn) disconnectBtn.classList.toggle('hidden', !connected);
-            if (info) {
-                if (connected && s.info && s.info.pushname) {
-                    info.classList.remove('hidden');
-                    info.innerText = 'Linked account: ' + s.info.pushname;
-                } else {
-                    info.classList.add('hidden');
-                    info.innerText = '';
-                }
-            }
-
-            // Auto-close the QR modal the moment the scan completes — no refresh needed.
-            if (connected && waConnecting) {
-                waConnecting = false;
-                closeAllModals();
-                if (window.toast) window.toast('WhatsApp connected successfully!', 'success');
-            }
-        }
-
-        async function loadWhatsAppStatus() {
+        async function loadWhatsAppAutomation() {
             try {
-                const s = await window.api.get('/whatsapp/status');
-                renderWhatsAppStatus(s);
-                return s;
+                const s = await window.api.get('/whatsapp/settings');
+                if (!s) return;
+                const sys = s.system || {};
+
+                const badge = document.getElementById('waSysBadge');
+                if (badge) {
+                    badge.textContent = sys.configured ? 'Active' : 'Not configured yet';
+                    badge.className = 'text-xs font-semibold px-3 py-1 rounded-full shrink-0 ' +
+                        (sys.configured ? 'bg-green-500/15 text-green-600' : 'bg-yellow-500/15 text-yellow-600');
+                }
+                const cfg = document.getElementById('waSysConfig');
+                if (cfg) cfg.value = sys.configured ? ('Token ' + (sys.accessTokenMasked || '••••') + '   ·   Phone ID ' + (sys.phoneNumberIdMasked || '••••')) : 'Not configured';
+                const hint = document.getElementById('waSysHint');
+                if (hint) hint.textContent = sys.configured
+                    ? ('Connected via WhatsApp Cloud API ' + (sys.apiVersion || '') + '. Credentials are managed centrally by Gymflow.')
+                    : 'The platform WhatsApp number is being set up. Your automations will start sending automatically once it is live.';
+
+                WA_FEATURES.forEach(function (f) {
+                    const t = document.getElementById('waToggle_' + f);
+                    if (t) t.checked = !!(s.toggles && s.toggles[f]);
+                    const tpl = document.getElementById('waTpl_' + f);
+                    if (tpl) tpl.value = (s.templates && s.templates[f]) || '';
+                });
+
+                const fest = document.getElementById('waFestivalSend');
+                if (fest) fest.classList.toggle('hidden', !(s.toggles && s.toggles.festival_greetings));
+            } catch (e) { /* transient — leave UI as-is */ }
+        }
+
+        // Toggles auto-save immediately, with a per-row spinner and optimistic revert.
+        async function onWaToggle(feature, el) {
+            const spin = document.getElementById('waSpin_' + feature);
+            if (spin) spin.classList.remove('hidden');
+            el.disabled = true;
+            try {
+                const patch = { toggles: {} };
+                patch.toggles[feature] = el.checked;
+                const res = await window.api.put('/whatsapp/settings', patch);
+                if (!res || !res.toggles) throw new Error('save failed');
+                if (window.toast) window.toast('Automation ' + (el.checked ? 'enabled' : 'disabled') + '.', 'success');
+                if (feature === 'festival_greetings') {
+                    const fest = document.getElementById('waFestivalSend');
+                    if (fest) fest.classList.toggle('hidden', !el.checked);
+                }
             } catch (e) {
-                return null;
+                el.checked = !el.checked; // revert on failure
+                if (window.toast) window.toast('Could not update that setting. Please try again.', 'error');
+            } finally {
+                el.disabled = false;
+                if (spin) spin.classList.add('hidden');
             }
         }
 
-        async function connectWhatsApp() {
+        function toggleWaTpl(feature) {
+            const w = document.getElementById('waTplWrap_' + feature);
+            if (w) w.classList.toggle('hidden');
+        }
+
+        async function saveWhatsAppAutomation() {
+            const btn = document.getElementById('waSaveBtn');
+            const templates = {};
+            WA_FEATURES.forEach(function (f) {
+                const el = document.getElementById('waTpl_' + f);
+                if (el) templates[f] = el.value;
+            });
+            if (btn) {
+                btn.disabled = true;
+                btn.dataset.label = btn.innerHTML;
+                btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> Saving…';
+            }
             try {
-                waConnecting = true;
-                document.getElementById('waQrImg').classList.add('hidden');
-                document.getElementById('waQrSpinner').classList.remove('hidden');
-                document.getElementById('waQrHint').innerText = 'Generating QR code…';
-                openModal('whatsappQrModal');
-                await window.api.post('/whatsapp/connect', {});
-                pollWhatsAppQr();
+                const res = await window.api.put('/whatsapp/settings', { templates: templates });
+                if (window.toast) window.toast((res && res.toggles) ? 'Message templates saved.' : 'Saved.', 'success');
             } catch (e) {
-                waConnecting = false;
-                document.getElementById('waQrSpinner').classList.add('hidden');
-                document.getElementById('waQrHint').innerHTML = `<span class="text-error font-medium">Failed to start WhatsApp connection.</span>`;
-                if (window.toast) window.toast('Failed to start WhatsApp connection.', 'error');
+                if (window.toast) window.toast('Failed to save templates.', 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.label || 'Save Message Templates'; }
             }
         }
 
-        async function pollWhatsAppQr() {
-            const modal = document.getElementById('whatsappQrModal');
-            // Stop polling if the modal was closed by any means.
-            if (!waConnecting || !modal || modal.classList.contains('hidden')) {
-                waConnecting = false;
-                return;
-            }
+        async function testWhatsApp() {
+            const phoneEl = document.getElementById('waTestPhone');
+            const phone = phoneEl ? phoneEl.value.trim() : '';
+            if (!phone) { if (window.toast) window.toast('Enter a phone number to send a test.', 'info'); return; }
             try {
-                const [qrRes, statusRes] = await Promise.all([
-                    window.api.get('/whatsapp/qr'),
-                    window.api.get('/whatsapp/status')
-                ]);
-                renderWhatsAppStatus(statusRes);
-                if (!waConnecting) return; // connected -> modal closed by renderWhatsAppStatus
-                if (statusRes && (statusRes.lastError || (statusRes.status === 'DISCONNECTED' && !statusRes.connected))) {
-                    const errorMsg = statusRes.lastError || 'Initialization failed.';
-                    document.getElementById('waQrSpinner').classList.add('hidden');
-                    document.getElementById('waQrImg').classList.add('hidden');
-                    document.getElementById('waQrHint').innerHTML = `<span class="text-error font-medium">${esc(errorMsg)}</span>`;
-                    waConnecting = false;
-                    return;
-                }
-                if (qrRes && qrRes.qr) {
-                    const img = document.getElementById('waQrImg');
-                    img.src = qrRes.qr;
-                    img.classList.remove('hidden');
-                    document.getElementById('waQrSpinner').classList.add('hidden');
-                    document.getElementById('waQrHint').innerText =
-                        'Scan this code from WhatsApp → Linked Devices. It refreshes automatically.';
-                }
-            } catch (e) { /* transient — keep polling */ }
-            if (waConnecting) setTimeout(pollWhatsAppQr, 2500);
+                const res = await window.api.post('/whatsapp/test', { phone: phone });
+                if (res && res.messageId) { if (window.toast) window.toast('Test message sent!', 'success'); }
+                else { if (window.toast) window.toast((res && res.error) || 'Could not send test message.', 'error'); }
+            } catch (e) {
+                if (window.toast) window.toast('Could not send test message.', 'error');
+            }
         }
 
-        function closeWhatsAppQr() {
-            waConnecting = false;
-            closeAllModals();
-            loadWhatsAppStatus();
-        }
-
-        async function disconnectWhatsApp() {
-            const msg = 'Disconnect WhatsApp? You will need to scan the QR code again to reconnect.';
-            const ok = window.confirmDialog ? await window.confirmDialog(msg) : confirm(msg);
+        async function sendFestivalNow() {
+            const nameEl = document.getElementById('waFestivalName');
+            const festivalName = nameEl && nameEl.value.trim() ? nameEl.value.trim() : 'Festival';
+            const ok = window.confirmDialog
+                ? await window.confirmDialog('Send "' + festivalName + '" greetings to all active members now?', { title: 'Send festival greetings?', confirmText: 'Send' })
+                : confirm('Send festival greetings to all active members now?');
             if (!ok) return;
             try {
-                await window.api.post('/whatsapp/disconnect', {});
-                if (window.toast) window.toast('WhatsApp disconnected.', 'info');
-                loadWhatsAppStatus();
+                const res = await window.api.post('/whatsapp/festival/send', { festivalName: festivalName });
+                if (window.toast) window.toast((res && res.message) || 'Festival greetings dispatched.', 'success');
             } catch (e) {
-                if (window.toast) window.toast('Failed to disconnect WhatsApp.', 'error');
-                else alert('Failed to disconnect WhatsApp.');
+                if (window.toast) window.toast('Failed to send festival greetings.', 'error');
             }
         }
 
-        function startWhatsAppPolling() {
-            loadWhatsAppStatus();
-            if (waStatusTimer) clearInterval(waStatusTimer);
-            waStatusTimer = setInterval(loadWhatsAppStatus, 5000);
-        }
+        // Load once when the Gym section opens (the Cloud API status is not live-polled).
+        function startWhatsAppPolling() { loadWhatsAppAutomation(); }
+        function stopWhatsAppPolling() { /* nothing to poll with the centralized Cloud API */ }
 
-        function stopWhatsAppPolling() {
-            if (waStatusTimer) { clearInterval(waStatusTimer); waStatusTimer = null; }
-        }
 
-        function updateThemeUI(activeTheme) {
+                function updateThemeUI(activeTheme) {
             const lightBtn = document.getElementById('theme-btn-light');
             const darkBtn = document.getElementById('theme-btn-dark');
             const systemBtn = document.getElementById('theme-btn-system');

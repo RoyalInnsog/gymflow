@@ -151,13 +151,13 @@ window.utils = {
             overlay.className = 'jsb-modal-overlay';
             var danger = !!opts.danger;
             overlay.innerHTML =
-                '<div class="jsb-modal" role="dialog" aria-modal="true">' +
-                    (opts.title ? '<h3 class="text-title-lg font-bold text-on-surface mb-2"></h3>' : '') +
-                    '<p class="text-body-md text-on-surface-variant mb-6" style="line-height:1.5"></p>' +
-                    '<div class="flex justify-end gap-3">' +
-                        '<button type="button" data-act="cancel" class="px-4 py-2 rounded-lg text-body-md font-medium text-on-surface-variant hover:bg-white/5 transition-colors">' + (opts.cancelText || 'Cancel') + '</button>' +
-                        '<button type="button" data-act="ok" class="px-4 py-2 rounded-lg text-body-md font-semibold transition-colors ' +
-                            (danger ? 'bg-error/90 text-on-error hover:bg-error' : 'bg-primary text-on-primary hover:opacity-90') + '">' + (opts.confirmText || 'Confirm') + '</button>' +
+                '<div class="jsb-modal" role="dialog" aria-modal="true" style="text-align: left;">' +
+                    (opts.title ? '<h3 class="text-title-lg font-bold text-on-surface mb-2" style="margin-top: 0; margin-bottom: 8px;"></h3>' : '') +
+                    '<p class="text-body-md text-on-surface-variant" style="line-height:1.5; margin-bottom: 24px; color: var(--color-on-surface-variant, #9a9a9a);"></p>' +
+                    '<div style="display: flex; justify-content: flex-end; gap: 12px;">' +
+                        '<button type="button" data-act="cancel" class="px-4 py-2 rounded-lg text-body-md font-medium transition-colors" style="background: transparent; border: none; color: var(--color-on-surface-variant, #9a9a9a); cursor: pointer; outline: none;">' + (opts.cancelText || 'Cancel') + '</button>' +
+                        '<button type="button" data-act="ok" class="px-4 py-2 rounded-lg text-body-md font-semibold transition-colors hover:opacity-90" style="' +
+                            (danger ? 'background-color: var(--color-error, #bf2600) !important; color: var(--color-on-error, #ffffff) !important;' : 'background-color: var(--color-primary, #16c8ee) !important; color: var(--color-on-primary, #ffffff) !important;') + ' border: none; cursor: pointer; outline: none;">' + (opts.confirmText || 'Confirm') + '</button>' +
                     '</div>' +
                 '</div>';
             if (opts.title) overlay.querySelector('h3').textContent = opts.title;
@@ -267,6 +267,11 @@ window.utils = {
 
 // SaaS Hydration
 window.addEventListener('DOMContentLoaded', async () => {
+    const publicPaths = ['/login', '/login-alt', '/signup', '/forgot-password', '/reset-password', '/verify-email', '/verify-phone', '/select-role', '/member-coming-soon'];
+    if (publicPaths.includes(window.location.pathname)) {
+        document.querySelectorAll('.dynamic-gym-name').forEach(el => el.innerText = 'GYM FLOW');
+        return;
+    }
     try {
         const res = await window.fetch('/api/v1/settings/public');
         if (res.ok) {
@@ -368,6 +373,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 // (Features 3–5) live in a dedicated module so this file stays focused on
 // utilities. Loaded once, on every authenticated screen that includes utils.js.
 (function () {
+    const publicPaths = ['/login', '/login-alt', '/signup', '/forgot-password', '/reset-password', '/verify-email', '/verify-phone', '/select-role', '/member-coming-soon'];
+    if (publicPaths.includes(window.location.pathname)) return;
+
     if (window.__gymAppShellInjected) return;
     window.__gymAppShellInjected = true;
     // async=false preserves execution order for dynamically-injected scripts

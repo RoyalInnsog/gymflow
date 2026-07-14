@@ -12,7 +12,7 @@
 // NOTE: a service worker's CSP is captured from the sw.js response headers at
 // install time. Whenever the CSP in server.js changes, bump CACHE_VERSION so
 // the byte-changed script installs a fresh SW that picks up the new CSP.
-var CACHE_VERSION = 'v14';
+var CACHE_VERSION = 'v15';
 var STATIC_CACHE = 'gymflow-static-' + CACHE_VERSION;
 var RUNTIME_CACHE = 'gymflow-runtime-' + CACHE_VERSION;
 

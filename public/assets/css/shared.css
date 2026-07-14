@@ -258,16 +258,20 @@ body {
 }
 
 /* ─── MATERIAL SYMBOLS ────────────────────────────────── */
+/* !important ensures these win over Tailwind's preflight base reset
+   (which sets font-family and font-variation-settings on html/button/etc).
+   This is the ONLY place in the CSS stack that defines icon font rules. */
 .material-symbols-outlined {
-  font-family: "Material Symbols Outlined";
-  font-weight: normal;
-  font-style: normal;
-  font-size: 22px;
-  line-height: 1;
+  font-family: "Material Symbols Outlined" !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+  font-size: 22px !important;
+  line-height: 1 !important;
   display: inline-block;
   white-space: nowrap;
   direction: ltr;
-  -webkit-font-feature-settings: "liga";
+  font-feature-settings: "liga" !important;
+  font-variation-settings: normal !important;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -1140,6 +1144,50 @@ main, aside, .desktop-sidebar {
 }
 #analyticsDrilldownModal.show > div {
   transform: scale(1) !important;
+}
+
+/* ─── RESPONSIVE LAYOUT UTILITIES ────────────────────── */
+/* These fill gaps in the Tailwind build output where the
+   theme.extend.spacing values margin-desktop / container-max
+   only generate margin utilities (m-margin-desktop) but NOT
+   padding or max-width. Adding them here as static CSS ensures
+   every screen's class="max-w-container px-margin-mobile
+   md:px-margin-desktop" actually resolves at all viewports
+   without a Tailwind rebuild.
+
+   Use on <main> or content wrappers:
+     <main class="max-w-container mx-auto w-full px-margin-mobile md:px-margin-desktop"> */
+
+/* Desktop main-content container cap (1440px = container-max token) */
+.max-w-container { max-width: 1440px; }
+
+/* Desktop horizontal padding (48px = margin-desktop token).
+   Tailwind's spacing token generates only m-margin-desktop (margin),
+   so px-margin-desktop must be provided here. */
+.px-margin-desktop { padding-left: 48px; padding-right: 48px; }
+.p-margin-desktop { padding: 48px; }
+
+/* Auth/standalone card max-width breakpoints — prevents a 440px card
+   from looking tiny in a 1920px viewport while staying compact on mobile. */
+@media (min-width: 768px) {
+  .auth-card-narrow  { max-width: 480px; }
+  .auth-card-wide    { max-width: 520px; }
+}
+@media (min-width: 1024px) {
+  .auth-card-narrow  { max-width: 520px; }
+  .auth-card-wide    { max-width: 580px; }
+}
+
+/* ─── DESKTOP MAIN CONTENT REFINEMENTS ──────────────── */
+/* These apply only to screens ≥1024px (tablets and wider) where
+   the sidebar offset is active and content can breathe. */
+
+/* Ensure <main> inside shell-locked has consistent spacing.
+   The shell pattern is: body.shell-locked > main { flex:1 overflow-y-auto }
+   so the main element is the only scroll region. These refinements
+   guarantee it never hugs the edges. */
+@media (min-width: 1024px) {
+  .shell-locked main.gap-y-lg > * + * { margin-top: 24px; }
 }
 
 /* ─── PRINT ISOLATION ─────────────────────────────────── */

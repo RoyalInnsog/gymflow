@@ -3,11 +3,10 @@
   "appName": "Gym Flow",
   "webDir": "www",
   "server": {
-    "url": "https://desktop-s69biti.tail66553b.ts.net",
-    "cleartext": true
+    "androidScheme": "https",
+    "hostname": "localhost"
   },
   "android": {
-    "allowMixedContent": true,
     "backgroundColor": "#0B1120"
   }
 }

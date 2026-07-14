@@ -3,7 +3,11 @@
 
 class ApiService {
     constructor() {
-        this.baseUrl = '/api/v1';
+        // [CAPACITOR] In the bundled APK the pages are served from the local
+        // WebView origin (https://localhost) while the API lives on the remote
+        // backend. capacitor-env.js (injected at build time, absent on the web)
+        // sets window.API_BASE_URL so every call is rebased onto that origin.
+        this.baseUrl = (window.API_BASE_URL || '') + '/api/v1';
         // Potential future addition: Cache store
         this.cache = new Map();
     }
@@ -22,11 +26,15 @@ class ApiService {
         // cookie, which left the app unauthenticated → subscription/plan data missing
         // → feature gating defaulted wrong. This makes session restoration identical
         // on desktop and in the app.
+        // [CAPACITOR] In bundled APK mode the WebView origin is cross-origin to the
+        // API backend, so httpOnly cookies are not sent. The Authorization header
+        // fills in when available (token stored in native secure storage).
         const fetchOptions = {
             credentials: 'include',
             ...rest,
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': window.__AUTH_TOKEN__ ? 'Bearer ' + window.__AUTH_TOKEN__ : undefined,
                 ...options.headers
             }
         };
@@ -64,6 +72,15 @@ class ApiService {
                 if (refreshed.ok) {
                     return this.fetch(endpoint, options, true);
                 }
+            }
+
+            // [CAPACITOR] Bundled pages have no server-side page gate (the web
+            // app redirects dead sessions to /login at the route level). When a
+            // 401 survives the refresh replay above, hand off to the LOCAL login
+            // page. Web behavior unchanged (__NATIVE_SHELL__ is never set there).
+            if (response.status === 401 && !isAuthFlow && window.__NATIVE_SHELL__
+                && !['/', '/login', '/login-alt', '/signup', '/forgot-password', '/reset-password', '/verify-email'].includes(location.pathname)) {
+                location.replace('/login');
             }
 
             return response;

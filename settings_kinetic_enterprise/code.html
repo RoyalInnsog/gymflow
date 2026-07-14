@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         rel="stylesheet">
     <link href="/assets/css/shared.css" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link rel="stylesheet" href="/assets/css/tailwind.css">
     <script src="/assets/js/designSystem.js"></script>
     <script src="/assets/js/api.js"></script>
     <!-- Gym Flow Offline-First layer (Phase F4A) -->
@@ -691,29 +691,118 @@
                             <h2 class="font-headline-md text-headline-md text-on-surface">Session Control</h2>
                             <p class="text-on-surface-variant text-sm mt-1">Signed-in device listings. Revoke other sessions instantly.</p>
                         </div>
+                        <!-- Real, live session list — wired to /auth/sessions (was a
+                             hardcoded mockup whose buttons only toasted). Rendered via
+                             textContent so a spoofed User-Agent/IP can't inject markup. -->
                         <div class="space-y-4">
-                            <div class="flex items-center justify-between border-b border-outline/10 pb-3">
-                                <div>
-                                    <p class="font-title-md text-on-surface flex items-center gap-2">
-                                        <span class="material-symbols-outlined text-secondary">desktop_windows</span> Chrome Browser — Windows (Current)
-                                    </p>
-                                    <p class="text-xs text-on-surface-variant mt-0.5">IP: 192.168.1.4 • Bengaluru, India • Active now</p>
-                                </div>
-                                <span class="bg-secondary/15 text-secondary border border-secondary/35 text-xs px-2.5 py-0.5 rounded-full font-bold">CURRENT</span>
-                            </div>
-                            <div class="flex items-center justify-between pb-3">
-                                <div>
-                                    <p class="font-title-md text-on-surface flex items-center gap-2">
-                                        <span class="material-symbols-outlined text-on-surface-variant">smartphone</span> Safari Browser — iPhone 15 Pro
-                                    </p>
-                                    <p class="text-xs text-on-surface-variant mt-0.5">IP: 103.45.16.2 • Bengaluru, India • Last active 2 hours ago</p>
-                                </div>
-                                <button type="button" onclick="window.toast('Session revoked.', 'success')" class="text-xs text-error hover:bg-error/10 border border-error/20 px-3 py-1 rounded-md transition-colors font-semibold">REVOKE</button>
+                            <div id="sessions-list" class="space-y-4">
+                                <p class="text-sm text-on-surface-variant">Loading sessions…</p>
                             </div>
                             <div class="flex justify-end border-t border-outline/10 pt-4 mt-2">
-                                <button type="button" onclick="window.toast('All other sessions revoked successfully.', 'success')" class="bg-error/10 hover:bg-error/20 text-error border border-error/30 px-5 py-2.5 rounded-lg font-label-lg transition-all">Revoke All Other Sessions</button>
+                                <button type="button" id="revoke-all-sessions" class="bg-error/10 hover:bg-error/20 text-error border border-error/30 px-5 py-2.5 rounded-lg font-label-lg transition-all">Revoke All Other Sessions</button>
                             </div>
                         </div>
+                        <script>
+                        (function () {
+                          var listEl = document.getElementById('sessions-list');
+                          var allBtn = document.getElementById('revoke-all-sessions');
+                          if (!listEl) return;
+
+                          function fmtWhen(s) {
+                            if (!s) return '';
+                            var iso = String(s).indexOf('T') > -1 ? s : String(s).replace(' ', 'T') + 'Z';
+                            var t = Date.parse(iso);
+                            if (isNaN(t)) return '';
+                            var m = Math.round((Date.now() - t) / 60000);
+                            if (m < 1) return 'Active now';
+                            if (m < 60) return 'Active ' + m + 'm ago';
+                            var h = Math.round(m / 60);
+                            if (h < 24) return 'Active ' + h + 'h ago';
+                            return 'Active ' + Math.round(h / 24) + 'd ago';
+                          }
+
+                          function row(s) {
+                            var wrap = document.createElement('div');
+                            wrap.className = 'flex items-center justify-between border-b border-outline/10 pb-3 last:border-b-0';
+                            var left = document.createElement('div');
+                            var title = document.createElement('p');
+                            title.className = 'font-title-md text-on-surface flex items-center gap-2';
+                            var icon = document.createElement('span');
+                            icon.className = 'material-symbols-outlined ' + (s.current ? 'text-secondary' : 'text-on-surface-variant');
+                            icon.textContent = /android|ios|iphone|ipad/i.test(s.os || '') ? 'smartphone' : 'desktop_windows';
+                            title.appendChild(icon);
+                            var label = s.device_label || (((s.browser || 'Unknown') + ' — ' + (s.os || 'Unknown')));
+                            title.appendChild(document.createTextNode(' ' + label + (s.current ? ' (Current)' : '')));
+                            var meta = document.createElement('p');
+                            meta.className = 'text-xs text-on-surface-variant mt-0.5';
+                            meta.textContent = (s.ip ? 'IP: ' + s.ip + ' • ' : '') + (fmtWhen(s.last_active) || '');
+                            left.appendChild(title); left.appendChild(meta);
+                            wrap.appendChild(left);
+                            if (s.current) {
+                              var badge = document.createElement('span');
+                              badge.className = 'bg-secondary/15 text-secondary border border-secondary/35 text-xs px-2.5 py-0.5 rounded-full font-bold';
+                              badge.textContent = 'CURRENT';
+                              wrap.appendChild(badge);
+                            } else {
+                              var btn = document.createElement('button');
+                              btn.type = 'button';
+                              btn.className = 'text-xs text-error hover:bg-error/10 border border-error/20 px-3 py-1 rounded-md transition-colors font-semibold';
+                              btn.textContent = 'REVOKE';
+                              btn.setAttribute('aria-label', 'Sign out this session');
+                              btn.addEventListener('click', function () { revoke(s.id, btn); });
+                              wrap.appendChild(btn);
+                            }
+                            return wrap;
+                          }
+
+                          function message(text, cls) {
+                            listEl.innerHTML = '';
+                            var p = document.createElement('p');
+                            p.className = 'text-sm ' + (cls || 'text-on-surface-variant');
+                            p.textContent = text;
+                            listEl.appendChild(p);
+                          }
+
+                          async function load() {
+                            try {
+                              var data = await window.api.get('/auth/sessions');
+                              var sessions = (data && data.sessions) || [];
+                              if (!sessions.length) return message('No other active sessions.');
+                              listEl.innerHTML = '';
+                              sessions.forEach(function (s) { listEl.appendChild(row(s)); });
+                            } catch (e) { message('Could not load sessions.', 'text-error'); }
+                          }
+
+                          async function revoke(id, btn) {
+                            if (btn) { btn.disabled = true; btn.textContent = '…'; }
+                            try {
+                              var r = await window.api.fetch('/auth/sessions/' + encodeURIComponent(id), { method: 'DELETE' });
+                              if (r.ok) { window.toast && window.toast('Session signed out.', 'success'); return load(); }
+                            } catch (e) { /* fall through */ }
+                            window.toast && window.toast('Could not sign out that session.', 'error');
+                            if (btn) { btn.disabled = false; btn.textContent = 'REVOKE'; }
+                          }
+
+                          if (allBtn) allBtn.addEventListener('click', async function () {
+                            var ok = window.confirmDialog
+                              ? await window.confirmDialog('This keeps you signed in here and ends every other session.', { title: 'Sign out all other devices?', confirmText: 'Sign out others', danger: true })
+                              : confirm('Sign out of all other devices?');
+                            if (!ok) return;
+                            try {
+                              var r = await window.api.fetch('/auth/logout-all', { method: 'POST' });
+                              if (r.ok) {
+                                var d = await r.json().catch(function () { return {}; });
+                                window.toast && window.toast('Signed out on ' + ((d && d.revoked) || 0) + ' other device(s).', 'success');
+                                return load();
+                              }
+                            } catch (e) { /* fall through */ }
+                            window.toast && window.toast('Could not sign out other devices.', 'error');
+                          });
+
+                          if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load);
+                          else load();
+                        })();
+                        </script>
                     </div>
                 </section>
 

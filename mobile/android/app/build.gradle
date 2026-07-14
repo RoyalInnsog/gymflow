@@ -60,7 +60,7 @@ dependencies {
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     // On-device LLM (Gemma via MediaPipe LLM Inference). The model is downloaded
     // at runtime into getExternalFilesDir(), so no large asset packaging needed.
-    implementation 'com.google.mediapipe:tasks-genai:0.10.14'
+    implementation 'com.google.mediapipe:tasks-genai:0.10.24'
     // Google Health Connect (steps / heart rate / sleep / calories / weight).
     // Its read/aggregate APIs are Kotlin suspend fns; kotlinx-coroutines lets the
     // Java plugin bridge them via BuildersKt.runBlocking on a background thread.

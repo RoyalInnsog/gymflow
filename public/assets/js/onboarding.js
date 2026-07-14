@@ -835,7 +835,9 @@
   function init() {
     if (!window.api || typeof window.api.fetch !== 'function') return;
 
-    window.api.fetch('/api/v1/auth/session').then(function (res) {
+    // api.fetch prepends baseUrl (/api/v1) itself — the previous full path hit
+    // /api/v1/api/v1/auth/session (404), silently disabling this session check.
+    window.api.fetch('/auth/session').then(function (res) {
       if (!res || !res.ok) return null;
       return res.json().catch(function () { return null; });
     }).then(function (session) {

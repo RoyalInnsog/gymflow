@@ -9,13 +9,14 @@
 // ============================================================================
 'use strict';
 
-var CACHE_VERSION = 'v12';
+var CACHE_VERSION = 'v13';
 var STATIC_CACHE = 'gymflow-static-' + CACHE_VERSION;
 var RUNTIME_CACHE = 'gymflow-runtime-' + CACHE_VERSION;
 
 var PRECACHE = [
   '/manifest.webmanifest',
   '/assets/css/shared.css',
+  '/assets/css/tailwind.css',
   '/assets/js/designSystem.js',
   '/assets/js/api.js',
   '/assets/js/membershipEngine.js',
@@ -62,7 +63,7 @@ self.addEventListener('activate', function (event) {
 });
 
 function isStaticAsset(url) {
-  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'cdn.tailwindcss.com') return true;
+  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') return true;
   return /\.(?:js|css|woff2?|ttf|otf|png|jpg|jpeg|gif|svg|webp|ico|webmanifest|json)(?:\?.*)?$/i.test(url.pathname);
 }
 

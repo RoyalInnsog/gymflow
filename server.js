@@ -47,7 +47,11 @@ const CSP = [
   "font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com",
   `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://checkout.razorpay.com`,
-  `connect-src 'self' ${RZP} https://lumberjack.razorpay.com`,
+  // connect-src must include every CDN origin the pages load: once the service
+  // worker intercepts those requests, its fetch() is checked against connect-src
+  // (not style/script/font-src) — missing origins fail with ERR_FAILED on every
+  // SW-controlled load, which renders the whole app unstyled.
+  `connect-src 'self' ${RZP} https://lumberjack.razorpay.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com http://localhost:3000 https://desktop-s69biti.tail66553b.ts.net`,
   `frame-src https://checkout.razorpay.com https://api.razorpay.com ${RZP}`
 ].join('; ');
 app.use((req, res, next) => {
@@ -223,7 +227,10 @@ app.use(cookieParser());
 // `cors()` reflected any origin AND allowed credentials, which let any website
 // drive the API with the user's cookie. With no ALLOWED_ORIGINS configured we
 // default to same-origin only (cross-origin browser calls are simply blocked).
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
+// [CAPACITOR] In bundled APK mode the WebView origin is cross-origin to the
+// API backend, so the Capacitor origins must be in the allowlist.
+const CAPACITOR_ORIGINS = ['capacitor://localhost', 'https://localhost'];
+const ALLOWED_ORIGINS = [...CAPACITOR_ORIGINS, ...(process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean)];
 app.use(cors({
   origin: ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : false,
   credentials: true
@@ -246,6 +253,33 @@ function verifyCsrfOrigin(req, res, next) {
   return res.status(403).json({ error: 'Cross-site request blocked.' });
 }
 app.use(verifyCsrfOrigin);
+
+// [IDEMPOTENCY] Honor the offline outbox's Idempotency-Key so a mutation whose
+// success response was lost (dropped connection) is NOT re-applied on retry.
+// Placed after auth in each mount so req.tenant_id scopes the key. The first
+// success is cached and replayed byte-for-byte on any later retry of that key.
+// Transient 5xx are never cached — those SHOULD retry. Read methods bypass.
+async function idempotency(req, res, next) {
+  const key = req.headers['idempotency-key'];
+  if (!key || ['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  const scopedKey = `${req.tenant_id || 'anon'}:${String(key).slice(0, 200)}`;
+  try {
+    const seen = await getQuery('SELECT status, response FROM idempotency_keys WHERE key = ?', [scopedKey]);
+    if (seen) {
+      try { return res.status(seen.status).json(JSON.parse(seen.response)); }
+      catch { return res.status(seen.status).end(); }
+    }
+  } catch (e) { return next(); } // storage hiccup: fail open rather than block writes
+  const origJson = res.json.bind(res);
+  res.json = (body) => {
+    if (res.statusCode < 500) {
+      runQuery('INSERT OR IGNORE INTO idempotency_keys (key, tenant_id, status, response) VALUES (?, ?, ?, ?)',
+        [scopedKey, req.tenant_id || null, res.statusCode, JSON.stringify(body)]).catch(() => {});
+    }
+    return origJson(body);
+  };
+  next();
+}
 
 // [C3 FIX] Serve ONLY the dedicated public directory — never the repository root.
 // This prevents unauthenticated download of database.db, .env, source files, and backups.
@@ -374,11 +408,11 @@ app.use('/api/v1/org', authenticateToken, require('./routes/org'));
 // Mounted BEFORE the '/api/v1' staff router so /api/v1/member/* resolves here;
 // requireMemberRole is fail-closed (staff/pending tokens get 403), and member
 // tokens remain physically unable to reach any staff endpoint.
-app.use('/api/v1/member', authenticateToken, requireTenant, identity.requireMemberRole, require('./routes/member'));
+app.use('/api/v1/member', authenticateToken, requireTenant, identity.requireMemberRole, idempotency, require('./routes/member'));
 
 // [GPS Attendance] Geofenced member checkin endpoint. Mounted before the staff-only router
 // so it is accessible by both members (r5) and staff (r1-r4) via their authenticated token.
-app.post('/api/v1/attendance/checkin', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/v1/attendance/checkin', authenticateToken, requireTenant, idempotency, async (req, res) => {
   const { latitude, longitude, timestamp, isMocked, mocked } = req.body;
   let memberId = req.body.member_id;
 
@@ -501,6 +535,13 @@ app.post('/api/v1/health/sync', authenticateToken, requireTenant, async (req, re
 
     if (!memberId) {
       return res.status(400).json({ error: 'Member ID is required.' });
+    }
+
+    // [SEC] Ownership guard — staff (r1-r4) may pass an arbitrary member_id, so
+    // confirm it belongs to THIS tenant before writing (prevents cross-tenant IDOR).
+    const ownSync = await getQuery('SELECT id FROM members WHERE id = ? AND tenant_id = ?', [memberId, req.tenant_id]);
+    if (!ownSync) {
+      return res.status(404).json({ error: 'Member not found.' });
     }
 
     // Group metric items by calendar date
@@ -632,9 +673,16 @@ app.post('/api/v1/health/bind', authenticateToken, requireTenant, async (req, re
       return res.status(400).json({ error: 'Member ID is required.' });
     }
 
+    // [SEC] Ownership guard — confirm the member belongs to THIS tenant, and
+    // scope the UPDATE by tenant_id so staff can't flip another gym's member flag.
+    const ownBind = await getQuery('SELECT id FROM members WHERE id = ? AND tenant_id = ?', [memberId, req.tenant_id]);
+    if (!ownBind) {
+      return res.status(404).json({ error: 'Member not found.' });
+    }
+
     await runQuery(
-      `UPDATE members SET health_connect_linked = 1 WHERE id = ?`,
-      [memberId]
+      `UPDATE members SET health_connect_linked = 1 WHERE id = ? AND tenant_id = ?`,
+      [memberId, req.tenant_id]
     );
 
     res.json({ success: true, message: 'Google Health Connect linked permanently.' });
@@ -648,7 +696,7 @@ app.post('/api/v1/health/bind', authenticateToken, requireTenant, async (req, re
 // member-role (or pending) token is physically rejected with 403 for EVERY
 // endpoint in this router — the entire existing admin/tenant API surface.
 const apiRouter = require('./routes/api');
-app.use('/api/v1', authenticateToken, requireTenant, requireStaffRole, apiRouter);
+app.use('/api/v1', authenticateToken, requireTenant, requireStaffRole, idempotency, apiRouter);
 
 // [WHATSAPP-CLOUD] Centralized WhatsApp Cloud API. There is no per-gym QR/session
 // anymore — the platform sends from ONE Gymflow-managed number and each gym only
@@ -664,8 +712,23 @@ app.use('/api/whatsapp', authenticateToken, requireTenant, requireStaffRole, wha
 // load. Idempotent: each scan checks for an existing alert/task before creating.
 const AUTOMATION_INTERVAL_MS = Number(process.env.AUTOMATION_INTERVAL_MS) || 15 * 60 * 1000;
 if (apiRouter.runAutomationScansForAllTenants) {
-  setTimeout(() => apiRouter.runAutomationScansForAllTenants().catch(e => console.error('[automation] initial scan error:', e.message)), 20 * 1000);
-  setInterval(() => apiRouter.runAutomationScansForAllTenants().catch(e => console.error('[automation] scan error:', e.message)), AUTOMATION_INTERVAL_MS).unref();
+  // Self-scheduling loop (NOT setInterval): a scan run that outlasts the interval
+  // must never overlap itself. The force=true all-tenants scan bypasses the
+  // per-tenant throttle, and the dedup is a non-atomic check-then-insert, so an
+  // overlapping run would double-send member-facing WhatsApp reminders. The next
+  // tick is scheduled only after the current run fully settles.
+  // ponytail: in-process guard; add a DB advisory lock if this ever runs multi-instance.
+  let scanRunning = false;
+  const scanLoop = async () => {
+    if (!scanRunning) {
+      scanRunning = true;
+      try { await apiRouter.runAutomationScansForAllTenants(); }
+      catch (e) { console.error('[automation] scan error:', e.message); }
+      finally { scanRunning = false; }
+    }
+    setTimeout(scanLoop, AUTOMATION_INTERVAL_MS).unref();
+  };
+  setTimeout(scanLoop, 20 * 1000).unref();
 }
 
 // ==========================================

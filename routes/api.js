@@ -581,13 +581,20 @@ router.post('/subscription/verify-payment', async (req, res) => {
     const invId = 'inv_saas_' + Date.now();
     const invNo = 'INV-SAAS-' + Date.now();
     const payId = 'pay_saas_' + Date.now();
+    // [BILLING FIX] member_id/membership_id are NULL (not the 'SaaS' string):
+    // payments/invoices carry FKs to members/memberships, and no such row exists,
+    // so 'SaaS' threw SQLITE_CONSTRAINT *after* the plan was already activated —
+    // customer charged + upgraded but shown a 500, and the idempotency payments
+    // row never landed so retries duplicated history. NULL satisfies the FK; the
+    // 'SaaS' sentinel was write-only (nothing filters on it — SaaS rows are keyed
+    // by the INV-SAAS invoice_number).
     await runQuery(`
       INSERT OR REPLACE INTO invoices (id, tenant_id, member_id, membership_id, invoice_number, subtotal, tax_amount, total_amount, status)
-      VALUES (?, ?, 'SaaS', 'SaaS', ?, ?, 0, ?, 'Paid')
+      VALUES (?, ?, NULL, NULL, ?, ?, 0, ?, 'Paid')
     `, [invId, req.tenant_id, invNo, price, price]);
     await runQuery(`
       INSERT OR REPLACE INTO payments (id, tenant_id, invoice_id, member_id, amount, method, transaction_reference, status)
-      VALUES (?, ?, ?, 'SaaS', ?, 'Razorpay', ?, 'Successful')
+      VALUES (?, ?, ?, NULL, ?, 'Razorpay', ?, 'Successful')
     `, [payId, req.tenant_id, invId, price, razorpay_payment_id]);
 
     res.json({ success: true, message: `Successfully upgraded subscription to ${orderPlan.toUpperCase()}.`, plan: orderPlan });
@@ -638,9 +645,11 @@ router.post('/subscription/submit-upi-payment', async (req, res) => {
     // 3. Record an UNPAID invoice for the request (no Successful payment row yet).
     const invId = uid('inv_saas_');
     const invNo = await nextInvoiceNumber(req.tenant_id, 'INV-SAAS');
+    // [BILLING FIX] NULL member/membership (not 'SaaS'): invoices carries FKs to
+    // members/memberships; the 'SaaS' string violated them on a fresh-schema DB.
     await runQuery(`
       INSERT INTO invoices (id, tenant_id, member_id, membership_id, invoice_number, subtotal, tax_amount, total_amount, status)
-      VALUES (?, ?, 'SaaS', 'SaaS', ?, ?, 0, ?, 'Unpaid')
+      VALUES (?, ?, NULL, NULL, ?, ?, 0, ?, 'Unpaid')
     `, [invId, req.tenant_id, invNo, price, price]);
 
     res.json({
@@ -1893,7 +1902,10 @@ router.post('/finance/collect', authorize('payments:write'), async (req, res) =>
     } else {
       // Cash, or a desk-confirmed manual UPI/Card collection → settle now.
       const prefix = method === 'UPI' ? 'UPI' : method === 'Card' ? 'CARD' : 'CASH';
-      const txnRef = prefix + '/' + Date.now();
+      // [FIX] Append a random suffix (uid) so two cash collections in the same
+      // millisecond can't collide on the GLOBALLY-UNIQUE transaction_reference and
+      // 500 across tenants. (Pure Date.now() collided under concurrency.)
+      const txnRef = uid(prefix + '/');
       await runQuery(`
         INSERT INTO payments (id, tenant_id, invoice_id, member_id, amount, method, transaction_reference, status)
         VALUES (?, ?, ?, ?, ?, ?, ?, 'Successful')

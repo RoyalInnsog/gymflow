@@ -53,3 +53,4 @@ public/models/
 
 # Tenant-uploaded content (logos, etc.) — runtime data, not app source.
 public/assets/uploads/
+mobile/www/

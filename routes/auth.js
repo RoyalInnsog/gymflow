@@ -44,16 +44,16 @@ async function issueLogin(req, res, user, roles, remember, meta) {
     const { sid, refreshToken } = await sessions.createSession({ user, remember, req, role: roles[0] });
     const token = core.signScopedToken(user, roles[0], remember, sid);
     await sessions.touchAccess(sid, core.verifyToken(token).jti);
-    core.setAuthCookie(res, token, remember, false);
-    core.setRefreshCookie(res, refreshToken, remember);
+    core.setAuthCookie(req, res, token, remember, false);
+    core.setRefreshCookie(req, res, refreshToken, remember);
     return { redirect: core.shellForRole(roles[0].role_id), role: roles[0] };
   }
 
   // Multi-role: pending token → picker. The session row exists already so the
   // device/IP context is recorded; select-role scopes it.
   const { sid, refreshToken } = await sessions.createSession({ user, remember, req, role: null });
-  core.setAuthCookie(res, core.signPendingToken(user, remember, sid), remember, true);
-  core.setRefreshCookie(res, refreshToken, remember);
+  core.setAuthCookie(req, res, core.signPendingToken(user, remember, sid), remember, true);
+  core.setRefreshCookie(req, res, refreshToken, remember);
   return { redirect: '/select-role', role: null };
 }
 
@@ -280,25 +280,25 @@ router.post('/forgot-password-otp', sensitiveLimiter, async (req, res) => {
   const normPhone = core.normalizePhone(req.body && req.body.phone);
   if (!normPhone) return res.status(400).json({ error: 'A valid phone number is required.' });
   try {
+    // [SEC] Always-200 (like /forgot-password): never reveal whether a phone maps
+    // to an account. Only a real account gets an OTP generated/stored/sent; the
+    // response shape is identical either way, so this is not an enumeration oracle.
     const user = await getQuery(`SELECT id, email, tenant_id FROM users WHERE phone = ?`, [normPhone]);
-    if (!user) {
-      return res.status(404).json({ error: 'No account found with this phone number.' });
+    let otp = null;
+    if (user) {
+      otp = String(Math.floor(100000 + Math.random() * 900000));
+      const otpHash = core.sha256(otp);
+      const expiresAt = core.sqlTime(10 * 60 * 1000); // 10 minutes
+      await runQuery(`INSERT INTO phone_verifications (id, user_id, phone, otp_hash, expires_at) VALUES (?, ?, ?, ?, ?)`,
+        [core.newId('pv'), user.id, normPhone, otpHash, expiresAt]);
+      await events.record({ userId: user.id, email: user.email, event: 'forgot_password_otp_sent', req, meta: { phone: normPhone } });
     }
-
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-    const otpHash = core.sha256(otp);
-    const expiresAt = core.sqlTime(10 * 60 * 1000); // 10 minutes
-
-    // Store in phone_verifications table for reset purpose
-    await runQuery(`INSERT INTO phone_verifications (id, user_id, phone, otp_hash, expires_at) VALUES (?, ?, ?, ?, ?)`,
-      [core.newId('pv'), user.id, normPhone, otpHash, expiresAt]);
-
-    await events.record({ userId: user.id, email: user.email, event: 'forgot_password_otp_sent', req, meta: { phone: normPhone } });
 
     res.json({
       success: true,
       cooldown: 60,
-      ...(core.IS_PROD ? {} : { devCode: otp })
+      // Dev-only convenience; absent in production so both branches are identical there.
+      ...((!core.IS_PROD && otp) ? { devCode: otp } : {})
     });
   } catch (err) {
     console.error('forgot-password-otp error:', err);
@@ -314,7 +314,9 @@ router.post('/reset-password-otp', authLimiter, async (req, res) => {
   }
   try {
     const user = await getQuery(`SELECT * FROM users WHERE phone = ?`, [normPhone]);
-    if (!user) return res.status(404).json({ error: 'Account not found.' });
+    // [SEC] Unknown phone returns the SAME generic response as a missing/wrong OTP
+    // so this endpoint can't be used to enumerate which phones have accounts.
+    if (!user) return res.status(400).json({ error: 'Incorrect code. Please request a new one.', code: 'OTP_INVALID' });
 
     const policy = account.checkPasswordPolicy(password, user.email);
     if (!policy.ok) return res.status(400).json({ error: policy.error, code: policy.code });
@@ -584,7 +586,7 @@ router.post('/select-role', authLimiter, authenticateToken, async (req, res) => 
     if (sid) await sessions.scopeSession(sid, role);
     const token = core.signScopedToken(user, role, remember, sid);
     if (sid) await sessions.touchAccess(sid, core.verifyToken(token).jti);
-    core.setAuthCookie(res, token, remember, false);
+    core.setAuthCookie(req, res, token, remember, false);
     res.json({
       message: 'Role selected.',
       redirect: core.shellForRole(role.role_id),
@@ -647,7 +649,7 @@ router.post('/platform-role', authLimiter, authenticateToken, async (req, res) =
       }
     }
 
-    core.setAuthCookie(res, token, remember, false);
+    core.setAuthCookie(req, res, token, remember, false);
     await events.record({ userId: req.user.id, email: user.email, event: 'platform_role_selected', req, meta: { role } });
 
     res.json({ message: 'Platform role saved successfully.', redirect });
@@ -730,7 +732,7 @@ router.post('/phone/verify-otp', authLimiter, authenticateToken, async (req, res
         token = core.signPendingToken(user, remember, sid);
       }
     }
-    core.setAuthCookie(res, token, remember, false);
+    core.setAuthCookie(req, res, token, remember, false);
 
     res.json({ message: 'Phone number verified.', phone_verified: true });
   } catch (err) {
@@ -930,36 +932,6 @@ router.get('/session', authenticateToken, async (req, res) => {
       security: null,
       tenant: { subscription_plan: 'trial', subscription_status: 'trial', tour_completed: 0, onboarding_completed: 0, tutorial_step: 0 }
     });
-  }
-});
-
-
-// GET /api/v1/auth/session
-// Returns the tenant object for the current user's session.
-router.get('/session', authenticateToken, async (req, res) => {
-  try {
-    // If the user has not selected a role, there is no tenant associated with the session yet.
-    if (req.user.pending_role_selection) {
-      return res.json({ tenant: null });
-    }
-
-    // We expect the tenant_id to be present in the user object from the token.
-    if (!req.user.tenant_id) {
-      // This should not happen for a role-scoped token, but just in case.
-      return res.status(400).json({ error: 'No tenant associated with this session.' });
-    }
-
-    const tenant = await getQuery(
-      'SELECT id, gym_name, subscription_plan, trial_start, trial_end, subscription_status, onboarding_completed, tour_completed, tutorial_step, recommended_plan, gym_type, opening_time, closing_time, logo_url, cover_url, staff_count, expected_members FROM tenants WHERE id = ?',
-      [req.user.tenant_id]
-    );
-    if (!tenant) {
-      return res.status(404).json({ error: 'Tenant not found.' });
-    }
-    res.json({ tenant });
-  } catch (err) {
-    console.error('Session error:', err);
-    res.status(500).json({ error: 'Failed to load session.' });
   }
 });
 

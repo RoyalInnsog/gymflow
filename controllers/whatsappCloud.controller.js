@@ -128,11 +128,11 @@ async function webhookReceive(req, res) {
     const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : (typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {}));
     const signature = req.headers['x-hub-signature-256'];
 
-    // If an app secret is configured, reject anything we can't verify.
-    if (cloud.CONFIG.appSecret) {
-      if (!cloud.verifyWebhookSignature(raw, signature)) {
-        return res.sendStatus(401);
-      }
+    // [SEC] Fail CLOSED. Without a configured app secret the sender can't be
+    // verified, so reject rather than trust an unauthenticated payload (this
+    // matches the Razorpay webhook, which refuses when its secret is absent).
+    if (!cloud.CONFIG.appSecret || !cloud.verifyWebhookSignature(raw, signature)) {
+      return res.sendStatus(401);
     }
 
     let payload = {};

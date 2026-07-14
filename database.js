@@ -945,6 +945,21 @@ async function initializeDatabase() {
       )
     `);
 
+    // [IDEMPOTENCY] Server-side dedup for offline-outbox retries. The client
+    // stamps every mutation with an Idempotency-Key header; a request that
+    // committed but whose response was lost on a dropped connection is retried,
+    // and without this the retry would double-apply (dup attendance/payment/
+    // member). The cached response is replayed instead. key is tenant-scoped.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS idempotency_keys (
+        key TEXT PRIMARY KEY,
+        tenant_id TEXT,
+        status INTEGER,
+        response TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Backfill columns on tenants for Razorpay linkage (idempotent ALTERs).
     try { await runQuery(`ALTER TABLE tenants ADD COLUMN razorpay_customer_id TEXT`); } catch (e) {}
     try { await runQuery(`ALTER TABLE tenants ADD COLUMN razorpay_subscription_id TEXT`); } catch (e) {}

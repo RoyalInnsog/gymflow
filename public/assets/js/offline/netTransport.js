@@ -11,7 +11,9 @@
 (function () {
   'use strict';
 
-  var BASE_URL = '/api/v1';
+  // [CAPACITOR] capacitor-env.js (bundled APK only) sets API_BASE_URL so every
+  // request targets the remote backend instead of the local WebView origin.
+  var BASE_URL = (self.API_BASE_URL || '') + '/api/v1';
 
   // Hard ceiling for any single HTTP round-trip. This is the fix for the
   // "infinite spinner" defect: a native fetch() has NO built-in timeout, so a
@@ -90,16 +92,27 @@
                      endpoint.indexOf('/auth/login') !== -1 ||
                      endpoint.indexOf('/auth/logout') !== -1;
 
+    // [CAPACITOR] Bundled pages have no server-side page gate: a 401 that the
+    // refresh replay could not fix hands off to the LOCAL login page. Web
+    // behavior unchanged (__NATIVE_SHELL__ is never set there).
+    function nativeLoginGate(response) {
+      if (response.status === 401 && !isAuthFlow && self.__NATIVE_SHELL__
+          && ['/', '/login', '/login-alt', '/signup', '/forgot-password', '/reset-password', '/verify-email'].indexOf(self.location.pathname) === -1) {
+        self.location.replace('/login');
+      }
+      return response;
+    }
+
     return timedFetch(fullUrl(endpoint), fetchOptions).then(function (response) {
       if (response.status === 401 && !_retried && !isAuthFlow) {
         return timedFetch(BASE_URL + '/auth/refresh', {
           method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }
         }).then(function (refreshed) {
           if (refreshed.ok) return rawFetch(endpoint, options, true);
-          return response;
+          return nativeLoginGate(response);
         });
       }
-      return response;
+      return nativeLoginGate(response);
     });
   }
 

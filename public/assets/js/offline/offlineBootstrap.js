@@ -73,7 +73,10 @@
 
   // 3) Register the service worker (app shell + offline startup). Secure-context
   //    only (localhost counts); failures are non-fatal.
-  if ('serviceWorker' in navigator) {
+  //    [CAPACITOR] Skipped in the bundled APK (__NATIVE_SHELL__): pages and
+  //    assets are already local files, so the SW app-shell cache adds nothing
+  //    but staleness (sw.js isn't shipped in the bundle at all).
+  if ('serviceWorker' in navigator && !self.__NATIVE_SHELL__) {
     self.addEventListener('load', function () {
       navigator.serviceWorker.register('/sw.js').catch(function () { /* no PWA, app still works */ });
     });

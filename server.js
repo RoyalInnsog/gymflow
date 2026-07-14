@@ -51,6 +51,8 @@ const CSP = [
   // worker intercepts those requests, its fetch() is checked against connect-src
   // (not style/script/font-src) — missing origins fail with ERR_FAILED on every
   // SW-controlled load, which renders the whole app unstyled.
+  // Installed SWs keep the CSP they were installed with: any change to this CSP
+  // also requires bumping CACHE_VERSION in public/sw.js (see note there).
   `connect-src 'self' ${RZP} https://lumberjack.razorpay.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com http://localhost:3000 https://desktop-s69biti.tail66553b.ts.net`,
   `frame-src https://checkout.razorpay.com https://api.razorpay.com ${RZP}`
 ].join('; ');

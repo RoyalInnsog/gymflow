@@ -172,10 +172,18 @@ async function checkSubscription(req, res, next) {
       '/subscription/verify-payment',
       '/subscription/submit-upi-payment'
     ]);
-    if (isTrialExpired || tenant.subscription_status === 'expired') {
+    if (isTrialExpired) {
+      // A lapsed PRO trial falls back to the free Basic plan (the catalog model)
+      // instead of locking the tenant out: the gym keeps operating, premium
+      // features gate via PLAN_LIMITS.basic, and no blocking "trial expired"
+      // popup is shown. Self-healing on the next request rather than a cron, so
+      // a tenant is never stuck in the expired state.
+      await billing.downgradeToBasic(req.tenant_id, 'Free trial expired — moved to the free Basic plan.');
+      req.subscription = { ...tenant, subscription_plan: 'basic', subscription_status: 'active' };
+    } else if (tenant.subscription_status === 'expired') {
       if (req.method !== 'GET' && !BILLING_PATHS.has(req.path)) {
         return res.status(403).json({
-          error: "Your Free Trial has expired. Please upgrade your plan in settings to restore access.",
+          error: "Your subscription has expired. Please renew your plan in settings to restore access.",
           trialExpired: true
         });
       }
@@ -286,12 +294,13 @@ router.post('/onboarding/complete-setup', async (req, res) => {
   } = req.body;
   
   try {
-    const trialEnd = new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString();
-    
+    // 7-day PRO trial clock (re)starts when setup completes; lapses to free Basic.
+    const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
     // 1. Update tenants table.
     // [SEC] Only stamp the trial window on the FIRST onboarding. The CASE guards
     // mean re-POSTing /onboarding/complete-setup can no longer reset trial_end to
-    // now+21d on every call (which was an infinite-free-trial business-logic flaw).
+    // now+7d on every call (which was an infinite-free-trial business-logic flaw).
     await runQuery(`
       UPDATE tenants
       SET onboarding_completed = 1,

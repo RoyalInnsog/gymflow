@@ -137,7 +137,8 @@ router.post('/signup', authLimiter, async (req, res) => {
     const gymName = full_name.split(' ')[0] + "'s Gym";
     const subdomain = full_name.toLowerCase().replace(/[^a-z0-9]/g, '') + Math.floor(Math.random() * 1000);
     const trialStart = new Date().toISOString();
-    const trialEnd = new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString();
+    // 7-day PRO trial from signup; lapses to the free Basic plan (never a lockout).
+    const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
     await runQuery(`INSERT INTO tenants (id, gym_name, subdomain, owner_user_id, subscription_plan, trial_start, trial_end, subscription_status) VALUES (?, ?, ?, ?, 'trial', ?, ?, 'trial')`,
       [tenantId, gymName, subdomain, userId, trialStart, trialEnd]);
@@ -862,7 +863,8 @@ router.get('/google/callback', async (req, res) => {
       const gymName = (fullName.split(' ')[0] || 'My') + "'s Gym";
       const subdomain = fullName.toLowerCase().replace(/[^a-z0-9]/g, '') + Math.floor(Math.random() * 1000);
       const trialStart = new Date().toISOString();
-      const trialEnd = new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString();
+      // 7-day PRO trial from signup; lapses to the free Basic plan (never a lockout).
+    const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
       await runQuery(`INSERT INTO tenants (id, gym_name, subdomain, owner_user_id, subscription_plan, trial_start, trial_end, subscription_status) VALUES (?, ?, ?, ?, 'trial', ?, ?, 'trial')`,
         [tenantId, gymName, subdomain, userId, trialStart, trialEnd]);
       await runQuery(`INSERT INTO users (id, role_id, tenant_id, email, password_hash, full_name, email_verified, status, password_set) VALUES (?, 'r1', ?, ?, NULL, ?, 1, 'active', 0)`,

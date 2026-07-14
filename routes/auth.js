@@ -697,9 +697,11 @@ router.post('/phone/request-otp', sensitiveLimiter, authenticateToken, async (re
     res.json({
       message: 'Verification code sent.',
       cooldown: 60,
-      // Dev convenience only: without an SMS provider the code is surfaced to the
-      // UI outside production so the flow stays testable end-to-end.
-      ...(core.IS_PROD ? {} : { devCode: result.otp })
+      // Surface a usable code whenever codes are undeliverable: the fixed test
+      // code while test-OTP mode is active (even in production — otherwise the
+      // deployed prototype can never verify a phone), else the real code in dev.
+      ...(account.testOtpActive() ? { devCode: '000000' }
+        : (core.IS_PROD ? {} : { devCode: result.otp }))
     });
   } catch (err) {
     console.error('Request-otp error:', err);

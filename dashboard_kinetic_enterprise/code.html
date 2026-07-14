@@ -613,12 +613,9 @@ async function initOnboardingCard() {
     const completedCount = tasks.filter(t => t.completed).length;
     const percentage = completedCount * 25;
 
-    // Check dismissal state. If it is < 100% but marked as dismissed, reset dismissal.
-    if (percentage < 100 && isDismissed) {
-      localStorage.removeItem('gymflow_onboarding_dismissed');
-    }
-
-    if (percentage === 100 && isDismissed) {
+    // A dismissal sticks at any completion level — the card reappearing on every
+    // refresh after the user closed it reads as a bug, not as guidance.
+    if (isDismissed) {
       container.classList.add('hidden');
       container.innerHTML = '';
       return;

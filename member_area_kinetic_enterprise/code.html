@@ -562,12 +562,27 @@ window.__GYM_APP_SCOPE__ = 'member';
         .then(function () { if (btn) btn.disabled = false; });
     },
     _toggleHealth: function (btn) {
+      var self = this;
       if (this.isHealthLinked()) { this.unlinkHealthConnect(); try { window.toast('Health Connect unlinked.', 'info'); } catch (x) {} return; }
       if (btn) btn.disabled = true;
       this.linkHealthConnect()
         .then(function () { try { window.toast('Health Connect linked.', 'success'); } catch (x) {} })
-        .catch(function (e) { try { window.toast((e && e.message) || 'Could not link Health Connect.', 'error'); } catch (x) {} })
+        .catch(function (e) { self._offerHealthSettings(e); })
         .then(function () { if (btn) btn.disabled = false; });
+    },
+    // Link failed (permission denied / revoked). Offer a one-tap jump to the
+    // Health Connect permission screen instead of a dead-end error toast.
+    _offerHealthSettings: function (e) {
+      var pl = this._hcPlugin();
+      var msg = (e && e.message) || 'Could not link Health Connect.';
+      if (!pl || typeof pl.openSettings !== 'function' || !window.confirmDialog) {
+        try { window.toast(msg, 'error'); } catch (x) {}
+        return;
+      }
+      window.confirmDialog(
+        msg + '\n\nOpen Health Connect settings to allow access? Your watch app (Samsung Health, Fitbit, Garmin…) syncs into Health Connect, and Gym Flow reads from there.',
+        { title: 'Allow health access', confirmText: 'Open settings' }
+      ).then(function (ok) { if (ok) pl.openSettings().catch(function () {}); });
     },
     wireStatusBar: function (root) {
       var self = this; root = root || document;
@@ -593,6 +608,7 @@ window.__GYM_APP_SCOPE__ = 'member';
         row('st-watch-row', 'watch', 'Smartwatch', 'Live heart rate over Bluetooth', pill(w, 'Connected', 'Disconnected')) +
         '<div class="h-px bg-outline-variant/15"></div>' +
         row('st-hc-row', 'ecg_heart', 'Health Connect', 'Steps, sleep, heart rate &amp; calories', pill(h, 'Linked', 'Unlinked')) +
+        '<div class="text-[10px] text-on-surface-variant/70 leading-relaxed pt-1">Samsung Health, Fitbit, Garmin &amp; others sync into Google Health Connect — link it once here and your watch data flows in automatically.</div>' +
         '</div>';
     },
     wireSettings: function (root) {
@@ -890,7 +906,7 @@ window.__GYM_APP_SCOPE__ = 'member';
   }
 
   // ── Router ──────────────────────────────────────────────
-  var VIEWS = { home: viewHome, workout: viewWorkout, attendance: viewAttendance, progress: viewProgress, profile: viewProfile, settings: viewSettings, documents: viewDocuments, insights: viewInsights };
+  var VIEWS = { home: viewHome, workout: viewWorkout, attendance: viewAttendance, progress: viewProgress, profile: viewProfile, settings: viewSettings, documents: viewDocuments, insights: viewInsights, diet: viewDiet };
 
   function route() {
     var h = (location.hash || '#/home').replace('#/', '');
@@ -1021,9 +1037,14 @@ window.__GYM_APP_SCOPE__ = 'member';
     acts = acts.slice(0, 5);
 
     el.innerHTML =
-      '<div class="pt-1 pb-1.5">' +
-      '  <div class="text-headline-sm text-on-surface">Hi, ' + esc(first) + ' 👋</div>' +
-      '  <div class="text-body-sm text-on-surface-variant">' + new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }) + '</div>' +
+      '<div class="pt-1 pb-1.5 flex items-center justify-between gap-3">' +
+      '  <div class="min-w-0">' +
+      '    <div class="text-headline-sm text-on-surface truncate">Hi, ' + esc(first) + ' 👋</div>' +
+      '    <div class="text-body-sm text-on-surface-variant">' + new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }) + '</div>' +
+      '  </div>' +
+      '  <button id="qa-myqr" aria-label="My check-in QR" class="w-11 h-11 shrink-0 rounded-xl bg-surface-container-low border border-outline-variant/30 flex items-center justify-center text-on-surface active:scale-95 transition-transform">' +
+      '    <span class="material-symbols-outlined text-[22px] pointer-events-none">qr_code_2</span>' +
+      '  </button>' +
       '</div>' +
       '<div id="home-org-banner"></div>' +
       aiHomeCardHtml() +
@@ -1104,7 +1125,7 @@ window.__GYM_APP_SCOPE__ = 'member';
       '      <div class="text-title-md text-on-surface font-bold mt-1 leading-none">' + cal + '<span class="text-xs font-normal">kcal</span></div>' +
       '      <div class="w-full h-1 bg-surface-container-highest rounded-full mt-2 overflow-hidden"><div class="h-full bg-tertiary rounded-full" style="width:' + Math.min(100, Math.round(cal / CAL_TARGET * 100)) + '%"></div></div>' +
       '    </div>' +
-      '    <button id="qa-cal" class="mt-2.5 w-full bg-tertiary/10 text-tertiary rounded-md py-1 text-[11px] font-semibold min-h-[30px]">Add Calories</button>' +
+      '    <a href="#/diet" id="qa-cal" class="mt-2.5 w-full bg-tertiary/10 text-tertiary rounded-md py-1 text-[11px] font-semibold min-h-[30px] flex items-center justify-center gap-1"><span class="material-symbols-outlined text-[14px]">photo_camera</span>Diet &amp; Scan</a>' +
       '  </div>' +
       '</div>' +
 
@@ -1146,14 +1167,51 @@ window.__GYM_APP_SCOPE__ = 'member';
     }
     var qaW = document.getElementById('qa-weight');
     if (qaW) qaW.addEventListener('click', function () { sheetLogWeight(today); });
-    var qaC = document.getElementById('qa-cal');
-    if (qaC) qaC.addEventListener('click', function () { sheetLogNutrition(today); });
     el.querySelectorAll('[data-start-plan]').forEach(function (b) {
       b.addEventListener('click', function () { startWorkoutById(b.getAttribute('data-start-plan')); });
     });
     var aiExp = document.getElementById('ai-home-explain');
     if (aiExp) aiExp.addEventListener('click', function () { sheetAI('AI insights', function () { return window.GymAI.service.insights(); }); });
+    var qrBtn = document.getElementById('qa-myqr');
+    if (qrBtn) qrBtn.addEventListener('click', function () { sheetMyQr(ov); });
     fillAchievements();
+  }
+
+  // ── My check-in QR — shown at the front desk, scanned by the admin
+  // attendance scanner. Payload format the scanner accepts: gymflow:checkin:<id>.
+  // ponytail: QR lib comes from cdnjs at open time (not bundled); offline the
+  // sheet still shows the member ID for the admin's manual picker.
+  function sheetMyQr(ov) {
+    var m = (ov && ov.member) || {};
+    var mid = m.id != null ? String(m.id) : '';
+    if (!mid) { try { window.toast('Your member profile is still loading.', 'info'); } catch (e) {} return; }
+    openSheet('My check-in QR',
+      '<div class="flex flex-col items-center text-center">' +
+      '  <div id="myqr-box" class="bg-white rounded-2xl p-4 w-[252px] h-[252px] flex items-center justify-center">' +
+      '    <span class="text-body-sm" style="color:#334155">Generating…</span>' +
+      '  </div>' +
+      '  <div class="text-title-md text-on-surface font-semibold mt-4">' + esc(m.full_name || '') + '</div>' +
+      '  <div class="text-body-sm text-on-surface-variant mt-1">Member ID: <span class="font-mono text-on-surface">' + esc(mid) + '</span></div>' +
+      '  <div class="text-[11px] text-on-surface-variant/70 mt-3 leading-relaxed">Show this at the front desk to check in. If the code won\'t load, the staff can look you up by the ID above.</div>' +
+      '</div>');
+    var draw = function () {
+      var box = document.getElementById('myqr-box');
+      if (!box || !window.QRCode) return fail();
+      box.innerHTML = '';
+      try {
+        new window.QRCode(box, { text: 'gymflow:checkin:' + mid, width: 220, height: 220, correctLevel: window.QRCode.CorrectLevel.M });
+      } catch (e) { fail(); }
+    };
+    function fail() {
+      var box = document.getElementById('myqr-box');
+      if (box) box.innerHTML = '<div class="px-3"><div class="font-mono font-bold text-[26px]" style="color:#0f172a">' + esc(mid) + '</div><div class="text-[11px] mt-1" style="color:#64748b">QR unavailable offline — use this ID</div></div>';
+    }
+    if (window.QRCode) { draw(); return; }
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    s.onload = draw;
+    s.onerror = fail;
+    document.head.appendChild(s);
   }
 
   function last7Dots(attSet) {
@@ -1200,7 +1258,7 @@ window.__GYM_APP_SCOPE__ = 'member';
           if (S.view !== 'home') return;
           renderHome(S.homeEl, res[0], res[1] || [], res[2] || [], res[3] || [], res[4] || []);
         });
-      } else if (S.view === 'progress') {
+      } else if (S.view === 'progress' || S.view === 'diet') {
         route();
       }
     });
@@ -1214,8 +1272,8 @@ window.__GYM_APP_SCOPE__ = 'member';
     });
   }
   // Daily macro targets + a fast-track reference of common regional foods
-  // (per listed serving). Tapping a food accumulates its kcal/protein.
-  var KCAL_TARGET = 2500, PROTEIN_TARGET = 140, HYDRATION_TARGET_L = 2.5;
+  // (per listed serving). Tapping a food inside "Add meal" pre-fills the entry.
+  var KCAL_TARGET = 2500, PROTEIN_TARGET = 140;
   var QUICK_FOODS = [
     { name: 'Paneer 100g', kcal: 290, protein: 18 },
     { name: 'Curd 100g', kcal: 60, protein: 3 },
@@ -1228,78 +1286,462 @@ window.__GYM_APP_SCOPE__ = 'member';
     { name: 'Banana (1)', kcal: 105, protein: 1 },
     { name: 'Whey 1 scoop', kcal: 120, protein: 24 }
   ];
-  function sheetLogNutrition(current) {
-    current = current || {};
-    function macroBar(id, label, unit, target, color) {
-      return '<div class="mb-3 last:mb-0">' +
-        '<div class="flex justify-between items-center mb-1"><span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wide">' + label + '</span>' +
-        '<span id="' + id + '-txt" class="text-[11px] font-mono font-bold text-on-surface">0 / ' + target + ' ' + unit + '</span></div>' +
-        '<div class="w-full h-2 bg-surface-container-highest rounded-full overflow-hidden"><div id="' + id + '-fill" class="h-full rounded-full transition-all" style="width:0%;background:' + color + '"></div></div>' +
-        '</div>';
+  // ════════════════════════════════════════════════════════
+  // DIET (#/diet) — calorie-ring hero + AI photo scanner + meal timeline.
+  // Meals live in nutrition_logs (online-only writes; reads ride the generic
+  // offline response cache). Daily kcal/protein totals still flow through the
+  // offline-first health repo via logHealth(), so Home & Progress stay in sync.
+  // Reads take any log_date (7-day strip); WRITES always target today.
+  // ════════════════════════════════════════════════════════
+  var CARB_TARGET_G = 300, FAT_TARGET_G = 70;
+  // Selected day (YYYY-MM-DD). null = today, re-resolved at render time so an
+  // app left open across midnight snaps to the real today.
+  var dietDate = null;
+
+  // Unregistered /member/nutrition writes pass through the offline shim without
+  // busting its response cache — clear it by prefix so re-reads are fresh.
+  function bustMealCache() {
+    try {
+      if (window.GymLocalDB && window.GymLocalDB.deleteResponsesByPrefix) window.GymLocalDB.deleteResponsesByPrefix('/member/nutrition');
+    } catch (e) {}
+  }
+
+  function viewDiet(el) {
+    var sel = dietDate || todayStr();
+    el.innerHTML = skel(2) + skel(4) + skel(3);
+    Promise.all([
+      repos() ? repos().health.list() : [],
+      window.api.get('/member/nutrition?log_date=' + sel).catch(function () { return []; })
+    ]).then(function (res) {
+      if (S.view !== 'diet') return;
+      renderDiet(el, res[0] || [], Array.isArray(res[1]) ? res[1] : [], sel);
+    });
+  }
+
+  function macroChip(dotCls, label) {
+    return '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-surface-container-highest border border-outline-variant/20 text-[9px] font-semibold text-on-surface-variant">' +
+      '<span class="w-1.5 h-1.5 rounded-full ' + dotCls + '"></span>' + label + '</span>';
+  }
+
+  function mealRow(m, canEdit) {
+    return '<div class="flex items-start gap-3 px-3.5 py-3">' +
+      '<div class="w-10 h-10 mt-0.5 rounded-xl bg-tertiary/10 border border-tertiary/20 flex items-center justify-center shrink-0">' +
+      '<span class="material-symbols-outlined text-[18px] text-tertiary">' + (m.source === 'photo' ? 'photo_camera' : 'restaurant') + '</span></div>' +
+      '<div class="min-w-0 flex-1">' +
+      '<div class="flex items-baseline justify-between gap-2">' +
+      '<span class="text-body-md text-on-surface font-semibold truncate">' + esc(m.name || 'Meal') + '</span>' +
+      '<span class="font-mono font-bold text-on-surface shrink-0">' + num(m.calories) + '<span class="text-[9px] text-on-surface-variant font-sans font-normal"> kcal</span></span></div>' +
+      '<div class="text-[10px] text-on-surface-variant mt-0.5 truncate">' + (m.portion ? esc(m.portion) + ' · ' : '') + fmtTime(m.created_at) + '</div>' +
+      '<div class="flex flex-wrap gap-1.5 mt-1.5">' +
+      macroChip('bg-secondary', 'P ' + num(m.protein_g) + 'g') +
+      macroChip('bg-primary', 'C ' + num(m.carbs_g) + 'g') +
+      macroChip('bg-tertiary', 'F ' + num(m.fat_g) + 'g') +
+      '</div></div>' +
+      (canEdit
+        ? '<button data-del-meal="' + esc(String(m.id)) + '" aria-label="Delete meal" class="w-8 h-8 -mr-1 shrink-0 flex items-center justify-center rounded-full text-on-surface-variant active:bg-surface-container"><span class="material-symbols-outlined text-[17px] pointer-events-none">delete</span></button>'
+        : '') +
+      '</div>';
+  }
+
+  function mealHour(m) {
+    var d = new Date(String(m.created_at || '').replace(' ', 'T'));
+    return isNaN(d) ? 12 : d.getHours();
+  }
+
+  function renderDiet(el, health, meals, sel) {
+    var byDate = mergeHealthByDate(health);
+    var todayKey = todayStr(), isToday = sel === todayKey;
+    var today = byDate[todayKey] || { log_date: todayKey };  // write target — ALWAYS today
+    var day = isToday ? today : (byDate[sel] || {});          // displayed day
+    var kcal = num(day.calories), prot = num(day.protein_g);
+    var carbs = 0, fat = 0;
+    meals.forEach(function (m) { carbs += num(m.carbs_g); fat += num(m.fat_g); });
+    carbs = Math.round(carbs * 10) / 10; fat = Math.round(fat * 10) / 10;
+    var left = KCAL_TARGET - kcal;
+    var frac = Math.max(0, Math.min(1, kcal / KCAL_TARGET));
+    var C = 2 * Math.PI * 52;
+
+    // Last 7 days from local health data — powers BOTH the date strip and the
+    // trend bars (no extra fetch; API reads take any log_date, writes stay today).
+    var maxV = KCAL_TARGET, days = [];
+    for (var i = 6; i >= 0; i--) {
+      var d = new Date(); d.setDate(d.getDate() - i);
+      var v = num((byDate[dstr(d)] || {}).calories);
+      days.push({ ds: dstr(d), v: v, d: d });
+      if (v > maxV) maxV = v;
     }
-    var foodChips = '<div class="flex flex-wrap gap-2 mt-2">' + QUICK_FOODS.map(function (f, i) {
+    var strip = days.map(function (x) {
+      var on = x.ds === sel;
+      return '<button data-diet-date="' + x.ds + '" class="flex-1 min-w-0 flex flex-col items-center py-1.5 rounded-xl border transition-colors ' +
+        (on ? 'bg-tertiary/20 border-tertiary/50' : 'bg-surface-container-low/60 border-outline-variant/15 active:bg-surface-container') + '">' +
+        '<span class="text-[8px] uppercase tracking-wider ' + (on ? 'text-tertiary font-bold' : 'text-on-surface-variant') + '">' + DAY_LABELS[(x.d.getDay() + 6) % 7] + '</span>' +
+        '<span class="text-body-md font-bold leading-tight ' + (on ? 'text-tertiary' : 'text-on-surface') + '">' + x.d.getDate() + '</span>' +
+        '<span class="w-1 h-1 rounded-full mt-0.5 ' + (x.v > 0 ? 'bg-tertiary' : 'bg-transparent') + '"></span></button>';
+    }).join('');
+    var bars = days.map(function (x) {
+      var h = Math.max(4, Math.round(x.v / maxV * 64));
+      var on = x.ds === sel;
+      return '<button data-diet-date="' + x.ds + '" class="flex-1 min-w-0 flex flex-col items-center gap-1 active:opacity-70">' +
+        '<div class="w-full flex items-end justify-center" style="height:64px"><div class="w-[60%] rounded-t-md ' + (on ? 'bg-tertiary' : (x.v > 0 ? 'bg-tertiary/30' : 'bg-surface-container-highest border border-outline-variant/25')) + '" style="height:' + h + 'px"></div></div>' +
+        '<span class="text-[9px] ' + (on ? 'text-tertiary font-bold' : 'text-on-surface-variant') + '">' + DAY_LABELS[(x.d.getDay() + 6) % 7].charAt(0) + '</span></button>';
+    }).join('');
+
+    // ── macro column (protein / carbs / fat) — overflow shows a colored +Xg
+    function macroCol(label, val, target, dotCls, barVar, overCls) {
+      var over = Math.round((val - target) * 10) / 10;
+      var pct = Math.min(100, Math.round(val / target * 100));
+      return '<div class="min-w-0">' +
+        '<div class="flex items-center gap-1 mb-1.5"><span class="w-1.5 h-1.5 rounded-full ' + dotCls + '"></span>' +
+        '<span class="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant">' + label + '</span></div>' +
+        '<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden mb-1">' +
+        '<div class="h-full rounded-full diet-anim-bar" data-w="' + pct + '" style="width:0%;background:' + barVar + ';transition:width .7s cubic-bezier(.22,.9,.35,1)"></div></div>' +
+        '<div class="text-[10px] font-mono text-on-surface truncate">' + val + '<span class="text-on-surface-variant">/' + target + 'g</span>' +
+        (over > 0 ? ' <span class="font-bold ' + overCls + '">+' + over + '</span>' : '') + '</div></div>';
+    }
+
+    // ── grouped meal timeline (Morning / Afternoon / Evening)
+    var groups = [
+      { label: 'Morning', icon: 'wb_twilight', rows: [] },
+      { label: 'Afternoon', icon: 'wb_sunny', rows: [] },
+      { label: 'Evening', icon: 'bedtime', rows: [] }
+    ];
+    meals.slice().sort(function (a, b) { return String(a.created_at).localeCompare(String(b.created_at)); })
+      .forEach(function (m) {
+        var h = mealHour(m);
+        groups[h < 12 ? 0 : h < 17 ? 1 : 2].rows.push(m);
+      });
+    var timeline = groups.filter(function (g) { return g.rows.length; }).map(function (g) {
+      var sub = g.rows.reduce(function (s, m) { return s + num(m.calories); }, 0);
+      return '<div class="flex items-center justify-between mt-2.5 mb-1.5 px-1">' +
+        '<span class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant"><span class="material-symbols-outlined text-[15px] text-tertiary">' + g.icon + '</span>' + g.label + '</span>' +
+        '<span class="text-[10px] font-mono text-on-surface-variant">' + sub + ' kcal</span></div>' +
+        '<div class="mbr-card divide-y divide-outline-variant/15">' + g.rows.map(function (m) { return mealRow(m, isToday); }).join('') + '</div>';
+    }).join('');
+
+    el.innerHTML =
+      '<div class="flex items-center gap-2 pt-1 pb-2">' +
+      '<a href="#/home" class="w-9 h-9 -ml-1.5 flex items-center justify-center rounded-full active:bg-surface-container text-on-surface" aria-label="Back"><span class="material-symbols-outlined text-[22px]">arrow_back</span></a>' +
+      '<div><div class="text-headline-sm text-on-surface leading-tight">Nutrition</div>' +
+      '<div class="text-body-sm text-on-surface-variant">' + (isToday ? 'Today · ' : '') + new Date(sel + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }) + '</div></div></div>' +
+
+      // ── day strip (last 7 days)
+      '<div class="flex gap-1.5 mb-2.5">' + strip + '</div>' +
+      (isToday ? '' :
+        '<div class="flex items-center gap-2.5 bg-surface-container-low border border-outline-variant/25 rounded-xl px-3.5 py-2.5 mb-2.5">' +
+        '<span class="material-symbols-outlined text-[18px] text-on-surface-variant">history</span>' +
+        '<span class="flex-1 text-[11px] text-on-surface-variant">Viewing a past day — meals can only be logged for today.</span>' +
+        '<button data-diet-date="' + todayKey + '" class="text-[11px] font-bold text-tertiary shrink-0 min-h-[32px]">TODAY</button></div>') +
+
+      // ── hero: big calorie ring flanked by eaten / target, macro bars below
+      '<div class="mbr-card p-5 mb-2.5 relative overflow-hidden">' +
+      '<div class="absolute -top-12 -left-12 w-44 h-44 bg-tertiary/10 rounded-full blur-2xl pointer-events-none"></div>' +
+      '<div class="absolute -bottom-12 -right-12 w-44 h-44 bg-primary/10 rounded-full blur-2xl pointer-events-none"></div>' +
+      '<div class="flex items-center justify-between gap-2 relative">' +
+      '<div class="flex-1 text-center min-w-0">' +
+      '<div class="text-title-md font-bold font-mono text-on-surface leading-none">' + kcal + '</div>' +
+      '<div class="text-[9px] uppercase tracking-widest text-on-surface-variant mt-1.5">eaten</div></div>' +
+      '<div class="relative w-[148px] h-[148px] shrink-0">' +
+      '<svg viewBox="0 0 120 120" class="w-full h-full -rotate-90">' +
+      '<defs><linearGradient id="diet-ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">' +
+      '<stop offset="0%" stop-color="var(--color-tertiary)"/><stop offset="100%" stop-color="var(--color-primary)"/></linearGradient></defs>' +
+      '<circle class="ring-track" cx="60" cy="60" r="52" fill="none" stroke-width="9"/>' +
+      '<circle id="diet-ring-val" cx="60" cy="60" r="52" fill="none" stroke="url(#diet-ring-grad)" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + C.toFixed(1) + '" data-off="' + (C * (1 - frac)).toFixed(1) + '" style="transition:stroke-dashoffset .9s cubic-bezier(.22,.9,.35,1)"/></svg>' +
+      '<div class="absolute inset-0 flex flex-col items-center justify-center leading-none">' +
+      (left >= 0
+        ? '<span class="text-[30px] text-on-surface font-bold font-mono">' + left + '</span><span class="text-[9px] text-on-surface-variant uppercase tracking-widest mt-1.5">kcal left</span>'
+        : '<span class="text-[30px] text-tertiary font-bold font-mono">' + (-left) + '</span><span class="text-[9px] text-tertiary uppercase tracking-widest mt-1.5">kcal over</span>') +
+      '</div></div>' +
+      '<div class="flex-1 text-center min-w-0">' +
+      '<div class="text-title-md font-bold font-mono text-on-surface leading-none">' + KCAL_TARGET + '</div>' +
+      '<div class="text-[9px] uppercase tracking-widest text-on-surface-variant mt-1.5">target</div></div>' +
+      '</div>' +
+      '<div class="grid grid-cols-3 gap-3 mt-4 relative">' +
+      macroCol('Protein', prot, PROTEIN_TARGET, 'bg-secondary', 'var(--color-secondary)', 'text-secondary') +
+      macroCol('Carbs', carbs, CARB_TARGET_G, 'bg-primary', 'var(--color-primary)', 'text-primary') +
+      macroCol('Fat', fat, FAT_TARGET_G, 'bg-tertiary', 'var(--color-tertiary)', 'text-tertiary') +
+      '</div></div>' +
+
+      // ── AI scan CTA (the star) — today only, writes are online-only
+      (isToday
+        ? '<div class="mbr-card p-4 mb-2.5 relative overflow-hidden">' +
+          '<div class="absolute inset-0 bg-gradient-to-br from-tertiary/15 via-transparent to-primary/10 pointer-events-none"></div>' +
+          '<div class="absolute -top-10 -right-10 w-36 h-36 bg-tertiary/15 rounded-full blur-2xl pointer-events-none"></div>' +
+          '<div class="flex items-center gap-3.5 relative mb-3.5">' +
+          '<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-tertiary to-primary flex items-center justify-center shrink-0 shadow-lg">' +
+          '<span class="material-symbols-outlined text-[28px] text-on-primary" style="font-variation-settings: \'FILL\' 1;">photo_camera</span></div>' +
+          '<div class="min-w-0 flex-1"><div class="text-title-md text-on-surface font-bold leading-tight">Scan your food</div>' +
+          '<div class="text-[11px] text-on-surface-variant mt-0.5">Snap the plate — AI logs calories &amp; macros for you</div></div></div>' +
+          '<div class="flex gap-2.5 relative">' +
+          '<button id="diet-cam" class="flex-1 bg-primary text-on-primary py-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform min-h-[46px]"><span class="material-symbols-outlined text-[18px]">photo_camera</span>SCAN NOW</button>' +
+          '<button id="diet-gal" aria-label="Pick from gallery" class="w-[52px] bg-surface-container-highest border border-outline-variant/30 text-on-surface rounded-xl flex items-center justify-center active:scale-[0.98] transition-transform min-h-[46px]"><span class="material-symbols-outlined text-[20px]">image</span></button>' +
+          '</div>' +
+          '<input id="diet-file-cam" type="file" accept="image/*" capture="environment" class="hidden">' +
+          '<input id="diet-file-gal" type="file" accept="image/*" class="hidden">' +
+          '</div>'
+        : '') +
+
+      // ── meal timeline
+      '<div class="flex items-center justify-between mb-0.5 pl-1 pr-1">' +
+      '<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest text-[9px]">' + (isToday ? 'Today\'s meals' : 'Meals') + (meals.length ? ' · ' + meals.length : '') + '</span>' +
+      (isToday ? '<button id="diet-add" class="text-[11px] font-semibold text-primary flex items-center gap-0.5 min-h-[32px]"><span class="material-symbols-outlined text-[14px]">add</span>Add manually</button>' : '') +
+      '</div>' +
+      (timeline
+        ? timeline + '<div class="h-2.5"></div>'
+        : '<div class="mb-2.5 mt-1.5">' + emptyState('restaurant',
+            isToday ? 'No meals logged yet' : 'No meals on this day',
+            isToday ? 'Scan your plate with the camera or add a meal manually.' : 'Meals logged on this day would show up here.') + '</div>') +
+
+      // ── 7-day trend (bars are tappable — same day navigation as the strip)
+      '<div class="mbr-card p-4 mb-4">' +
+      '<div class="flex items-center justify-between mb-3"><span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest font-bold text-[9px]">Last 7 days</span>' +
+      '<span class="text-[10px] text-on-surface-variant font-mono">target ' + KCAL_TARGET + ' kcal</span></div>' +
+      '<div class="flex gap-1.5">' + bars + '</div></div>' +
+      '<div class="h-2"></div>';
+
+    // Animate the ring + macro bars in on first paint (CSS transitions).
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      var ring = document.getElementById('diet-ring-val');
+      if (ring) ring.style.strokeDashoffset = ring.getAttribute('data-off');
+      el.querySelectorAll('.diet-anim-bar').forEach(function (b) { b.style.width = b.getAttribute('data-w') + '%'; });
+    }); });
+
+    // Day navigation (strip pills, trend bars, "TODAY" in the past-day banner).
+    el.querySelectorAll('[data-diet-date]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var ds = b.getAttribute('data-diet-date');
+        if (ds === sel) return;
+        dietDate = ds === todayStr() ? null : ds;
+        viewDiet(el);
+      });
+    });
+
+    var camIn = document.getElementById('diet-file-cam'), galIn = document.getElementById('diet-file-gal');
+    var camBtn = document.getElementById('diet-cam'), galBtn = document.getElementById('diet-gal');
+    if (camBtn && camIn) camBtn.addEventListener('click', function () { camIn.click(); });
+    if (galBtn && galIn) galBtn.addEventListener('click', function () { galIn.click(); });
+    [camIn, galIn].forEach(function (inp) {
+      if (!inp) return;
+      inp.addEventListener('change', function () {
+        var f = inp.files && inp.files[0];
+        inp.value = '';
+        if (f) dietHandleFile(f, today);
+      });
+    });
+    var addBtn = document.getElementById('diet-add');
+    if (addBtn) addBtn.addEventListener('click', function () { sheetAddMeal(today); });
+    el.querySelectorAll('[data-del-meal]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var m = meals.filter(function (x) { return String(x.id) === b.getAttribute('data-del-meal'); })[0];
+        if (m) deleteMeal(m, today);
+      });
+    });
+  }
+
+  // Downscale to ≤1024px JPEG before upload: a full-res phone photo is ~3-8 MB
+  // of base64, this lands well under the 8 MB body limit and keeps AI costs low.
+  function dietDownscale(file, maxDim, cb) {
+    var reader = new FileReader();
+    reader.onerror = function () { cb(null); };
+    reader.onload = function () {
+      var img = new Image();
+      img.onerror = function () { cb(null); };
+      img.onload = function () {
+        var s = Math.min(1, maxDim / Math.max(img.width, img.height));
+        var c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.width * s));
+        c.height = Math.max(1, Math.round(img.height * s));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        cb(c.toDataURL('image/jpeg', 0.82));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function dietHandleFile(file, today) {
+    if (!file) return;
+    if (!/^image\//.test(file.type || '')) { window.toast('Pick a photo of your food.', 'warning'); return; }
+    if (navigator.onLine === false) { window.toast('You\'re offline — food scanning needs a connection.', 'warning'); return; }
+    openSheet('Scanning meal…',
+      '<div class="text-center py-4">' +
+      '<div id="diet-scan-prev" class="w-36 h-36 mx-auto mb-4 rounded-2xl bg-surface-container-highest overflow-hidden relative"></div>' +
+      '<div class="flex items-center justify-center gap-2 text-body-sm text-on-surface-variant"><span class="material-symbols-outlined animate-spin text-[18px] text-tertiary">progress_activity</span>AI is reading your plate…</div>' +
+      '<p class="text-[10px] text-on-surface-variant mt-2">Usually takes a few seconds</p>' +
+      '</div>');
+    dietDownscale(file, 1024, function (dataUrl) {
+      if (!dataUrl) { closeSheet(); window.toast('Could not read that photo.', 'error'); return; }
+      var prev = document.getElementById('diet-scan-prev');
+      if (prev) prev.innerHTML = '<img src="' + dataUrl + '" class="w-full h-full object-cover" alt="">' +
+        '<div class="absolute inset-0 bg-gradient-to-b from-transparent via-primary/25 to-transparent animate-pulse pointer-events-none"></div>';
+      window.api.post('/member/nutrition/analyze', { image: dataUrl }, { timeout: 60000 })
+        .then(function (r) {
+          if (!r || r.error) throw new Error((r && r.error) || 'Scan failed — try again.');
+          sheetScanResult(r, dataUrl, today);
+        })
+        .catch(function (e) {
+          var msg = (e && e.message) || 'Could not analyze the photo — check your connection.';
+          // Daily scan cap (server 429) — a dead end deserves a doorway, not a toast.
+          if (/scan limit|limit reached/i.test(msg)) { sheetScanCap(msg, today); return; }
+          closeSheet();
+          window.toast(msg, 'error');
+        });
+    });
+  }
+
+  function sheetScanCap(msg, today) {
+    openSheet('Scan limit reached',
+      '<div class="text-center py-3">' +
+      '<div class="w-14 h-14 mx-auto mb-3 flex items-center justify-center rounded-2xl bg-tertiary/10 border border-tertiary/25"><span class="material-symbols-outlined text-[28px] text-tertiary">hourglass_top</span></div>' +
+      '<p class="text-body-md text-on-surface-variant">' + esc(msg) + '</p>' +
+      '<p class="text-[11px] text-on-surface-variant mt-2">Scans reset at midnight — you can still log meals manually.</p></div>',
+      primaryBtn('sl-manual', 'ADD MEAL MANUALLY', 'edit'));
+    document.getElementById('sl-manual').addEventListener('click', function () { sheetAddMeal(today); });
+  }
+
+  function sheetScanResult(r, thumb, today) {
+    if (!r.is_food || !(r.items || []).length) {
+      openSheet('No food detected',
+        '<div class="text-center py-3">' +
+        '<div class="w-14 h-14 mx-auto mb-3 flex items-center justify-center rounded-2xl bg-surface-container-highest border border-outline-variant/40"><span class="material-symbols-outlined text-[28px] text-on-surface-variant">no_meals</span></div>' +
+        '<p class="text-body-md text-on-surface-variant">' + esc(r.note || 'The AI could not find any food in this photo — try a clearer shot of the plate.') + '</p></div>');
+      return;
+    }
+    var t = r.total || {};
+    var confCls = r.confidence === 'high' ? 'bg-secondary/15 text-secondary border-secondary/30'
+      : r.confidence === 'medium' ? 'bg-tertiary/15 text-tertiary border-tertiary/30'
+      : 'bg-surface-container-highest text-on-surface-variant border-outline-variant/30';
+    var itemsHtml = r.items.map(function (i) {
+      return '<div class="flex items-center justify-between py-2 border-b border-outline-variant/10 last:border-0">' +
+        '<div class="min-w-0 pr-2"><div class="text-body-md text-on-surface truncate">' + esc(i.name) + '</div>' +
+        (i.portion ? '<div class="text-[10px] text-on-surface-variant">' + esc(i.portion) + '</div>' : '') + '</div>' +
+        '<div class="text-right shrink-0"><span class="text-body-md font-bold text-on-surface font-mono">' + num(i.calories) + '</span><span class="text-[10px] text-on-surface-variant"> kcal</span>' +
+        '<div class="text-[9px] text-on-surface-variant">P ' + num(i.protein_g) + ' · C ' + num(i.carbs_g) + ' · F ' + num(i.fat_g) + '</div></div></div>';
+    }).join('');
+    var name = r.items.map(function (i) { return i.name; }).join(', ').slice(0, 120) || 'Scanned meal';
+
+    openSheet('Review &amp; log',
+      '<div class="relative h-36 rounded-xl overflow-hidden bg-surface-container-highest mb-3">' +
+      '<img src="' + thumb + '" class="w-full h-full object-cover" alt="">' +
+      '<div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3.5 pb-2.5 pt-8 flex items-end justify-between">' +
+      '<span class="text-white font-mono font-bold text-[22px] leading-none">' + num(t.calories) + ' <span class="text-[11px] font-sans font-normal opacity-80">kcal</span></span>' +
+      '<span class="px-2 py-0.5 rounded-full border text-[9px] uppercase font-bold tracking-wider ' + confCls + '">' + esc(r.confidence || 'low') + ' confidence</span></div></div>' +
+      '<div class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest text-[9px] mb-1.5">Detected on your plate</div>' +
+      '<div class="bg-surface-container-lowest border border-outline-variant/25 rounded-xl px-3.5 py-1.5 mb-3">' + itemsHtml + '</div>' +
+      (r.note ? '<div class="flex items-start gap-2 mb-3 text-[11px] text-on-surface-variant"><span class="material-symbols-outlined text-[15px] text-primary shrink-0">tips_and_updates</span><span>' + esc(r.note) + '</span></div>' : '') +
+      inputField('sc-name', 'Meal name', { value: name }) +
+      '<div class="grid grid-cols-2 gap-3">' +
+      inputField('sc-kcal', 'Calories (kcal)', { type: 'number', min: 0, inputmode: 'numeric', value: num(t.calories) }) +
+      inputField('sc-prot', 'Protein (g)', { type: 'number', step: '0.1', min: 0, inputmode: 'decimal', value: num(t.protein_g) }) +
+      inputField('sc-carb', 'Carbs (g)', { type: 'number', step: '0.1', min: 0, inputmode: 'decimal', value: num(t.carbs_g) }) +
+      inputField('sc-fat', 'Fat (g)', { type: 'number', step: '0.1', min: 0, inputmode: 'decimal', value: num(t.fat_g) }) +
+      '</div>' +
+      '<p class="text-[10px] text-on-surface-variant -mt-2">AI estimates vary with portion size — adjust before logging.</p>',
+      primaryBtn('sc-log', 'LOG THIS MEAL', 'check'));
+    document.getElementById('sc-log').addEventListener('click', function () {
+      function n(id) { return Number(document.getElementById(id).value) || 0; }
+      saveMeal({
+        name: (document.getElementById('sc-name').value.trim() || 'Scanned meal').slice(0, 120),
+        calories: Math.round(n('sc-kcal')),
+        protein_g: n('sc-prot'), carbs_g: n('sc-carb'), fat_g: n('sc-fat'),
+        source: 'photo', items: r.items
+      }, today);
+    });
+  }
+
+  function sheetAddMeal(today) {
+    var chips = '<div class="flex flex-wrap gap-2 mt-2">' + QUICK_FOODS.map(function (f, i) {
       return '<button type="button" data-food="' + i + '" class="px-3 py-1.5 rounded-full bg-surface-container-high border border-outline-variant/30 text-[11px] font-semibold text-on-surface active:scale-95 transition-all">+ ' + f.name + '<span class="text-on-surface-variant"> · ' + f.kcal + 'k/' + f.protein + 'g</span></button>';
     }).join('') + '</div>';
-
-    openSheet('Log nutrition',
-      '<div class="bg-surface-container-lowest border border-outline-variant/25 rounded-xl p-3.5 mb-4">' +
-        macroBar('mb-kcal', 'Calories', 'kcal', KCAL_TARGET, '#ffb95f') +
-        macroBar('mb-prot', 'Protein', 'g', PROTEIN_TARGET, '#50e3a4') +
-        macroBar('mb-water', 'Hydration', 'L', HYDRATION_TARGET_L, '#16c8ee') +
+    openSheet('Add meal',
+      inputField('mm-name', 'What did you eat?', { placeholder: 'e.g. Paneer wrap' }) +
+      inputField('mm-portion', 'Portion (optional)', { placeholder: 'e.g. 1 plate / 200 g' }) +
+      (aiOn() ? '<label class="block mb-4"><span class="block font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest mb-1.5">Or describe it (AI)</span>' +
+        '<div class="flex gap-2"><input id="mm-desc" type="text" autocomplete="off" placeholder="e.g. 2 eggs, rice, dal" class="flex-1 min-w-0 bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-3.5 py-3 text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none min-h-[46px]"><button type="button" id="mm-est" class="px-3 shrink-0 bg-primary/10 border border-primary/30 text-primary rounded-lg text-[12px] font-semibold flex items-center gap-1 min-h-[46px]"><span class="material-symbols-outlined text-[16px]">auto_awesome</span>Estimate</button></div>' +
+        '<div id="mm-est-out" class="mt-1.5"></div></label>' : '') +
+      '<div class="grid grid-cols-2 gap-3">' +
+      inputField('mm-kcal', 'Calories (kcal)', { type: 'number', min: 0, inputmode: 'numeric' }) +
+      inputField('mm-prot', 'Protein (g)', { type: 'number', step: '0.1', min: 0, inputmode: 'decimal' }) +
+      inputField('mm-carb', 'Carbs (g)', { type: 'number', step: '0.1', min: 0, inputmode: 'decimal' }) +
+      inputField('mm-fat', 'Fat (g)', { type: 'number', step: '0.1', min: 0, inputmode: 'decimal' }) +
       '</div>' +
-      (aiOn() ? '<label class="block mb-3"><span class="block font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest mb-1.5">Describe your meal (AI)</span>' +
-        '<div class="flex gap-2"><input id="f-meal" type="text" autocomplete="off" placeholder="e.g. 2 eggs, rice, dal" class="flex-1 bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-3.5 py-3 text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none min-h-[46px]"><button type="button" id="f-est" class="px-3 shrink-0 bg-primary/10 border border-primary/30 text-primary rounded-lg text-[12px] font-semibold flex items-center gap-1 min-h-[46px]"><span class="material-symbols-outlined text-[16px]">auto_awesome</span>Estimate</button></div>' +
-        '<div id="f-est-out" class="mt-1.5"></div></label>' : '') +
-      inputField('f-cal', 'Calories (kcal)', { type: 'number', min: 0, inputmode: 'numeric', value: current.calories }) +
-      inputField('f-protein', 'Protein (g)', { type: 'number', step: '0.1', min: 0, inputmode: 'decimal', value: current.protein_g }) +
-      inputField('f-water', 'Hydration (L)', { type: 'number', step: '0.1', min: 0, inputmode: 'decimal', value: current.water_ml ? (Math.round(current.water_ml / 100) / 10) : '' }) +
-      '<div class="mt-1"><span class="block font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest mb-1.5">Quick add</span>' + foodChips + '</div>',
-      primaryBtn('f-save', 'SAVE', 'check'));
-
-    function n(id) { var el = document.getElementById(id); return el ? (Number(el.value) || 0) : 0; }
-    function setBar(id, val, target, unit) {
-      var pct = target > 0 ? Math.min(100, Math.round(val / target * 100)) : 0;
-      var fill = document.getElementById(id + '-fill'); if (fill) fill.style.width = pct + '%';
-      var txt = document.getElementById(id + '-txt'); if (txt) txt.textContent = (Math.round(val * 10) / 10) + ' / ' + target + ' ' + unit;
-    }
-    function updateMacros() {
-      setBar('mb-kcal', n('f-cal'), KCAL_TARGET, 'kcal');
-      setBar('mb-prot', n('f-protein'), PROTEIN_TARGET, 'g');
-      setBar('mb-water', n('f-water'), HYDRATION_TARGET_L, 'L');
-    }
-    ['f-cal', 'f-protein', 'f-water'].forEach(function (id) {
-      var el = document.getElementById(id); if (el) el.addEventListener('input', updateMacros);
-    });
-    // Quick-add chips accumulate onto the running totals + refresh bars live.
+      '<div class="mt-1"><span class="block font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest mb-1.5">Quick picks</span>' + chips + '</div>',
+      primaryBtn('mm-save', 'LOG MEAL', 'check'));
+    function n(id) { var f = document.getElementById(id); return f ? (Number(f.value) || 0) : 0; }
+    // Quick-pick chips build the meal: append the food name, accumulate kcal/protein.
     Array.prototype.forEach.call(document.querySelectorAll('[data-food]'), function (btn) {
       btn.addEventListener('click', function () {
         var f = QUICK_FOODS[Number(btn.getAttribute('data-food'))];
-        document.getElementById('f-cal').value = n('f-cal') + f.kcal;
-        document.getElementById('f-protein').value = Math.round((n('f-protein') + f.protein) * 10) / 10;
-        updateMacros();
+        var nameEl = document.getElementById('mm-name');
+        nameEl.value = (nameEl.value ? nameEl.value + ', ' + f.name : f.name).slice(0, 120);
+        document.getElementById('mm-kcal').value = n('mm-kcal') + f.kcal;
+        document.getElementById('mm-prot').value = Math.round((n('mm-prot') + f.protein) * 10) / 10;
       });
     });
-    updateMacros();
-
-    var est = document.getElementById('f-est');
+    var est = document.getElementById('mm-est');
     if (est) est.addEventListener('click', function () {
-      var q = document.getElementById('f-meal').value.trim();
+      var q = document.getElementById('mm-desc').value.trim();
       if (!q) { window.toast('Describe your meal first', 'warning'); return; }
-      var out = document.getElementById('f-est-out');
+      var out = document.getElementById('mm-est-out');
       out.innerHTML = '<div class="text-body-sm text-on-surface-variant py-1">Estimating…</div>';
       window.GymAI.service.estimateMeal(q).then(function (r) {
         var e = r.estimate || {};
-        if (e.calories) document.getElementById('f-cal').value = n('f-cal') + Number(e.calories);
-        if (e.protein) document.getElementById('f-protein').value = Math.round((n('f-protein') + Number(e.protein)) * 10) / 10;
-        updateMacros();
-        out.innerHTML = '<div class="text-[11px] text-on-surface-variant">AI estimate (' + (e.confidence || 'Low') + ' confidence) added — review &amp; adjust.</div>';
+        if (e.calories) document.getElementById('mm-kcal').value = Math.round(Number(e.calories));
+        if (e.protein) document.getElementById('mm-prot').value = Math.round(Number(e.protein) * 10) / 10;
+        var nameEl = document.getElementById('mm-name');
+        if (!nameEl.value) nameEl.value = q.slice(0, 120);
+        out.innerHTML = '<div class="text-[11px] text-on-surface-variant">AI estimate (' + (e.confidence || 'Low') + ' confidence) filled in — review &amp; adjust.</div>';
       }).catch(function () { out.innerHTML = ''; });
     });
-    document.getElementById('f-save').addEventListener('click', function () {
-      var payload = { calories: n('f-cal'), protein_g: n('f-protein') };
-      var waterField = document.getElementById('f-water');
-      if (waterField && waterField.value !== '') payload.water_ml = Math.round(n('f-water') * 1000);
-      closeSheet(); logHealth(payload, current);
+    document.getElementById('mm-save').addEventListener('click', function () {
+      var meal = {
+        name: (document.getElementById('mm-name').value.trim() || 'Meal').slice(0, 120),
+        calories: Math.round(n('mm-kcal')), protein_g: n('mm-prot'),
+        carbs_g: n('mm-carb'), fat_g: n('mm-fat'), source: 'manual'
+      };
+      var portion = document.getElementById('mm-portion').value.trim();
+      if (portion) meal.portion = portion.slice(0, 80);
+      saveMeal(meal, today);
+    });
+  }
+
+  // Persist the meal row (online-only), then accumulate onto the day's totals
+  // through the offline-first health repo — logHealth() also re-renders #/diet.
+  function saveMeal(meal, today) {
+    if (!(meal.calories > 0)) { window.toast('Enter the calories first.', 'warning'); return; }
+    if (navigator.onLine === false) { window.toast('You\'re offline — meal logging needs a connection. Your other data still syncs automatically.', 'warning'); return; }
+    var btn = document.getElementById('sc-log') || document.getElementById('mm-save');
+    if (btn) btn.disabled = true;
+    meal.log_date = todayStr();
+    window.api.post('/member/nutrition', meal)
+      .then(function (r) {
+        if (!r || r.error) throw new Error((r && r.error) || 'Could not save the meal.');
+        bustMealCache();
+        closeSheet();
+        logHealth({
+          calories: num(today.calories) + meal.calories,
+          protein_g: Math.round((num(today.protein_g) + meal.protein_g) * 10) / 10
+        }, today);
+      })
+      .catch(function (e) {
+        if (btn) btn.disabled = false;
+        window.toast((e && e.message) || 'Could not save the meal — check your connection.', 'error');
+      });
+  }
+
+  function deleteMeal(m, today) {
+    window.confirmDialog('Delete "' + (m.name || 'this meal') + '" and remove its calories from today?', { danger: true, confirmText: 'Delete' }).then(function (ok) {
+      if (!ok) return;
+      if (navigator.onLine === false) { window.toast('You\'re offline — try deleting once you\'re back online.', 'warning'); return; }
+      window.api.delete('/member/nutrition/' + encodeURIComponent(m.id))
+        .then(function (r) {
+          if (!r || r.error) throw new Error((r && r.error) || 'Could not delete the meal.');
+          bustMealCache();
+          logHealth({
+            calories: Math.max(0, num(today.calories) - num(m.calories)),
+            protein_g: Math.max(0, Math.round((num(today.protein_g) - num(m.protein_g)) * 10) / 10)
+          }, today);
+        })
+        .catch(function (e) { window.toast((e && e.message) || 'Could not delete the meal.', 'error'); });
     });
   }
 

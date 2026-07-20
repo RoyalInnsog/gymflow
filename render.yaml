@@ -10,7 +10,7 @@ services:
     env: node
     plan: free
     region: singapore            # closest Render region to India
-    buildCommand: npm install
+    buildCommand: npm install --omit=dev   # skip dev-only deps (sqlite3 & its vulnerable build chain); prod uses Turso
     startCommand: node server.js
     healthCheckPath: /
     envVars:
@@ -30,3 +30,5 @@ services:
         sync: false              # paste from Turso
       - key: APP_BASE_URL
         sync: false              # set to the final https://<name>.onrender.com
+      - key: GEMINI_API_KEY
+        sync: false              # Google AI Studio key — food-photo calorie scanner

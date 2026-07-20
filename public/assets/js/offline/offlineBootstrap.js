@@ -77,8 +77,42 @@
   //    assets are already local files, so the SW app-shell cache adds nothing
   //    but staleness (sw.js isn't shipped in the bundle at all).
   if ('serviceWorker' in navigator && !self.__NATIVE_SHELL__) {
+    // A new sw.js version installs but WAITS (no auto skipWaiting). Show a small
+    // "Update ready" banner; tapping it activates the new worker, and the
+    // controllerchange listener below reloads the page onto the new version.
+    // Plain DOM (no window.toast dependency — it may not be loaded yet).
+    var showUpdateBanner = function (reg) {
+      if (document.getElementById('gf-update-banner')) return;
+      var b = document.createElement('button');
+      b.id = 'gf-update-banner';
+      b.textContent = 'Update ready — tap to refresh';
+      b.setAttribute('style',
+        'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(72px + env(safe-area-inset-bottom));' +
+        'z-index:9999;background:#0f172a;color:#fff;border:1px solid rgba(255,255,255,.25);' +
+        'border-radius:9999px;padding:10px 18px;font:600 13px Inter,system-ui,sans-serif;' +
+        'box-shadow:0 8px 24px rgba(0,0,0,.45);cursor:pointer');
+      b.onclick = function () {
+        b.disabled = true;
+        b.textContent = 'Updating…';
+        if (reg.waiting) reg.waiting.postMessage('gymflow-skip-waiting');
+      };
+      document.body.appendChild(b);
+    };
+    var watchForUpdate = function (reg) {
+      if (!reg) return;
+      if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg);
+      reg.addEventListener('updatefound', function () {
+        var w = reg.installing;
+        if (!w) return;
+        w.addEventListener('statechange', function () {
+          if (w.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner(reg);
+        });
+      });
+    };
     self.addEventListener('load', function () {
-      navigator.serviceWorker.register('/sw.js').catch(function () { /* no PWA, app still works */ });
+      navigator.serviceWorker.register('/sw.js')
+        .then(watchForUpdate)
+        .catch(function () { /* no PWA, app still works */ });
     });
 
     // Auto-update page when the active service worker updates/changes

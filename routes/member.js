@@ -589,6 +589,110 @@ router.delete('/goals/:id', requireLinked, async (req, res) => {
   }
 });
 
+// ---- nutrition / diet (meal ledger + AI photo scan) ----------------------------
+// Meals are ONLINE-ONLY writes (unregistered in the offline route registry, so
+// the shim passes them through — never faked). The daily calories/protein totals
+// in health_logs remain the client's job: after each meal write it accumulates
+// through the offline-first health repo, so Home/Progress stay consistent.
+router.get('/nutrition', requireLinked, async (req, res) => {
+  try {
+    const logDate = dateStr(req.query.log_date) || getTodayString();
+    const rows = await allQuery(
+      `SELECT * FROM nutrition_logs WHERE tenant_id = ? AND member_id = ? AND log_date = ?
+        ORDER BY created_at DESC`,
+      [req.tenant_id, req.member_id, logDate]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('Member nutrition list error:', err);
+    res.status(500).json({ error: 'Failed to load meals.' });
+  }
+});
+
+router.post('/nutrition', requireLinked, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const calories = num(b.calories);
+    if (calories === null || calories < 0 || calories > 10000) {
+      return res.status(400).json({ error: 'Calories must be between 0 and 10000.' });
+    }
+    const items = Array.isArray(b.items) ? b.items.slice(0, 12).map(i => ({
+      name: str(i && i.name, 120) || 'Item',
+      portion: str(i && i.portion, 80),
+      calories: num(i && i.calories) || 0,
+      protein_g: num(i && i.protein_g) || 0,
+      carbs_g: num(i && i.carbs_g) || 0,
+      fat_g: num(i && i.fat_g) || 0
+    })) : [];
+    const id = newId('nl');
+    await runQuery(
+      `INSERT INTO nutrition_logs (id, tenant_id, member_id, log_date, name, portion, calories, protein_g, carbs_g, fat_g, source, items_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, req.tenant_id, req.member_id,
+       dateStr(b.log_date) || getTodayString(),
+       str(b.name, 120) || 'Meal', str(b.portion, 80),
+       Math.round(calories), num(b.protein_g) || 0, num(b.carbs_g) || 0, num(b.fat_g) || 0,
+       b.source === 'photo' ? 'photo' : 'manual',
+       items.length ? JSON.stringify(items) : null]
+    );
+    res.status(201).json(await getQuery(`SELECT * FROM nutrition_logs WHERE id = ?`, [id]));
+  } catch (err) {
+    console.error('Member nutrition create error:', err);
+    res.status(500).json({ error: 'Failed to log meal.' });
+  }
+});
+
+router.delete('/nutrition/:id', requireLinked, async (req, res) => {
+  try {
+    const r = await runQuery(
+      `DELETE FROM nutrition_logs WHERE id = ? AND tenant_id = ? AND member_id = ?`,
+      [req.params.id, req.tenant_id, req.member_id]
+    );
+    if (!r || !r.changes) return res.status(404).json({ error: 'Meal not found.' });
+    res.json({ message: 'Meal deleted.' });
+  } catch (err) {
+    console.error('Member nutrition delete error:', err);
+    res.status(500).json({ error: 'Failed to delete meal.' });
+  }
+});
+
+// AI photo scan — proxies to Gemini via lib/nutritionAI (key stays server-side).
+// ponytail: in-memory per-member daily scan cap; move to a DB counter if the app
+// ever runs multi-instance.
+const SCAN_CAP_PER_DAY = 25;
+const scanCounts = new Map(); // member_id -> { day, count }
+router.post('/nutrition/analyze', requireLinked, async (req, res) => {
+  try {
+    const today = getTodayString();
+    const c = scanCounts.get(req.member_id);
+    const count = (c && c.day === today) ? c.count : 0;
+    if (count >= SCAN_CAP_PER_DAY) {
+      return res.status(429).json({ error: `Daily scan limit reached (${SCAN_CAP_PER_DAY}/day) — log this one manually.` });
+    }
+
+    const raw = String((req.body && req.body.image) || '');
+    // Accept a data URL ("data:image/jpeg;base64,....") or bare base64 + mime.
+    let mime = str(req.body && req.body.mime, 30) || 'image/jpeg';
+    let base64 = raw;
+    const m = raw.match(/^data:([a-z/+.-]+);base64,(.+)$/i);
+    if (m) { mime = m[1].toLowerCase(); base64 = m[2]; }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(mime)) {
+      return res.status(400).json({ error: 'Use a JPEG, PNG or WebP photo.' });
+    }
+    if (base64.length < 100 || base64.length > 6 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Photo is missing or too large.' });
+    }
+
+    const result = await require('../lib/nutritionAI').analyzeFoodImage(base64, mime);
+    scanCounts.set(req.member_id, { day: today, count: count + 1 });
+    res.json(result);
+  } catch (err) {
+    if (err && err.status) return res.status(err.status).json({ error: err.message });
+    console.error('Member nutrition analyze error:', err);
+    res.status(500).json({ error: 'Failed to analyze the photo.' });
+  }
+});
+
 // Unknown /member/* paths end HERE with a clean 404 instead of falling through
 // to the staff router (which would answer 403 and confuse the client).
 router.use((req, res) => res.status(404).json({ error: 'Not found.' }));

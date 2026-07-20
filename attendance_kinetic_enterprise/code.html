@@ -62,7 +62,19 @@
             border-radius: 10px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: theme('colors.outline-variant'); 
+            background: theme('colors.outline-variant');
+        }
+
+        /* Leaflet map — dark theme adaptation (tiles only; controls stay untouched) */
+        #geo-map .leaflet-tile-pane {
+            filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.65);
+        }
+        #geo-map .leaflet-control-attribution {
+            background: rgba(0, 0, 0, 0.6);
+            color: rgba(255, 255, 255, 0.55);
+        }
+        #geo-map .leaflet-control-attribution a {
+            color: rgba(255, 255, 255, 0.75);
         }
     </style>
 
@@ -190,6 +202,10 @@
 </select>
 </div>
 </div>
+<div class="mt-4">
+<div id="geo-map" class="w-full h-64 md:h-72 rounded-xl border border-surface-container-high bg-surface-container overflow-hidden relative z-0"></div>
+<p id="geo-map-note" class="font-body-sm text-body-sm text-on-surface-variant mt-1.5">Drag the marker or tap the map to set the gym location — the coordinates above update automatically.</p>
+</div>
 <div class="flex flex-wrap items-center gap-3 mt-4">
 <button id="geo-use-current" type="button" class="bg-surface-container border border-outline-variant text-on-surface px-4 py-2 rounded-lg font-body-sm hover:bg-surface-container-high transition-colors flex items-center gap-2">
 <span class="material-symbols-outlined text-[18px]">gps_fixed</span> Use my current location
@@ -263,6 +279,49 @@
 </div>
 </div>
 </main>
+
+<!-- QR Scanner Overlay -->
+<div id="qr-overlay" class="fixed inset-0 z-[70] bg-black hidden">
+<video id="qr-video" class="absolute inset-0 w-full h-full object-cover" autoplay playsinline muted></video>
+<button id="qr-close" type="button" aria-label="Close scanner" class="absolute top-4 right-4 z-30 w-11 h-11 rounded-full bg-black/60 border border-white/20 text-white flex items-center justify-center hover:bg-black/80 transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+<div id="qr-scan-ui" class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-6 px-6">
+<div class="w-64 h-64 max-w-[70vw] max-h-[70vw] rounded-2xl border-2 border-primary shadow-[0_0_0_9999px_rgba(0,0,0,0.55)] relative">
+<div class="absolute left-3 right-3 top-1/2 h-0.5 bg-primary/70 animate-pulse"></div>
+</div>
+<p id="qr-hint" class="font-body-md text-body-md text-white/90 text-center max-w-xs" role="status" aria-live="polite">Point the camera at a member QR code</p>
+<button id="qr-manual-fallback" type="button" class="bg-white/10 border border-white/20 text-white px-4 py-2 rounded-lg font-body-sm hover:bg-white/20 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">keyboard</span> Enter ID instead
+</button>
+</div>
+<div id="qr-success" class="absolute inset-0 z-20 hidden flex-col items-center justify-center gap-3 bg-black/85 px-6 text-center">
+<span class="material-symbols-outlined text-primary" style="font-size:96px">check_circle</span>
+<div id="qr-success-name" class="font-headline-md text-headline-md text-white"></div>
+<div class="font-body-sm text-body-sm text-white/70">Checked in successfully</div>
+</div>
+</div>
+
+<!-- Manual Entry — Member Picker Sheet -->
+<div id="member-picker" class="fixed inset-0 z-[60] hidden">
+<div id="mp-backdrop" class="absolute inset-0 bg-black/60"></div>
+<div class="absolute inset-x-0 bottom-0 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[480px] bg-surface-container-lowest border border-surface-container-high rounded-t-2xl md:rounded-xl flex flex-col max-h-[80vh] md:max-h-[70vh] shadow-2xl">
+<div class="flex items-center justify-between p-4 border-b border-surface-container-high shrink-0">
+<h3 class="font-title-md text-on-surface font-semibold">Manual Check-in</h3>
+<button id="mp-close" type="button" aria-label="Close" class="w-9 h-9 rounded-full hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="p-4 pb-2 shrink-0">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input id="mp-search" type="text" placeholder="Search by name or phone…" autocomplete="off" class="w-full bg-surface-container border border-outline-variant rounded-lg pl-10 pr-3 py-2.5 font-body-md text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
+</div>
+</div>
+<div id="mp-list" class="overflow-y-auto px-2 pb-4 flex flex-col gap-1 min-h-[200px]"></div>
+</div>
+</div>
+
 <!-- BottomNavBar (Mobile Only) -->
 
 <script>
@@ -347,66 +406,301 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Handle Manual Check-in
-  const buttons = Array.from(document.querySelectorAll('button'));
-  const manualBtn = buttons.find(b => b.textContent.includes('Manual Entry'));
-  if (manualBtn) {
-    manualBtn.onclick = async (e) => {
-      e.preventDefault();
-      const phoneInput = await window.promptDialog('Enter the member\'s phone number to check them in.', { title: 'Phone Check-In', placeholder: 'e.g. +91 98765 00003', inputType: 'tel', confirmText: 'Check In', required: true });
-      if (!phoneInput) return;
-      
-      try {
-        const response = await window.api.fetch('/attendance/check-in', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: phoneInput })
-        });
-        
-        const resData = await response.json();
-        if (response.ok) {
-          alert(resData.message);
-          loadSummary();
-          loadLogs();
-        } else {
-          alert(resData.error || 'Check-in failed.');
-        }
-      } catch (err) {
-        console.error(err);
-        alert('Check-in system offline.');
-      }
-    };
+  const $id = (i) => document.getElementById(i);
+  const notify = (msg, tone) => (window.toast ? window.toast(msg, tone) : alert(msg));
+
+  // Shared check-in call — QR, picker and fallback prompt all route through here.
+  async function checkInMember(memberId) {
+    const response = await window.api.fetch('/attendance/check-in', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_id: memberId })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Check-in failed.');
+    loadSummary();
+    loadLogs();
+    return data;
   }
 
-  // Handle Scan QR
-  const qrBtn = buttons.find(b => b.textContent.includes('Scan Member QR'));
-  if (qrBtn) {
-    qrBtn.onclick = async (e) => {
-      e.preventDefault();
-      const memberId = await window.promptDialog('Enter the member ID to check in.', { title: 'QR / ID Check-In', placeholder: 'e.g. m1, m2, m3', confirmText: 'Check In', required: true });
-      if (!memberId) return;
-      
-      try {
-        const response = await window.api.fetch('/attendance/check-in', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ member_id: memberId })
-        });
-        
-        const resData = await response.json();
-        if (response.ok) {
-          alert(resData.message);
-          loadSummary();
-          loadLogs();
-        } else {
-          alert(resData.error || 'QR verification failed.');
-        }
-      } catch (err) {
-        console.error(err);
-        alert('QR check-in offline.');
-      }
-    };
+  // Old prompt flow, kept as the no-camera fallback.
+  async function promptMemberId() {
+    const memberId = await window.promptDialog('Enter the member ID to check in.', { title: 'QR / ID Check-In', placeholder: 'e.g. m1, m2, m3', confirmText: 'Check In', required: true });
+    if (!memberId) return;
+    try {
+      const data = await checkInMember(String(memberId).trim());
+      notify(data.message || 'Checked in.', 'success');
+    } catch (err) {
+      notify(err.message, 'error');
+    }
   }
+
+  // ── Camera QR scanner ──
+  const qrScanner = (() => {
+    const overlay = $id('qr-overlay'), video = $id('qr-video'), hint = $id('qr-hint');
+    let stream = null, running = false, detector = null, canvas = null, ctx = null;
+    let lastValue = '', lastAt = 0, busy = false, jsqrPromise = null;
+
+    function setHint(msg, isError) {
+      hint.textContent = msg;
+      hint.className = 'font-body-md text-body-md text-center max-w-xs ' + (isError ? 'text-error' : 'text-white/90');
+    }
+
+    // Accept: raw id | {"member_id":"..."} | gymflow:checkin:<id>
+    function parsePayload(text) {
+      text = String(text || '').trim();
+      const m = text.match(/^gymflow:checkin:(.+)$/i);
+      if (m) return m[1].trim();
+      if (text.startsWith('{')) {
+        try {
+          const o = JSON.parse(text);
+          if (o && o.member_id != null) return String(o.member_id).trim();
+        } catch (e) {}
+        return '';
+      }
+      return text;
+    }
+
+    function loadJsQR() {
+      if (window.jsQR) return Promise.resolve();
+      if (!jsqrPromise) {
+        jsqrPromise = new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js';
+          s.onload = resolve;
+          s.onerror = () => { jsqrPromise = null; reject(new Error('jsQR load failed')); };
+          document.head.appendChild(s);
+        });
+      }
+      return jsqrPromise;
+    }
+
+    function stopCamera() {
+      running = false;
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      video.srcObject = null;
+    }
+
+    function close() {
+      stopCamera();
+      overlay.classList.add('hidden');
+    }
+
+    function cameraFail(msg) {
+      stopCamera();
+      setHint(msg + ' Use "Enter ID instead" below.', true);
+    }
+
+    async function open() {
+      overlay.classList.remove('hidden');
+      $id('qr-success').classList.add('hidden');
+      $id('qr-success').classList.remove('flex');
+      $id('qr-scan-ui').classList.remove('hidden');
+      setHint('Point the camera at a member QR code');
+      lastValue = ''; lastAt = 0; busy = false;
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        cameraFail('Camera is not available on this device or connection.');
+        return;
+      }
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      } catch (e) {
+        cameraFail(e && e.name === 'NotAllowedError'
+          ? 'Camera permission denied.'
+          : 'Could not start the camera.');
+        return;
+      }
+      // Overlay was closed while the permission prompt was up — release the camera.
+      if (overlay.classList.contains('hidden')) { stopCamera(); return; }
+      video.srcObject = stream;
+      try { await video.play(); } catch (e) {}
+
+      detector = null;
+      if ('BarcodeDetector' in window) {
+        try { detector = new window.BarcodeDetector({ formats: ['qr_code'] }); } catch (e) { detector = null; }
+      }
+      if (!detector) {
+        try { await loadJsQR(); } catch (e) { cameraFail('QR decoder failed to load — are you offline?'); return; }
+      }
+      running = true;
+      scanLoop();
+    }
+
+    async function scanLoop() {
+      if (!running) return;
+      if (!busy && video.readyState >= 2) {
+        let text = '';
+        try {
+          if (detector) {
+            const codes = await detector.detect(video);
+            if (codes && codes.length) text = codes[0].rawValue;
+          } else if (window.jsQR) {
+            if (!canvas) {
+              canvas = document.createElement('canvas');
+              ctx = canvas.getContext('2d', { willReadFrequently: true });
+            }
+            const scale = Math.min(1, 480 / (video.videoWidth || 480));
+            canvas.width = Math.max(1, Math.round((video.videoWidth || 480) * scale));
+            canvas.height = Math.max(1, Math.round((video.videoHeight || 360) * scale));
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = window.jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+            if (code && code.data) text = code.data;
+          }
+        } catch (e) { /* transient decode error — keep scanning */ }
+        if (text) await onDecode(text);
+      }
+      if (running) setTimeout(scanLoop, 200);
+    }
+
+    async function onDecode(text) {
+      const now = Date.now();
+      if (text === lastValue && now - lastAt < 4000) return; // debounce repeat decodes
+      lastValue = text; lastAt = now;
+      const id = parsePayload(text);
+      if (!id) { setHint('Unrecognised QR code — try again.', true); return; }
+      busy = true;
+      setHint('Checking in…');
+      try {
+        const data = await checkInMember(id);
+        stopCamera();
+        const name = (data.member && data.member.full_name) || 'Member';
+        $id('qr-success-name').textContent = name;
+        $id('qr-scan-ui').classList.add('hidden');
+        const s = $id('qr-success');
+        s.classList.remove('hidden');
+        s.classList.add('flex');
+        notify(data.message || ('Checked in ' + name), 'success');
+        setTimeout(close, 1600);
+      } catch (err) {
+        setHint((err && err.message) || 'Check-in failed — scan again.', true);
+        busy = false;
+      }
+    }
+
+    return { open, close, isOpen: () => !overlay.classList.contains('hidden') };
+  })();
+
+  $id('qr-close').onclick = () => qrScanner.close();
+  $id('qr-manual-fallback').onclick = () => { qrScanner.close(); promptMemberId(); };
+
+  // ── Manual Entry — member picker sheet ──
+  const memberPicker = (() => {
+    const root = $id('member-picker'), list = $id('mp-list'), searchEl = $id('mp-search');
+    let members = null;
+
+    function statusBadge(m) {
+      if (m.status === 'Expired') return '<span class="font-label-caps text-label-caps text-error bg-error/10 px-2 py-0.5 rounded shrink-0">Expired</span>';
+      if (m.status === 'Frozen') return '<span class="font-label-caps text-label-caps text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded shrink-0">Frozen</span>';
+      return '<span class="font-label-caps text-label-caps text-primary bg-primary/10 px-2 py-0.5 rounded shrink-0">Active</span>';
+    }
+
+    function render(filter) {
+      if (!members) {
+        list.innerHTML = '<div class="p-6 text-center font-body-sm text-on-surface-variant">Loading members…</div>';
+        return;
+      }
+      const q = (filter || '').trim().toLowerCase();
+      let rows = members;
+      if (q) rows = members.filter(m => (m.full_name || '').toLowerCase().includes(q) || (m.phone || '').toLowerCase().includes(q));
+      if (!rows.length) {
+        list.innerHTML = '<div class="p-6 text-center font-body-sm text-on-surface-variant">No members match your search.</div>';
+        return;
+      }
+      const shown = rows.slice(0, 100);
+      list.innerHTML = shown.map(m => {
+        const expired = m.status === 'Expired';
+        const initial = esc(((m.full_name || '?').trim().charAt(0) || '?').toUpperCase());
+        return `<button type="button" data-id="${esc(m.id)}" ${expired ? 'data-expired="1"' : ''} class="mp-row w-full text-left flex items-center justify-between gap-3 p-3 rounded-lg border border-transparent transition-colors focus:outline-none ${expired ? 'opacity-50 cursor-not-allowed' : 'hover:bg-surface-container-high/50 hover:border-surface-container-highest focus:bg-surface-container-high/50 focus:border-surface-container-highest'}">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center font-title-md text-on-surface shrink-0">${initial}</div>
+            <div class="min-w-0">
+              <div class="font-body-md text-body-md text-on-surface font-medium truncate">${esc(m.full_name || 'Unknown')}</div>
+              <div class="font-body-sm text-body-sm text-on-surface-variant truncate">${esc(m.phone || '—')}</div>
+            </div>
+          </div>
+          ${statusBadge(m)}
+        </button>`;
+      }).join('') + (rows.length > shown.length
+        ? `<div class="p-3 text-center font-body-sm text-on-surface-variant">${rows.length - shown.length} more — refine your search</div>` : '');
+    }
+
+    async function open() {
+      root.classList.remove('hidden');
+      searchEl.value = '';
+      members = null;
+      render();
+      setTimeout(() => searchEl.focus(), 50);
+      try {
+        const data = await window.api.get('/members');
+        members = Array.isArray(data) ? data : [];
+      } catch (e) {
+        members = [];
+      }
+      render(searchEl.value);
+    }
+
+    function close() { root.classList.add('hidden'); }
+
+    list.addEventListener('click', async (e) => {
+      const row = e.target.closest('.mp-row');
+      if (!row) return;
+      const m = (members || []).find(x => String(x.id) === row.dataset.id);
+      if (!m) return;
+      if (m.status === 'Expired') {
+        notify('Membership expired — check-in is blocked for ' + m.full_name + '.', 'error');
+        return;
+      }
+      const ok = await window.confirmDialog(`Check in ${m.full_name}?`, { title: 'Confirm Check-in', confirmText: 'Check In' });
+      if (!ok) return;
+      try {
+        const data = await checkInMember(m.id);
+        notify(data.message || ('Checked in ' + m.full_name), 'success');
+        close();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    });
+
+    searchEl.addEventListener('input', () => render(searchEl.value));
+    searchEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const first = list.querySelector('.mp-row:not([data-expired])');
+        if (first) first.click();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const first = list.querySelector('.mp-row');
+        if (first) first.focus();
+      }
+    });
+    list.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      e.preventDefault();
+      const rows = Array.from(list.querySelectorAll('.mp-row'));
+      const i = rows.indexOf(document.activeElement);
+      const next = rows[i + (e.key === 'ArrowDown' ? 1 : -1)];
+      if (next) next.focus();
+      else if (e.key === 'ArrowUp') searchEl.focus();
+    });
+    $id('mp-close').onclick = close;
+    $id('mp-backdrop').onclick = close;
+
+    return { open, close, isOpen: () => !root.classList.contains('hidden') };
+  })();
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (qrScanner.isOpen()) qrScanner.close();
+    else if (memberPicker.isOpen()) memberPicker.close();
+  });
+
+  // Wire the two primary action buttons.
+  const buttons = Array.from(document.querySelectorAll('button'));
+  const manualBtn = buttons.find(b => b.textContent.includes('Manual Entry'));
+  if (manualBtn) manualBtn.onclick = (e) => { e.preventDefault(); memberPicker.open(); };
+  const qrBtn = buttons.find(b => b.textContent.includes('Scan Member QR'));
+  if (qrBtn) qrBtn.onclick = (e) => { e.preventDefault(); qrScanner.open(); };
 
   // ── Geofenced Auto Check-in — admin configuration + test ──
   (function initGeofenceConfig() {
@@ -415,6 +709,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!enabledEl) return; // card not on this page
     var latEl = byId('geo-lat'), lngEl = byId('geo-lng'), radiusEl = byId('geo-radius'), unitEl = byId('geo-unit');
     var statusEl = byId('geo-status');
+    // Reassigned by the map module once Leaflet is up; safe no-op before that.
+    var syncMapFromInputs = function () {};
 
     function setStatus(msg, tone) {
       if (!statusEl) return;
@@ -423,8 +719,9 @@ document.addEventListener("DOMContentLoaded", () => {
         (tone === 'error' ? 'text-error' : tone === 'ok' ? 'text-secondary' : 'text-on-surface-variant');
     }
 
-    // Load existing config into the form.
-    window.api.get('/attendance/geofence').then(function (c) {
+    // Load existing config into the form. The promise is kept so the lazy map
+    // init can wait for saved coordinates before choosing its start position.
+    var cfgLoaded = window.api.get('/attendance/geofence').then(function (c) {
       if (!c) return;
       enabledEl.checked = !!c.enabled;
       if (c.latitude != null) latEl.value = c.latitude;
@@ -440,6 +737,7 @@ document.addEventListener("DOMContentLoaded", () => {
       navigator.geolocation.getCurrentPosition(function (p) {
         latEl.value = p.coords.latitude.toFixed(6);
         lngEl.value = p.coords.longitude.toFixed(6);
+        syncMapFromInputs(true);
         setStatus('Location captured (±' + Math.round(p.coords.accuracy) + ' m).', 'ok');
       }, function (err) {
         setStatus('Could not get location: ' + (err && err.message || 'permission denied'), 'error');
@@ -499,6 +797,137 @@ document.addEventListener("DOMContentLoaded", () => {
         setStatus('Could not get location: ' + (err && err.message || ''), 'error');
       }, { enableHighAccuracy: true, timeout: 15000 });
     };
+
+    // ── Interactive map picker (Leaflet, lazy-loaded when the map scrolls into view) ──
+    (function initGeoMap() {
+      var mapEl = byId('geo-map');
+      if (!mapEl) return;
+      var noteEl = byId('geo-map-note');
+      var map = null, marker = null, circle = null, writing = false;
+
+      function radiusMeters() {
+        var r = parseFloat(radiusEl.value);
+        if (isNaN(r) || r <= 0) return 50;
+        return unitEl.value === 'ft' ? r * 0.3048 : r;
+      }
+
+      // Resolve the theme's primary colour so the marker/circle match the design.
+      function themeColor() {
+        var probe = document.createElement('span');
+        probe.className = 'text-primary';
+        probe.style.display = 'none';
+        document.body.appendChild(probe);
+        var c = getComputedStyle(probe).color;
+        probe.remove();
+        return c || '#4ade80';
+      }
+
+      function writeInputs(lat, lng) {
+        writing = true;
+        latEl.value = lat.toFixed(6);
+        lngEl.value = lng.toFixed(6);
+        writing = false;
+      }
+
+      function placeAt(lat, lng, recenter) {
+        if (!map) return;
+        marker.setLatLng([lat, lng]);
+        circle.setLatLng([lat, lng]);
+        if (recenter) map.setView([lat, lng], Math.max(map.getZoom(), 15));
+      }
+
+      function loadLeaflet() {
+        return new Promise(function (resolve, reject) {
+          if (window.L) return resolve();
+          var css = document.createElement('link');
+          css.rel = 'stylesheet';
+          css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+          document.head.appendChild(css);
+          var s = document.createElement('script');
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+          s.onload = function () { resolve(); };
+          s.onerror = function () { reject(new Error('leaflet load failed')); };
+          document.head.appendChild(s);
+        });
+      }
+
+      async function buildMap() {
+        try {
+          await loadLeaflet();
+        } catch (e) {
+          mapEl.classList.add('hidden');
+          if (noteEl) noteEl.textContent = 'Map unavailable (offline?). Coordinates can still be typed manually or captured with "Use my current location".';
+          return;
+        }
+        try { await cfgLoaded; } catch (e) {}
+
+        var lat = parseFloat(latEl.value), lng = parseFloat(lngEl.value);
+        var hasSaved = !isNaN(lat) && !isNaN(lng);
+        if (!hasSaved) { lat = 20.5937; lng = 78.9629; } // India centroid, zoomed out
+
+        map = L.map(mapEl).setView([lat, lng], hasSaved ? 17 : 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var accent = themeColor();
+        // divIcon instead of the default image marker — no external icon images (CSP-safe).
+        var pin = L.divIcon({
+          className: '',
+          html: '<div style="width:22px;height:22px;border-radius:50%;background:' + accent + ';border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.6)"></div>',
+          iconSize: [22, 22],
+          iconAnchor: [11, 11]
+        });
+        marker = L.marker([lat, lng], { draggable: true, icon: pin }).addTo(map);
+        circle = L.circle([lat, lng], {
+          radius: radiusMeters(),
+          color: accent, weight: 1.5,
+          fillColor: accent, fillOpacity: 0.12
+        }).addTo(map);
+
+        marker.on('drag', function (e) {
+          var p = e.target.getLatLng();
+          circle.setLatLng(p);
+          writeInputs(p.lat, p.lng);
+        });
+        map.on('click', function (e) {
+          placeAt(e.latlng.lat, e.latlng.lng, false);
+          writeInputs(e.latlng.lat, e.latlng.lng);
+        });
+
+        syncMapFromInputs = function (recenter) {
+          var la = parseFloat(latEl.value), ln = parseFloat(lngEl.value);
+          if (!isNaN(la) && !isNaN(ln)) placeAt(la, ln, recenter);
+        };
+        latEl.addEventListener('input', function () { if (!writing) syncMapFromInputs(true); });
+        lngEl.addEventListener('input', function () { if (!writing) syncMapFromInputs(true); });
+        radiusEl.addEventListener('input', function () { circle.setRadius(radiusMeters()); });
+        unitEl.addEventListener('change', function () { circle.setRadius(radiusMeters()); });
+
+        // No saved config: try centring on the admin's location, else stay on India.
+        if (!hasSaved && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function (p) {
+            placeAt(p.coords.latitude, p.coords.longitude, false);
+            writeInputs(p.coords.latitude, p.coords.longitude);
+            map.setView([p.coords.latitude, p.coords.longitude], 16);
+          }, function () {}, { timeout: 10000 });
+        }
+      }
+
+      // Lazy trigger: only pull Leaflet once the map area is actually visible.
+      if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function (entries) {
+          if (entries.some(function (en) { return en.isIntersecting; })) {
+            io.disconnect();
+            buildMap();
+          }
+        }, { rootMargin: '100px' });
+        io.observe(mapEl);
+      } else {
+        setTimeout(buildMap, 800);
+      }
+    })();
   })();
 
   loadSummary();

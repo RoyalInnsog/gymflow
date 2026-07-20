@@ -72,10 +72,27 @@
 <button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-surface-container-high border border-white/10 text-on-surface-variant hover:bg-surface-container-highest font-label-sm text-label-sm transition-all">Pending</button>
 <button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-surface-container-high border border-white/10 text-on-surface-variant hover:bg-surface-container-highest font-label-sm text-label-sm transition-all">New</button>
 </div>
-<!-- Member Grid -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
+<!-- Member Grid (mobile / tablet) -->
+<div id="memberGrid" class="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-gutter">
 <!-- Member cards will be loaded dynamically via API -->
 </div>
+<!-- Member Table (desktop) -->
+<div id="memberTableWrap" class="hidden lg:block glass-card rounded-xl border border-white/10 overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-white/10 bg-surface-container-high text-on-surface-variant">
+<th class="py-3 px-4 font-label-caps text-label-caps"><button data-sort="full_name" class="flex items-center gap-1 uppercase tracking-wider hover:text-primary transition-colors">Member <span class="material-symbols-outlined text-[16px] sort-icon"></span></button></th>
+<th class="py-3 px-4 font-label-caps text-label-caps">Phone</th>
+<th class="py-3 px-4 font-label-caps text-label-caps"><button data-sort="status" class="flex items-center gap-1 uppercase tracking-wider hover:text-primary transition-colors">Status <span class="material-symbols-outlined text-[16px] sort-icon"></span></button></th>
+<th class="py-3 px-4 font-label-caps text-label-caps"><button data-sort="daysLeft" class="flex items-center gap-1 uppercase tracking-wider hover:text-primary transition-colors">Time Left <span class="material-symbols-outlined text-[16px] sort-icon"></span></button></th>
+<th class="py-3 px-4 font-label-caps text-label-caps text-right">Actions</th>
+</tr>
+</thead>
+<tbody id="memberTableBody" class="divide-y divide-white/5"></tbody>
+</table>
+</div>
+<!-- Empty / error state (shared by both views) -->
+<div id="memberEmpty" class="hidden"></div>
 </main>
 <!-- BottomNavBar (Mobile Only) -->
 
@@ -133,11 +150,71 @@ function clearMemberFilters() {
   loadMembers();
 }
 
-// Shimmer placeholders so the grid shows structure instead of a blank flash
-// while the roster loads.
+// ─── View plumbing: card grid on phones/tablets, data table on lg+ ───
+const gridEl = document.getElementById('memberGrid');
+const tableWrapEl = document.getElementById('memberTableWrap');
+const tableBodyEl = document.getElementById('memberTableBody');
+const emptyEl = document.getElementById('memberEmpty');
+const desktopMq = window.matchMedia('(min-width: 1024px)');
+
+let lastMembers = null;                 // last successful roster fetch
+let memberSort = { key: null, dir: 1 }; // table-view client-side sort
+
+// Show/hide uses inline display so it never fights the responsive
+// `lg:hidden` / `hidden lg:block` classes on the two view containers.
+function showViews(showData) {
+  gridEl.style.display = showData ? '' : 'none';
+  tableWrapEl.style.display = showData ? '' : 'none';
+  emptyEl.classList.toggle('hidden', showData);
+}
+
+function statusMeta(m) {
+  let cls = 'status-active', icon = 'schedule';
+  if (m.status === 'Expired') { cls = 'status-expired'; icon = 'warning'; }
+  else if (m.status === 'Pending') { cls = 'status-pending'; icon = 'hourglass_empty'; }
+
+  // "0 days left" on an expired plan reads like a bug — say what happened.
+  const daysNum = Number(m.daysLeft);
+  let daysText;
+  if (m.status === 'Expired') {
+    daysText = (Number.isFinite(daysNum) && daysNum < 0)
+      ? 'Expired ' + Math.abs(daysNum) + (Math.abs(daysNum) === 1 ? ' day ago' : ' days ago')
+      : 'Expired';
+  } else if (m.status === 'Pending') {
+    daysText = 'Not activated';
+  } else {
+    daysText = (m.daysLeft || 0) + ' days left';
+  }
+  return { cls, icon, daysText };
+}
+
+// Fall back to a clean initials avatar — never a random stock photo — when
+// a member has no uploaded picture.
+function avatarHtml(m, sizeCls, textCls) {
+  const initials = (window.utils && window.utils.getInitials(m.full_name)) || '?';
+  const hasPhoto = m.photo_url && String(m.photo_url).trim();
+  const inner = hasPhoto
+    ? `<img alt="" class="w-full h-full object-cover" src="${safeUrl(m.photo_url)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
+       <span class="hidden w-full h-full items-center justify-center ${textCls} font-bold bg-primary/10 text-primary">${esc(initials)}</span>`
+    : `<span class="flex w-full h-full items-center justify-center ${textCls} font-bold bg-primary/10 text-primary">${esc(initials)}</span>`;
+  return `<div class="${sizeCls} rounded-full overflow-hidden border border-white/10 shrink-0 bg-surface-container flex items-center justify-center text-primary font-bold">${inner}</div>`;
+}
+
+// Shimmer placeholders so the active view shows structure instead of a blank
+// flash while the roster loads.
 function renderSkeletons(count = 6) {
-  const grid = document.querySelector('.grid');
-  if (!grid) return;
+  showViews(true);
+  if (desktopMq.matches) {
+    let rows = '';
+    for (let i = 0; i < count + 2; i++) {
+      rows += `<tr><td class="py-3 px-4" colspan="5"><div class="flex items-center gap-3">
+        <div class="skeleton w-9 h-9 rounded-full"></div>
+        <div class="skeleton h-4 rounded" style="width:${25 + (i % 3) * 12}%"></div>
+      </div></td></tr>`;
+    }
+    tableBodyEl.innerHTML = rows;
+    return;
+  }
   let html = '';
   for (let i = 0; i < count; i++) {
     html += `
@@ -155,8 +232,175 @@ function renderSkeletons(count = 6) {
         </div>
       </div>`;
   }
-  grid.innerHTML = html;
+  gridEl.innerHTML = html;
 }
+
+function sortedMembers() {
+  const members = lastMembers || [];
+  if (!memberSort.key) return members;
+  const k = memberSort.key, dir = memberSort.dir;
+  return members.slice().sort((a, b) => {
+    let va, vb;
+    if (k === 'daysLeft') {
+      va = Number(a.daysLeft); vb = Number(b.daysLeft);
+      if (!Number.isFinite(va)) va = -Infinity;
+      if (!Number.isFinite(vb)) vb = -Infinity;
+    } else {
+      va = String(a[k] || '').toLowerCase();
+      vb = String(b[k] || '').toLowerCase();
+    }
+    return va < vb ? -dir : va > vb ? dir : 0;
+  });
+}
+
+function renderTable() {
+  const rows = sortedMembers().map(m => {
+    const s = statusMeta(m);
+    return `
+      <tr class="hover:bg-surface-container-high/60 cursor-pointer transition-colors" data-id="${esc(m.id)}">
+        <td class="py-2.5 px-4">
+          <div class="flex items-center gap-3">
+            ${avatarHtml(m, 'w-9 h-9', 'text-body-sm')}
+            <span class="font-title-md text-title-md text-on-background">${esc(m.full_name)}</span>
+          </div>
+        </td>
+        <td class="py-2.5 px-4 text-on-surface-variant font-body-sm text-body-sm">${esc(m.phone)}</td>
+        <td class="py-2.5 px-4"><span class="inline-flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${s.cls}">${esc(m.status)}</span></td>
+        <td class="py-2.5 px-4 text-on-surface-variant font-body-sm text-body-sm">
+          <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">${s.icon}</span> ${s.daysText}</span>
+        </td>
+        <td class="py-2.5 px-4 text-right whitespace-nowrap">
+          <a href="/member-profile?id=${esc(m.id)}" class="text-primary hover:underline font-label-md text-label-md mr-4">View</a>
+          <a href="/renew?id=${esc(m.id)}" class="text-on-surface-variant hover:text-primary hover:underline font-label-md text-label-md">Renew</a>
+        </td>
+      </tr>`;
+  }).join('');
+  tableBodyEl.innerHTML = rows;
+  gridEl.innerHTML = '';           // clear the inactive view
+  updateSortIndicators();
+}
+
+function renderCards() {
+  // Batch all cards into one fragment → a single DOM insertion / layout pass
+  // instead of one per member.
+  const frag = document.createDocumentFragment();
+  (lastMembers || []).forEach(m => {
+    const s = statusMeta(m);
+    const card = document.createElement('div');
+    card.className = `member-card glass-card rounded-xl p-md flex flex-col gap-md transition-colors group cursor-pointer`;
+    card.onclick = () => window.location.href = `/member-profile?id=${m.id}`;
+    card.innerHTML = `
+      <div class="flex items-start justify-between">
+        <div class="flex items-center gap-sm">
+          ${avatarHtml(m, 'w-12 h-12', 'text-body-lg')}
+          <div>
+            <h3 class="font-headline-md text-headline-md text-on-background text-[18px]">${esc(m.full_name)}</h3>
+            <p class="font-label-sm text-label-sm text-on-surface-variant">${esc(m.phone)}</p>
+          </div>
+        </div>
+        <div class="relative group/menu">
+          <button class="text-on-surface-variant/50 hover:text-on-surface-variant transition-colors p-2 -m-1" aria-label="Member actions" onclick="event.stopPropagation(); toggleCardMenu(this);">
+            <span class="material-symbols-outlined pointer-events-none">more_vert</span>
+          </button>
+          <div class="card-menu absolute right-0 mt-1 w-36 bg-surface-container-high border border-outline/20 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover/menu:opacity-100 group-hover/menu:pointer-events-auto transition-opacity z-10 overflow-hidden">
+            <button class="w-full text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-variant transition-colors" onclick="event.stopPropagation(); window.location.href='/member-profile?id=${m.id}'">View Profile</button>
+            <button class="w-full text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-variant transition-colors" onclick="event.stopPropagation(); window.location.href='/renew?id=${m.id}'">Renew Plan</button>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center justify-between mt-auto pt-sm border-t border-white/10">
+        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${s.cls}">${esc(m.status)}</span>
+        <span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+          <span class="material-symbols-outlined text-[16px]">${s.icon}</span> ${s.daysText}
+        </span>
+      </div>
+    `;
+    frag.appendChild(card);
+  });
+  gridEl.innerHTML = '';
+  gridEl.appendChild(frag);
+  tableBodyEl.innerHTML = '';      // clear the inactive view
+}
+
+// Render only the view that's visible at the current breakpoint; the other
+// container is cleared so a 2,000-member roster never carries double DOM.
+function renderMembers() {
+  if (!lastMembers) return;
+  if (lastMembers.length === 0) {
+    const search = searchInputEl ? searchInputEl.value : '';
+    const status = getActiveStatus();
+    // A search / status filter with no hits is NOT the same as an empty
+    // roster — don't show first-run onboarding over a filter miss.
+    const isFiltered = (status && status !== 'All') || (search && search.trim());
+    showViews(false);
+    emptyEl.innerHTML = isFiltered ? `
+      <div class="py-16 flex flex-col items-center justify-center text-center max-w-md mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-6 shadow-sm">
+          <span class="material-symbols-outlined text-primary text-[32px]">search_off</span>
+        </div>
+        <h3 class="font-title-lg text-title-lg text-on-surface font-semibold mb-2">No matches found</h3>
+        <p class="text-on-surface-variant text-sm mb-6 max-w-xs">No members match ${search && search.trim() ? '“' + esc(search.trim()) + '”' : 'this filter'}. Try a different name or phone number.</p>
+        <button onclick="clearMemberFilters()" class="bg-surface-container border border-outline text-on-surface font-label-md px-6 py-2 rounded-lg hover:bg-surface-container-high transition-colors flex items-center gap-2">
+          <span class="material-symbols-outlined text-[18px]">filter_alt_off</span> Clear Filters
+        </button>
+      </div>
+    ` : `
+      <div class="py-16 flex flex-col items-center justify-center text-center max-w-md mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-6 shadow-sm">
+          <span class="material-symbols-outlined text-primary text-[32px]">groups</span>
+        </div>
+        <h3 class="font-title-lg text-title-lg text-on-surface font-semibold mb-2">No members yet</h3>
+        <p class="text-on-surface-variant text-sm mb-6 max-w-xs">Start building your gym by adding your first member.</p>
+        <button onclick="window.location.href='/add-member-step-1'" class="bg-primary text-on-primary font-label-md px-6 py-2.5 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2">
+          <span class="material-symbols-outlined text-[18px]">add</span> Add Member
+        </button>
+      </div>
+    `;
+    return;
+  }
+  showViews(true);
+  if (desktopMq.matches) renderTable(); else renderCards();
+  renderedDesktop = desktopMq.matches;
+}
+let renderedDesktop = null; // which view the last render targeted
+
+// Sortable headers (desktop table): click toggles asc/desc per column.
+function updateSortIndicators() {
+  document.querySelectorAll('#memberTableWrap [data-sort]').forEach(btn => {
+    const icon = btn.querySelector('.sort-icon');
+    const th = btn.closest('th');
+    if (btn.dataset.sort === memberSort.key) {
+      icon.textContent = memberSort.dir === 1 ? 'arrow_upward' : 'arrow_downward';
+      if (th) th.setAttribute('aria-sort', memberSort.dir === 1 ? 'ascending' : 'descending');
+    } else {
+      icon.textContent = '';
+      if (th) th.removeAttribute('aria-sort');
+    }
+  });
+}
+document.querySelectorAll('#memberTableWrap [data-sort]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.sort;
+    if (memberSort.key === key) memberSort.dir = -memberSort.dir;
+    else memberSort = { key, dir: 1 };
+    renderTable();
+  });
+});
+
+// Row click → profile (links/buttons inside the row keep their own action).
+tableBodyEl.addEventListener('click', (e) => {
+  if (e.target.closest('a, button')) return;
+  const tr = e.target.closest('tr[data-id]');
+  if (tr) window.location.href = `/member-profile?id=${tr.dataset.id}`;
+});
+
+// Re-render when the viewport crosses the desktop breakpoint. ResizeObserver
+// (not matchMedia 'change' / window resize) because emulated & DevTools
+// resizes don't reliably dispatch those events; the mode check keeps it
+// one-shot per breakpoint crossing.
+new ResizeObserver(() => {
+  if (lastMembers && desktopMq.matches !== renderedDesktop) renderMembers();
+}).observe(document.documentElement);
 
 async function loadMembers(status = 'All', search = '') {
   // Cancel any in-flight request — its response is now stale.
@@ -183,125 +427,23 @@ async function loadMembers(status = 'All', search = '') {
     // If a newer request has been issued (or this one was aborted) drop this response.
     if (requestId !== memberLatestRequestId) return;
 
-    const grid = document.querySelector('.grid');
-    grid.innerHTML = ''; // clear mock cards
-
-    if (members.length === 0) {
-      // A search / status filter with no hits is NOT the same as an empty
-      // roster — don't show first-run onboarding over a filter miss.
-      const isFiltered = (status && status !== 'All') || (search && search.trim());
-      grid.innerHTML = isFiltered ? `
-        <div class="col-span-full py-16 flex flex-col items-center justify-center text-center max-w-md mx-auto">
-          <div class="w-16 h-16 rounded-2xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-6 shadow-sm">
-            <span class="material-symbols-outlined text-primary text-[32px]">search_off</span>
-          </div>
-          <h3 class="font-title-lg text-title-lg text-on-surface font-semibold mb-2">No matches found</h3>
-          <p class="text-on-surface-variant text-sm mb-6 max-w-xs">No members match ${search && search.trim() ? '“' + esc(search.trim()) + '”' : 'this filter'}. Try a different name or phone number.</p>
-          <button onclick="clearMemberFilters()" class="bg-surface-container border border-outline text-on-surface font-label-md px-6 py-2 rounded-lg hover:bg-surface-container-high transition-colors flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px]">filter_alt_off</span> Clear Filters
-          </button>
-        </div>
-      ` : `
-        <div class="col-span-full py-16 flex flex-col items-center justify-center text-center max-w-md mx-auto">
-          <div class="w-16 h-16 rounded-2xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-6 shadow-sm">
-            <span class="material-symbols-outlined text-primary text-[32px]">groups</span>
-          </div>
-          <h3 class="font-title-lg text-title-lg text-on-surface font-semibold mb-2">No members yet</h3>
-          <p class="text-on-surface-variant text-sm mb-6 max-w-xs">Start building your gym by adding your first member.</p>
-          <button onclick="window.location.href='/add-member-step-1'" class="bg-primary text-on-primary font-label-md px-6 py-2.5 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px]">add</span> Add Member
-          </button>
-        </div>
-      `;
-      return;
-    }
-
-    // Batch all cards into one fragment → a single DOM insertion / layout pass
-    // instead of one per member.
-    const frag = document.createDocumentFragment();
-    members.forEach(m => {
-      let statusClass = 'status-active';
-      let statusIcon = 'schedule';
-      if (m.status === 'Expired') {
-        statusClass = 'status-expired';
-        statusIcon = 'warning';
-      } else if (m.status === 'Pending') {
-        statusClass = 'status-pending';
-        statusIcon = 'hourglass_empty';
-      }
-
-      // "0 days left" on an expired plan reads like a bug — say what happened.
-      const daysNum = Number(m.daysLeft);
-      let daysText;
-      if (m.status === 'Expired') {
-        daysText = (Number.isFinite(daysNum) && daysNum < 0)
-          ? 'Expired ' + Math.abs(daysNum) + (Math.abs(daysNum) === 1 ? ' day ago' : ' days ago')
-          : 'Expired';
-      } else if (m.status === 'Pending') {
-        daysText = 'Not activated';
-      } else {
-        daysText = (m.daysLeft || 0) + ' days left';
-      }
-
-      // Fall back to a clean initials avatar — never a random stock photo — when
-      // a member has no uploaded picture.
-      const initials = (window.utils && window.utils.getInitials(m.full_name)) || '?';
-      const hasPhoto = m.photo_url && String(m.photo_url).trim();
-      const avatarInner = hasPhoto
-        ? `<img alt="" class="w-full h-full object-cover" src="${safeUrl(m.photo_url)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
-           <span class="hidden w-full h-full items-center justify-center text-body-lg font-bold bg-primary/10 text-primary">${esc(initials)}</span>`
-        : `<span class="flex w-full h-full items-center justify-center text-body-lg font-bold bg-primary/10 text-primary">${esc(initials)}</span>`;
-      const card = document.createElement('div');
-      card.className = `member-card glass-card rounded-xl p-md flex flex-col gap-md transition-colors group cursor-pointer`;
-      card.onclick = () => window.location.href = `/member-profile?id=${m.id}`;
-      card.innerHTML = `
-        <div class="flex items-start justify-between">
-          <div class="flex items-center gap-sm">
-            <div class="w-12 h-12 rounded-full overflow-hidden border border-white/10 shrink-0 bg-surface-container flex items-center justify-center text-primary font-bold">
-              ${avatarInner}
-            </div>
-            <div>
-              <h3 class="font-headline-md text-headline-md text-on-background text-[18px]">${esc(m.full_name)}</h3>
-              <p class="font-label-sm text-label-sm text-on-surface-variant">${esc(m.phone)}</p>
-            </div>
-          </div>
-          <div class="relative group/menu">
-            <button class="text-on-surface-variant/50 hover:text-on-surface-variant transition-colors p-2 -m-1" aria-label="Member actions" onclick="event.stopPropagation(); toggleCardMenu(this);">
-              <span class="material-symbols-outlined pointer-events-none">more_vert</span>
-            </button>
-            <div class="card-menu absolute right-0 mt-1 w-36 bg-surface-container-high border border-outline/20 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover/menu:opacity-100 group-hover/menu:pointer-events-auto transition-opacity z-10 overflow-hidden">
-              <button class="w-full text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-variant transition-colors" onclick="event.stopPropagation(); window.location.href='/member-profile?id=${m.id}'">View Profile</button>
-              <button class="w-full text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-variant transition-colors" onclick="event.stopPropagation(); window.location.href='/renew?id=${m.id}'">Renew Plan</button>
-            </div>
-          </div>
-        </div>
-        <div class="flex items-center justify-between mt-auto pt-sm border-t border-white/10">
-          <span class="inline-flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${statusClass}">${esc(m.status)}</span>
-          <span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
-            <span class="material-symbols-outlined text-[16px]">${statusIcon}</span> ${daysText}
-          </span>
-        </div>
-      `;
-      frag.appendChild(card);
-    });
-    grid.appendChild(frag);
+    lastMembers = members;
+    renderMembers();
   } catch (err) {
     // AbortError is expected when a newer keystroke supersedes this request — ignore it.
     if (err && err.name === 'AbortError') return;
     console.error('Error loading members:', err);
     if (requestId === memberLatestRequestId) {
-      const grid = document.querySelector('.grid');
-      if (grid) {
-        grid.innerHTML = `
-          <div class="col-span-full py-16 flex flex-col items-center justify-center text-center">
-            <span class="material-symbols-outlined text-error/60 mb-4" style="font-size: 56px;">cloud_off</span>
-            <h3 class="font-semibold text-on-surface text-lg mb-1">Couldn't load members</h3>
-            <p class="text-on-surface-variant text-sm max-w-xs mb-5">Something went wrong while fetching your roster. Check your connection and try again.</p>
-            <button onclick="loadMembers(getActiveStatus(), document.getElementById('memberSearch') ? document.getElementById('memberSearch').value : '')" class="bg-surface-container-high border border-white/10 text-on-surface px-5 py-2.5 rounded-lg hover:bg-surface-container-highest transition-colors flex items-center gap-2">
-              <span class="material-symbols-outlined text-[18px]">refresh</span> Retry
-            </button>
-          </div>`;
-      }
+      showViews(false);
+      emptyEl.innerHTML = `
+        <div class="py-16 flex flex-col items-center justify-center text-center">
+          <span class="material-symbols-outlined text-error/60 mb-4" style="font-size: 56px;">cloud_off</span>
+          <h3 class="font-semibold text-on-surface text-lg mb-1">Couldn't load members</h3>
+          <p class="text-on-surface-variant text-sm max-w-xs mb-5">Something went wrong while fetching your roster. Check your connection and try again.</p>
+          <button onclick="loadMembers(getActiveStatus(), document.getElementById('memberSearch') ? document.getElementById('memberSearch').value : '')" class="bg-surface-container-high border border-white/10 text-on-surface px-5 py-2.5 rounded-lg hover:bg-surface-container-highest transition-colors flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px]">refresh</span> Retry
+          </button>
+        </div>`;
     }
   } finally {
     if (requestId === memberLatestRequestId) {

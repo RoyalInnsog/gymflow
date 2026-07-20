@@ -1,0 +1,66 @@
+# Desktop installers (Electron bundled-offline) — builds the Windows .exe and the
+# macOS .dmg on GitHub-hosted runners. The macOS .dmg CANNOT be built on Windows
+# (Apple's disk-image tooling is macOS-only), so this workflow is the supported
+# way to produce it without a physical Mac.
+#
+# Run it: Actions tab → "Desktop installers" → Run workflow (workflow_dispatch),
+# or push a tag like v1.1.0. Download the artifacts from the finished run.
+#
+# The builds are UNSIGNED. To distribute without OS security warnings you later
+# add signing secrets (Windows: CSC_LINK/CSC_KEY_PASSWORD; macOS: an Apple
+# Developer cert + notarization via APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/TEAM_ID)
+# — electron-builder picks them up automatically when present.
+name: Desktop installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+# The frontend origin the bundled app talks to (Render backend).
+env:
+  API_BASE: https://gymflow-3svy.onrender.com
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: dist:win
+            artifact: GymFlow-Windows
+            glob: desktop/dist/*.exe
+          - os: macos-latest
+            target: dist:mac
+            artifact: GymFlow-macOS
+            glob: desktop/dist/*.dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # build-www.js only uses fs/path — no install needed. Bundles the whole
+      # frontend into mobile/www with the production API origin baked in.
+      - name: Build bundled frontend (mobile/www)
+        run: node mobile/build-www.js
+
+      - name: Install desktop deps
+        working-directory: desktop
+        run: npm ci
+
+      - name: Build installer
+        working-directory: desktop
+        env:
+          # No signing certs in CI → tell electron-builder not to hunt for them.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npm run ${{ matrix.target }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.glob }}
+          if-no-files-found: error

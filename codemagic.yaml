@@ -1,0 +1,81 @@
+# Codemagic CI/CD — builds & signs the iOS app on a cloud macOS runner.
+# The app is a thin Capacitor WebView (mobile/www) over server.url in mobile/capacitor.config.json.
+# `cap add ios` / `cap sync ios` run HERE on the Mac — never on the Windows dev machine.
+#
+# Trigger a build from the Codemagic UI (or on push once you add a `triggering:` block).
+# All secrets below are placeholders — set them in Codemagic before the first run.
+
+workflows:
+  ios-appstore:
+    name: Gym Flow iOS (App Store)
+    instance_type: mac_mini_m2      # Apple-silicon macOS runner (free-tier eligible)
+    max_build_duration: 60
+    working_directory: mobile        # everything runs inside the Capacitor project
+
+    environment:
+      node: 20
+      xcode: latest
+      cocoapods: default
+      vars:
+        # --- App identity (must match App Store Connect record) ---
+        BUNDLE_ID: "com.gymflow.app"
+        APP_NAME: "Gym Flow"
+      groups:
+        # Create this variable group in Codemagic (Teams/Personal > Environment variables)
+        # and add the App Store Connect API key values into it:
+        #   APP_STORE_CONNECT_ISSUER_ID   -> issuer UUID from App Store Connect > Users and Access > Integrations
+        #   APP_STORE_CONNECT_KEY_IDENTIFIER -> the key's Key ID
+        #   APP_STORE_CONNECT_PRIVATE_KEY -> full contents of the .p8 file you downloaded (once) from Apple
+        - appstore_credentials
+
+    scripts:
+      - name: Install node dependencies
+        script: npm ci
+
+      - name: Add & sync the iOS platform (runs on macOS only)
+        # No web build step: www/ is prebuilt (thin WebView). cap add is idempotent-guarded.
+        script: |
+          [ -d ios ] || npx cap add ios
+          npx cap sync ios
+
+      - name: Force portrait-only + bundle id / display name in Info.plist
+        # ponytail: PlistBuddy edits the generated Info.plist in-place instead of hand-maintaining
+        # a committed iOS project. Regenerated cleanly each build from the two env vars above.
+        script: |
+          PLIST="ios/App/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $APP_NAME" "$PLIST" || \
+            /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string $APP_NAME" "$PLIST"
+          # iPhone portrait only (no landscape, no upside-down)
+          /usr/libexec/PlistBuddy -c "Delete :UISupportedInterfaceOrientations" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations:0 string UIInterfaceOrientationPortrait" "$PLIST"
+
+      - name: Fetch signing files from Apple (automatic code signing)
+        # Uses the App Store Connect API key set above to create/download an App Store
+        # distribution cert + provisioning profile for BUNDLE_ID. No manual .p12 juggling.
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain initialize
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Build & sign the IPA
+        script: |
+          xcode-project build-ipa \
+            --project "ios/App/App.xcodeproj" \
+            --scheme "App"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      # Uploads to TestFlight. Promote to full App Store release manually in App Store Connect,
+      # or add `submit_to_app_store: true` here once you're ready for public release.
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true

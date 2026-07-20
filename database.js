@@ -1460,6 +1460,30 @@ async function initializeDatabase() {
     `);
     await runQuery(`CREATE INDEX IF NOT EXISTS idx_member_goals_member ON member_goals(tenant_id, member_id)`);
 
+    // [DIET] Per-meal nutrition ledger (the AI photo scanner + manual meal logs).
+    // health_logs stays the daily-total source of truth; these rows are the
+    // itemized breakdown behind it. items_json holds the AI's per-item estimates.
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS nutrition_logs (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        member_id TEXT NOT NULL,
+        log_date TEXT NOT NULL,
+        name TEXT NOT NULL,
+        portion TEXT,
+        calories INTEGER DEFAULT 0,
+        protein_g REAL DEFAULT 0,
+        carbs_g REAL DEFAULT 0,
+        fat_g REAL DEFAULT 0,
+        source TEXT DEFAULT 'manual',
+        items_json TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+        FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE
+      )
+    `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_nutrition_logs_member ON nutrition_logs(tenant_id, member_id, log_date DESC)`);
+
     // Helpful indexes for claim matching (email/phone lookups against members).
     await runQuery(`CREATE INDEX IF NOT EXISTS idx_members_email ON members(email)`);
     await runQuery(`CREATE INDEX IF NOT EXISTS idx_members_phone ON members(phone)`);

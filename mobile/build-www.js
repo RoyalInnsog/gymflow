@@ -93,9 +93,11 @@ window.API_BASE_URL = '${API_BASE}';
 })();
 `);
 
-// ---- 4. launcher
+// ---- 4. launcher (+ its external boot script — external because the shell CSP
+// has no 'unsafe-inline'; an inline script is refused and the splash hangs)
 const shell = fs.readFileSync(path.join(__dirname, 'shell', 'index.html'), 'utf8');
 write(path.join(WWW, 'index.html'), shell.replace(/__API_ORIGIN__/g, API_BASE));
+fs.copyFileSync(path.join(__dirname, 'shell', 'launcher.js'), path.join(WWW, 'launcher.js'));
 
 // ---- 5. every app page -> www/<route>/index.html
 for (const p of pages) {

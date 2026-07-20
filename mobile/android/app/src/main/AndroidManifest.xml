@@ -63,10 +63,21 @@
     <uses-permission
         android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
-    <uses-permission
-        android:name="android.permission.ACCESS_FINE_LOCATION"
-        android:maxSdkVersion="30" />
+    <!-- Location on ALL API levels: WebView geolocation (geofence check-in +
+         "use my location" in geofence setup). The old maxSdkVersion="30" cap
+         left Android 12+ with no location permission at all. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+
+    <!-- Camera + photo library: member photos, food-photo AI scan, QR check-in
+         scanner (WebView getUserMedia / file chooser). -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <!-- Google Health Connect read scopes. -->
     <uses-permission android:name="android.permission.health.READ_STEPS" />

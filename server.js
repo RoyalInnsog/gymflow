@@ -43,17 +43,21 @@ const CSP = [
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  `img-src 'self' data: blob: https://lh3.googleusercontent.com ${RZP}`,
+  `img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.tile.openstreetmap.org ${RZP}`,
   "font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com",
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://checkout.razorpay.com`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
+  // 'unsafe-eval' and the runtime Tailwind CDN were dropped: Tailwind is now a
+  // compiled static stylesheet (no JIT-in-browser) and no frontend code calls
+  // eval()/new Function(), so scripts can no longer be evaluated from strings.
+  // 'unsafe-inline' stays only because the screens still use inline handlers.
+  `script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://checkout.razorpay.com`,
   // connect-src must include every CDN origin the pages load: once the service
   // worker intercepts those requests, its fetch() is checked against connect-src
   // (not style/script/font-src) — missing origins fail with ERR_FAILED on every
   // SW-controlled load, which renders the whole app unstyled.
   // Installed SWs keep the CSP they were installed with: any change to this CSP
   // also requires bumping CACHE_VERSION in public/sw.js (see note there).
-  `connect-src 'self' ${RZP} https://lumberjack.razorpay.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com http://localhost:3000 https://desktop-s69biti.tail66553b.ts.net`,
+  `connect-src 'self' ${RZP} https://lumberjack.razorpay.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.tile.openstreetmap.org http://localhost:3000 https://desktop-s69biti.tail66553b.ts.net`,
   `frame-src https://checkout.razorpay.com https://api.razorpay.com ${RZP}`
 ].join('; ');
 app.use((req, res, next) => {
@@ -61,7 +65,8 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
-  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), usb=()');
+  // geolocation: geofence config + member geo check-in; camera: QR scanner + food photo scan.
+  res.setHeader('Permissions-Policy', 'geolocation=(self), microphone=(), camera=(self), usb=()');
   if (process.env.DISABLE_CSP !== 'true') {
     res.setHeader('Content-Security-Policy', CSP);
   }
@@ -78,7 +83,7 @@ app.use((req, res, next) => {
 // Auth ENDPOINTS live in routes/auth.js, mounted further below.
 const identity = require('./lib/identity/core');
 const { resolvePageAuth } = require('./lib/identity/refresh');
-const { authenticateToken, requireTenant, requireStaffRole, shellRedirectFor, shellForRole } = identity;
+const { authenticateToken, requireTenant, requireStaffRole, shellRedirectFor, shellForRole, apiLimiter } = identity;
 
 
 // Member/staff photos are uploaded inline as base64 data URLs (front-end caps
@@ -404,17 +409,17 @@ app.use("/api/v1/auth", require("./routes/auth"));
 // [ORG] Organization & Identity Graph API. Account-level (auth only) like /auth —
 // members and pending invitees must reach /org/context, invitations and claims.
 // Admin routes inside the router add requireTenant + a permission guard.
-app.use('/api/v1/org', authenticateToken, require('./routes/org'));
+app.use('/api/v1/org', authenticateToken, apiLimiter, require('./routes/org'));
 
 // [U1] Member self-service API — the r5 mirror of the staff surface below.
 // Mounted BEFORE the '/api/v1' staff router so /api/v1/member/* resolves here;
 // requireMemberRole is fail-closed (staff/pending tokens get 403), and member
 // tokens remain physically unable to reach any staff endpoint.
-app.use('/api/v1/member', authenticateToken, requireTenant, identity.requireMemberRole, idempotency, require('./routes/member'));
+app.use('/api/v1/member', authenticateToken, apiLimiter, requireTenant, identity.requireMemberRole, idempotency, require('./routes/member'));
 
 // [GPS Attendance] Geofenced member checkin endpoint. Mounted before the staff-only router
 // so it is accessible by both members (r5) and staff (r1-r4) via their authenticated token.
-app.post('/api/v1/attendance/checkin', authenticateToken, requireTenant, idempotency, async (req, res) => {
+app.post('/api/v1/attendance/checkin', authenticateToken, apiLimiter, requireTenant, idempotency, async (req, res) => {
   const { latitude, longitude, timestamp, isMocked, mocked } = req.body;
   let memberId = req.body.member_id;
 
@@ -512,10 +517,15 @@ app.post('/api/v1/attendance/checkin', authenticateToken, requireTenant, idempot
 });
 
 // [Health Connect Sync] Bulk synchronize client biometrics from Google Health Connect
-app.post('/api/v1/health/sync', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/v1/health/sync', authenticateToken, apiLimiter, requireTenant, async (req, res) => {
   const { biometrics } = req.body;
   if (!Array.isArray(biometrics)) {
     return res.status(400).json({ error: 'Biometrics array is required.' });
+  }
+  // [SEC] Bound the batch so a single request can't pin memory/CPU building the
+  // per-day aggregation map. A real Health Connect backfill is well under this.
+  if (biometrics.length > 5000) {
+    return res.status(413).json({ error: 'Too many biometric records in one sync (max 5000). Split into smaller batches.' });
   }
 
   let memberId = req.body.member_id;
@@ -654,7 +664,7 @@ app.post('/api/v1/health/sync', authenticateToken, requireTenant, async (req, re
 });
 
 // [Health Connect Bind] Set permanently linked state in the DB
-app.post('/api/v1/health/bind', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/v1/health/bind', authenticateToken, apiLimiter, requireTenant, async (req, res) => {
   let memberId = req.body.member_id;
 
   try {
@@ -698,16 +708,16 @@ app.post('/api/v1/health/bind', authenticateToken, requireTenant, async (req, re
 // member-role (or pending) token is physically rejected with 403 for EVERY
 // endpoint in this router — the entire existing admin/tenant API surface.
 const apiRouter = require('./routes/api');
-app.use('/api/v1', authenticateToken, requireTenant, requireStaffRole, idempotency, apiRouter);
+app.use('/api/v1', authenticateToken, apiLimiter, requireTenant, requireStaffRole, idempotency, apiRouter);
 
 // [WHATSAPP-CLOUD] Centralized WhatsApp Cloud API. There is no per-gym QR/session
 // anymore — the platform sends from ONE Gymflow-managed number and each gym only
 // controls its own automation toggles. Same auth + tenant isolation as the rest
 // of the API; mutations require the settings:write permission (owner/manager).
 const whatsappRouter = require('./routes/whatsappCloud.routes');
-app.use('/api/v1/whatsapp', authenticateToken, requireTenant, requireStaffRole, whatsappRouter);
+app.use('/api/v1/whatsapp', authenticateToken, apiLimiter, requireTenant, requireStaffRole, whatsappRouter);
 // Also exposed at /api/whatsapp (no /v1 prefix) for the Android WebView.
-app.use('/api/whatsapp', authenticateToken, requireTenant, requireStaffRole, whatsappRouter);
+app.use('/api/whatsapp', authenticateToken, apiLimiter, requireTenant, requireStaffRole, whatsappRouter);
 
 // [M6] Run automation scans (expiry alerts, payment-due tasks, absent-member
 // alerts) on a background interval for ALL tenants instead of on every dashboard

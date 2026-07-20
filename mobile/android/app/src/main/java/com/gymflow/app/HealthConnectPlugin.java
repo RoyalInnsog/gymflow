@@ -126,6 +126,29 @@ public class HealthConnectPlugin extends Plugin {
         call.resolve(ret);
     }
 
+    // Open the Health Connect permission/settings screen so a user who denied
+    // access (or revoked it later) can grant it without hunting through Android
+    // settings. Falls back to this app's details page if HC has no settings UI.
+    @PluginMethod
+    public void openSettings(PluginCall call) {
+        try {
+            Intent intent = new Intent("androidx.health.ACTION_HEALTH_CONNECT_SETTINGS");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            try {
+                Intent fallback = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                fallback.setData(android.net.Uri.parse("package:" + getContext().getPackageName()));
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(fallback);
+                call.resolve();
+            } catch (Exception e2) {
+                call.reject("Could not open settings: " + e2.getMessage());
+            }
+        }
+    }
+
     @PluginMethod
     public void checkPermissions(PluginCall call) {
         if (!available()) { call.reject("Health Connect is not available on this device."); return; }

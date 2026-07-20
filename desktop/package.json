@@ -1,0 +1,56 @@
+{
+  "name": "gymflow-desktop",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Gym Flow desktop (Electron) — bundled-offline frontend from mobile/www, only /api/v1 hits the Render backend. Mirrors the Android hybrid APK.",
+  "main": "main.js",
+  "author": "Gym Flow",
+  "scripts": {
+    "build:www": "node ../mobile/build-www.js",
+    "start": "electron .",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.gymflow.desktop",
+    "productName": "Gym Flow",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": ["main.js", "package.json"],
+    "extraResources": [
+      { "from": "../mobile/www", "to": "www" }
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "build/icon.png",
+      "artifactName": "GymFlow-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Gym Flow"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "icon": "build/icon.png",
+      "category": "public.app-category.healthcare-fitness",
+      "artifactName": "GymFlow-${version}.${ext}"
+    },
+    "dmg": {
+      "title": "Gym Flow ${version}"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "build/icon.png",
+      "category": "Utility"
+    }
+  }
+}

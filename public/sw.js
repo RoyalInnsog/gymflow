@@ -12,7 +12,7 @@
 // NOTE: a service worker's CSP is captured from the sw.js response headers at
 // install time. Whenever the CSP in server.js changes, bump CACHE_VERSION so
 // the byte-changed script installs a fresh SW that picks up the new CSP.
-var CACHE_VERSION = 'v15';
+var CACHE_VERSION = 'v19';
 var STATIC_CACHE = 'gymflow-static-' + CACHE_VERSION;
 var RUNTIME_CACHE = 'gymflow-runtime-' + CACHE_VERSION;
 
@@ -51,7 +51,10 @@ self.addEventListener('install', function (event) {
       return Promise.all(PRECACHE.map(function (url) {
         return cache.add(url).catch(function () {});
       }));
-    }).then(function () { return self.skipWaiting(); })
+    })
+    // No skipWaiting here: the new worker WAITS until the user accepts the
+    // "Update ready" banner (offlineBootstrap.js posts 'gymflow-skip-waiting').
+    // First-ever install has no controller, so it activates immediately anyway.
   );
 });
 

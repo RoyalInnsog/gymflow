@@ -271,7 +271,7 @@ body {
   white-space: nowrap;
   direction: ltr;
   font-feature-settings: "liga" !important;
-  font-variation-settings: normal !important;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
   -webkit-font-smoothing: antialiased;
 }
 

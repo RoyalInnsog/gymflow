@@ -414,6 +414,22 @@ async function initializeDatabase() {
       )
     `);
 
+    // Background Job Queue (Message Queue)
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS background_jobs (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT,
+        type TEXT NOT NULL,
+        payload TEXT,
+        status TEXT DEFAULT 'pending',
+        error TEXT,
+        attempts INTEGER DEFAULT 0,
+        locked_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+
     // 7. Attendance table
     await runQuery(`
       CREATE TABLE IF NOT EXISTS attendance (

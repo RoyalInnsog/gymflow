@@ -24,56 +24,31 @@ if (process.env.TRUST_PROXY) {
 // [SEC] Do not advertise the server framework/version (info disclosure).
 app.disable('x-powered-by');
 
-// [SEC] Security response headers applied to EVERY response (pages, API, static
-// assets, webhook). Hand-rolled to avoid adding a dependency.
-//   * CSP locks the origins that may load scripts/styles/fonts/images/frames and
-//     blocks <base> hijacking, plugin objects, and clickjacking (frame-ancestors).
-//     Inline scripts/handlers and Tailwind's CDN JIT require 'unsafe-inline'/'eval',
-//     so script-src keeps those but still restricts WHICH external origins load.
-//     Razorpay's checkout origins are whitelisted so payments keep working exactly
-//     as before. Set DISABLE_CSP=true to ship only the non-CSP headers if a future
-//     page needs a new origin.
-//   * Payment Permissions-Policy / COOP are deliberately left permissive
-//     (same-origin-allow-popups, payment unrestricted) so the Razorpay popup/iframe
-//     flow is never severed.
+const helmet = require('helmet');
 const RZP = 'https://*.razorpay.com';
-const CSP = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "frame-ancestors 'none'",
-  "form-action 'self'",
-  `img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.tile.openstreetmap.org ${RZP}`,
-  "font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
-  // 'unsafe-eval' and the runtime Tailwind CDN were dropped: Tailwind is now a
-  // compiled static stylesheet (no JIT-in-browser) and no frontend code calls
-  // eval()/new Function(), so scripts can no longer be evaluated from strings.
-  // 'unsafe-inline' stays only because the screens still use inline handlers.
-  `script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://checkout.razorpay.com`,
-  // connect-src must include every CDN origin the pages load: once the service
-  // worker intercepts those requests, its fetch() is checked against connect-src
-  // (not style/script/font-src) — missing origins fail with ERR_FAILED on every
-  // SW-controlled load, which renders the whole app unstyled.
-  // Installed SWs keep the CSP they were installed with: any change to this CSP
-  // also requires bumping CACHE_VERSION in public/sw.js (see note there).
-  `connect-src 'self' ${RZP} https://lumberjack.razorpay.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.tile.openstreetmap.org http://localhost:3000 https://desktop-s69biti.tail66553b.ts.net`,
-  `frame-src https://checkout.razorpay.com https://api.razorpay.com ${RZP}`
-].join('; ');
+
+app.use(helmet({
+  contentSecurityPolicy: process.env.DISABLE_CSP === 'true' ? false : {
+    directives: {
+      defaultSrc: ["'self'"],
+      baseUri: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      formAction: ["'self'"],
+      imgSrc: ["'self'", "data:", "blob:", "https://lh3.googleusercontent.com", "https://*.tile.openstreetmap.org", RZP],
+      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://checkout.razorpay.com"],
+      connectSrc: ["'self'", RZP, "https://lumberjack.razorpay.com", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://*.tile.openstreetmap.org", "http://localhost:3000", "https://desktop-s69biti.tail66553b.ts.net"],
+      frameSrc: ["https://checkout.razorpay.com", "https://api.razorpay.com", RZP]
+    }
+  },
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' }, // Needed for Razorpay
+  hsts: process.env.NODE_ENV === 'production' ? { maxAge: 15552000, includeSubDomains: true } : false
+}));
+
 app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
-  // geolocation: geofence config + member geo check-in; camera: QR scanner + food photo scan.
   res.setHeader('Permissions-Policy', 'geolocation=(self), microphone=(), camera=(self), usb=()');
-  if (process.env.DISABLE_CSP !== 'true') {
-    res.setHeader('Content-Security-Policy', CSP);
-  }
-  // HSTS only in production (over HTTPS); browsers ignore it on plain-HTTP localhost.
-  if (process.env.NODE_ENV === 'production') {
-    res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
-  }
   next();
 });
 
@@ -762,8 +737,27 @@ app.use((err, req, res, next) => {
 });
 
 // ==========================================
-// START SERVER
+// START SERVER & QUEUE
 // ==========================================
+const backgroundQueue = require('./services/backgroundQueue');
+// Register the whatsapp job handlers
+const { enqueueAutomationScan } = require('./services/whatsappJobs');
+backgroundQueue.start();
+
+// Enqueue automation scans for all tenants every 5 minutes
+setInterval(async () => {
+  try {
+    const { allQuery } = require('./database');
+    const tenants = await allQuery("SELECT id FROM tenants");
+    for (const t of tenants) {
+      enqueueAutomationScan(t.id);
+    }
+  } catch (e) {
+    console.error('[Cron] Failed to enqueue automation scans', e);
+  }
+}, 5 * 60 * 1000);
+
+
 const server = app.listen(PORT, '0.0.0.0', () => {
   const os = require('os');
   const nets = os.networkInterfaces();

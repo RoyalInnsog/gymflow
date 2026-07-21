@@ -88,8 +88,7 @@ async function applyBillingEvent(evt) {
     const nextBilling = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const cur = await getQuery('SELECT subscription_plan FROM tenants WHERE id = ?', [tenantId]);
     await runQuery("UPDATE tenants SET subscription_plan = ?, subscription_status = 'active', next_billing_date = ? WHERE id = ?", [plan, nextBilling, tenantId]);
-    await runQuery(`INSERT OR REPLACE INTO subscriptions (id, tenant_id, plan, status, razorpay_subscription_id, next_billing_date, updated_at)
-                    VALUES (?, ?, ?, 'active', ?, ?, CURRENT_TIMESTAMP)`,
+    await runQuery(`INSERT INTO subscriptions (id, tenant_id, plan, status, razorpay_subscription_id, next_billing_date, updated_at) VALUES (?, ?, ?, 'active', ?, ?, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET plan = EXCLUDED.plan, status = EXCLUDED.status, razorpay_subscription_id = EXCLUDED.razorpay_subscription_id, next_billing_date = EXCLUDED.next_billing_date, updated_at = EXCLUDED.updated_at`,
       ['sub_' + tenantId, tenantId, plan, rzpSubId || rzpPayId || null, nextBilling]);
     await runQuery(`INSERT INTO subscription_history (id, tenant_id, from_plan, to_plan, action, razorpay_subscription_id, razorpay_payment_id, amount, notes)
                     VALUES (?, ?, ?, ?, 'webhook_activate', ?, ?, ?, 'Activated via verified Razorpay webhook.')`,
@@ -127,8 +126,7 @@ app.post('/webhooks/razorpay', express.raw({ type: '*/*', limit: '1mb' }), async
   const eventId = req.headers['x-razorpay-event-id'] || evt.id || (evt.event + '_' + (evt.created_at || Date.now()));
   try {
     const inserted = await runQuery(
-      `INSERT OR IGNORE INTO billing_events (id, tenant_id, event_type, razorpay_event_id, payload, status)
-       VALUES (?, ?, ?, ?, ?, 'received')`,
+      `INSERT INTO billing_events (id, tenant_id, event_type, razorpay_event_id, payload, status) VALUES (?, ?, ?, ?, ?, 'received') ON CONFLICT DO NOTHING`,
       ['be_' + crypto.randomBytes(8).toString('hex'), null, evt.event || null, eventId, raw.toString('utf8')]);
     if (!inserted || inserted.changes === 0) {
       return res.json({ ok: true, duplicate: true }); // already processed
@@ -255,7 +253,7 @@ async function idempotency(req, res, next) {
   const origJson = res.json.bind(res);
   res.json = (body) => {
     if (res.statusCode < 500) {
-      runQuery('INSERT OR IGNORE INTO idempotency_keys (key, tenant_id, status, response) VALUES (?, ?, ?, ?)',
+      runQuery('INSERT INTO idempotency_keys (key, tenant_id, status, response) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING',
         [scopedKey, req.tenant_id || null, res.statusCode, JSON.stringify(body)]).catch(() => {});
     }
     return origJson(body);
@@ -473,7 +471,7 @@ app.post('/api/v1/attendance/checkin', authenticateToken, apiLimiter, requireTen
     }
 
     // 5. Database state update
-    const checkInId = 'a' + Date.now();
+    const checkInId = 'att_' + require('crypto').randomUUID().replace(/-/g, '').slice(0, 16);
     await runQuery(`
       INSERT INTO attendance (id, tenant_id, member_id, check_in, access_method)
       VALUES (?, ?, ?, datetime('now', 'localtime'), 'GPS')
@@ -739,10 +737,8 @@ app.use((err, req, res, next) => {
 // ==========================================
 // START SERVER & QUEUE
 // ==========================================
-const backgroundQueue = require('./services/backgroundQueue');
-// Register the whatsapp job handlers
 const { enqueueAutomationScan } = require('./services/whatsappJobs');
-backgroundQueue.start();
+// The old backgroundQueue is disconnected in favor of BullMQ
 
 // Enqueue automation scans for all tenants every 5 minutes
 setInterval(async () => {
@@ -757,6 +753,15 @@ setInterval(async () => {
   }
 }, 5 * 60 * 1000);
 
+// [SEC] Global Error Handler to prevent stack trace leaks
+app.use((err, req, res, next) => {
+  console.error('[Global Error]', err);
+  const status = err.status || 500;
+  const message = process.env.NODE_ENV === 'production' 
+    ? 'An internal server error occurred.' 
+    : err.message || 'Unknown error';
+  res.status(status).json({ error: message, code: 'INTERNAL_ERROR' });
+});
 
 const server = app.listen(PORT, '0.0.0.0', () => {
   const os = require('os');

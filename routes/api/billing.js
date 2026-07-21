@@ -266,8 +266,7 @@ router.post('/subscription/verify-payment', async (req, res) => {
     // 2. Insert/replace into subscriptions table
     const subId = 'sub_' + Date.now();
     await runQuery(`
-      INSERT OR REPLACE INTO subscriptions (id, tenant_id, plan, status, razorpay_subscription_id, next_billing_date, updated_at)
-      VALUES (?, ?, ?, 'active', ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO subscriptions (id, tenant_id, plan, status, razorpay_subscription_id, next_billing_date, updated_at) VALUES (?, ?, ?, 'active', ?, ?, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET plan = EXCLUDED.plan, status = EXCLUDED.status, razorpay_subscription_id = EXCLUDED.razorpay_subscription_id, next_billing_date = EXCLUDED.next_billing_date, updated_at = EXCLUDED.updated_at
     `, [subId, req.tenant_id, orderPlan, razorpay_payment_id, nextBillingDate]);
 
     // 3. Insert into subscription_history table
@@ -289,12 +288,10 @@ router.post('/subscription/verify-payment', async (req, res) => {
     // 'SaaS' sentinel was write-only (nothing filters on it — SaaS rows are keyed
     // by the INV-SAAS invoice_number).
     await runQuery(`
-      INSERT OR REPLACE INTO invoices (id, tenant_id, member_id, membership_id, invoice_number, subtotal, tax_amount, total_amount, status)
-      VALUES (?, ?, NULL, NULL, ?, ?, 0, ?, 'Paid')
+      INSERT INTO invoices (id, tenant_id, member_id, membership_id, invoice_number, subtotal, tax_amount, total_amount, status) VALUES (?, ?, NULL, NULL, ?, ?, 0, ?, 'Paid') ON CONFLICT (id) DO UPDATE SET member_id = EXCLUDED.member_id, membership_id = EXCLUDED.membership_id, invoice_number = EXCLUDED.invoice_number, subtotal = EXCLUDED.subtotal, tax_amount = EXCLUDED.tax_amount, total_amount = EXCLUDED.total_amount, status = EXCLUDED.status
     `, [invId, req.tenant_id, invNo, price, price]);
     await runQuery(`
-      INSERT OR REPLACE INTO payments (id, tenant_id, invoice_id, member_id, amount, method, transaction_reference, status)
-      VALUES (?, ?, ?, NULL, ?, 'Razorpay', ?, 'Successful')
+      INSERT INTO payments (id, tenant_id, invoice_id, member_id, amount, method, transaction_reference, status) VALUES (?, ?, ?, NULL, ?, 'Razorpay', ?, 'Successful') ON CONFLICT (id) DO UPDATE SET invoice_id = EXCLUDED.invoice_id, member_id = EXCLUDED.member_id, amount = EXCLUDED.amount, method = EXCLUDED.method, transaction_reference = EXCLUDED.transaction_reference, status = EXCLUDED.status
     `, [payId, req.tenant_id, invId, price, razorpay_payment_id]);
 
     res.json({ success: true, message: `Successfully upgraded subscription to ${orderPlan.toUpperCase()}.`, plan: orderPlan });

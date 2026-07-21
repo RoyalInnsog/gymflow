@@ -42,10 +42,10 @@ const settingsPostOld = `router.post('/settings', async (req, res) => {
   const { facility_name, facility_address, facility_email, facility_phone } = req.body;
   try {
     await allQuery(\`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)\`);
-    await runQuery(\`INSERT OR REPLACE INTO settings (key, value) VALUES ('facility_name', ?)\`, [facility_name]);
-    await runQuery(\`INSERT OR REPLACE INTO settings (key, value) VALUES ('facility_address', ?)\`, [facility_address]);
-    await runQuery(\`INSERT OR REPLACE INTO settings (key, value) VALUES ('facility_email', ?)\`, [facility_email]);
-    await runQuery(\`INSERT OR REPLACE INTO settings (key, value) VALUES ('facility_phone', ?)\`, [facility_phone]);
+    await runQuery(\`INSERT INTO settings (key, value) VALUES ('facility_name', ?) ON CONFLICT (tenant_id, setting_key) DO UPDATE SET value = EXCLUDED.value\`, [facility_name]);
+    await runQuery(\`INSERT INTO settings (key, value) VALUES ('facility_address', ?) ON CONFLICT (tenant_id, setting_key) DO UPDATE SET value = EXCLUDED.value\`, [facility_address]);
+    await runQuery(\`INSERT INTO settings (key, value) VALUES ('facility_email', ?) ON CONFLICT (tenant_id, setting_key) DO UPDATE SET value = EXCLUDED.value\`, [facility_email]);
+    await runQuery(\`INSERT INTO settings (key, value) VALUES ('facility_phone', ?) ON CONFLICT (tenant_id, setting_key) DO UPDATE SET value = EXCLUDED.value\`, [facility_phone]);
 
     res.json({ message: 'Facility operations settings updated.' });
   } catch (err) {
@@ -57,7 +57,7 @@ const settingsPostOld = `router.post('/settings', async (req, res) => {
 const settingsPostNew = `router.post('/settings', async (req, res) => {
   try {
     for (const [key, value] of Object.entries(req.body)) {
-      await runQuery(\`INSERT OR REPLACE INTO settings (setting_key, tenant_id, setting_value) VALUES (?, 't1', ?)\`, [key, value]);
+      await runQuery(\`INSERT INTO settings (setting_key, tenant_id, setting_value) VALUES (?, 't1', ?) ON CONFLICT (tenant_id, setting_key) DO UPDATE SET setting_key = EXCLUDED.setting_key, setting_value = EXCLUDED.setting_value\`, [key, value]);
     }
     res.json({ message: 'Facility operations settings updated.' });
   } catch (err) {

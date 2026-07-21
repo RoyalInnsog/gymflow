@@ -272,7 +272,7 @@ async function provision(label) {
   const gId = 'u_gtest_' + Date.now(), gEmail = `gonly_${Date.now()}@test.local`, gTen = 't_gtest_' + Date.now();
   await dbRun(`INSERT INTO tenants (id,gym_name,subdomain,owner_user_id,subscription_plan,subscription_status) VALUES (?,?,?,?,'trial','trial')`, [gTen, 'G Gym', 'gtest' + Date.now(), gId]);
   await dbRun(`INSERT INTO users (id,role_id,tenant_id,email,password_hash,full_name,email_verified,status,password_set) VALUES (?, 'r1', ?, ?, NULL, 'G Only', 1, 'active', 0)`, [gId, gTen, gEmail]);
-  await dbRun(`INSERT OR IGNORE INTO user_roles (id,user_id,tenant_id,role_id) VALUES (?,?,?,'r1')`, ['ur_' + gId, gId, gTen]);
+  await dbRun(`INSERT INTO user_roles (id,user_id,tenant_id,role_id) VALUES (?,?,?,'r1') ON CONFLICT DO NOTHING`, ['ur_' + gId, gId, gTen]);
   check('Passwordless account cannot password-login (401)', (await req('/api/v1/auth/login', { method: 'POST', origin: BASE, body: { email: gEmail, password: 'anything123' } })).status === 401);
 
   // Identity cleanup — collect owned tenants, delete users (cascades sessions/

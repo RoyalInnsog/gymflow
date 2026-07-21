@@ -41,6 +41,14 @@ router.get('/settings', async (req, res) => {
     const config = {};
     rows.forEach((r) => {config[r.setting_key] = r.setting_value;});
 
+    // Also pull geofencing parameters from tenants table
+    const tenantDetails = await getQuery(`SELECT latitude, longitude, geofence_radius FROM tenants WHERE id = ?`, [req.tenant_id]);
+    if (tenantDetails) {
+      if (tenantDetails.latitude !== null) config.latitude = tenantDetails.latitude;
+      if (tenantDetails.longitude !== null) config.longitude = tenantDetails.longitude;
+      if (tenantDetails.geofence_radius !== null) config.geofence_radius = tenantDetails.geofence_radius;
+    }
+
     res.json(config);
   } catch (err) {
     console.error(err);
@@ -50,12 +58,26 @@ router.get('/settings', async (req, res) => {
 
 router.post('/settings', authorize('settings:write'), async (req, res) => {
   try {
-    // [DATA-FLOW FIX] Persist under the authenticated tenant — NOT a hardcoded 't1'.
-    // Previously every tenant's settings were written to the demo tenant and the
-    // tenant-scoped read returned nothing, so changes never persisted.
-    for (const [key, value] of Object.entries(req.body)) {
+    const { latitude, longitude, geofence_radius, ...otherSettings } = req.body;
+    
+    // Update the tenants table if geofencing settings are provided
+    if (latitude !== undefined || longitude !== undefined || geofence_radius !== undefined) {
+      let updateFields = [];
+      let updateValues = [];
+      if (latitude !== undefined) { updateFields.push('latitude = ?'); updateValues.push(latitude || null); }
+      if (longitude !== undefined) { updateFields.push('longitude = ?'); updateValues.push(longitude || null); }
+      if (geofence_radius !== undefined) { updateFields.push('geofence_radius = ?'); updateValues.push(geofence_radius || 50); }
+      
+      if (updateFields.length > 0) {
+        updateValues.push(req.tenant_id);
+        await runQuery(`UPDATE tenants SET ${updateFields.join(', ')} WHERE id = ?`, updateValues);
+      }
+    }
+
+    // Persist under the authenticated tenant
+    for (const [key, value] of Object.entries(otherSettings)) {
       await runQuery(
-        `INSERT OR REPLACE INTO settings (setting_key, tenant_id, setting_value) VALUES (?, ?, ?)`,
+        `INSERT INTO settings (setting_key, tenant_id, setting_value) VALUES (?, ?, ?) ON CONFLICT (tenant_id, setting_key) DO UPDATE SET setting_key = EXCLUDED.setting_key, setting_value = EXCLUDED.setting_value`,
         [key, req.tenant_id, value === undefined || value === null ? '' : String(value)]
       );
     }

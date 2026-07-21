@@ -13,6 +13,11 @@
         rel="stylesheet">
     <link href="/assets/css/shared.css" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/tailwind.css">
+    
+    <!-- Leaflet for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
     <script src="/assets/js/designSystem.js"></script>
     <script src="/assets/js/api.js"></script>
     <!-- Gym Flow Offline-First layer (Phase F4A) -->
@@ -32,6 +37,8 @@
     <script src="/assets/js/utils.js"></script>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <title>Gym Flow - Business Control Center</title>
     <style>
         .nav-tab.active {
@@ -195,8 +202,32 @@
                                 <input type="tel" name="support_phone" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none">
                             </div>
                             <div class="md:col-span-2">
-                                <label class="block font-label-caps text-on-surface-variant mb-2">Address</label>
-                                <textarea name="address" rows="2" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none"></textarea>
+                                <label class="block font-label-caps text-on-surface-variant mb-2">Address & Location</label>
+                                <textarea name="address" id="gym_address" rows="2" class="w-full bg-surface-container border border-outline/30 rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:outline-none mb-4" placeholder="Enter physical address..."></textarea>
+                                
+                                <!-- Leaflet Map UI for Geofencing -->
+                                <div class="bg-surface-container-high rounded-xl p-4 border border-outline/10">
+                                    <div class="flex flex-wrap gap-4 items-center mb-4">
+                                        <div class="flex-1 min-w-[200px]">
+                                            <label class="block font-label-caps text-on-surface-variant text-xs mb-1">Search Address to Drop Pin</label>
+                                            <div class="flex gap-2">
+                                                <input type="text" id="map-search-input" class="flex-1 bg-surface-container border border-outline/30 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none" placeholder="e.g. 123 Main St, NY">
+                                                <button type="button" onclick="searchAddress()" class="bg-secondary-container text-on-secondary-container px-3 py-2 rounded-lg text-sm font-medium">Search</button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block font-label-caps text-on-surface-variant text-xs mb-1">Geofence Radius (meters)</label>
+                                            <input type="number" name="geofence_radius" id="geofence_radius" value="50" min="10" max="1000" class="w-32 bg-surface-container border border-outline/30 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none" onchange="updateCircleRadius()">
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="gym-map" class="w-full h-[300px] rounded-lg z-0 mb-3 border border-outline/30 relative"></div>
+                                    
+                                    <div class="flex gap-4 text-xs font-mono text-on-surface-variant bg-surface-container/50 p-2 rounded">
+                                        <div>LAT: <input type="number" step="any" name="latitude" id="lat_input" class="bg-transparent border-b border-outline/30 w-24 outline-none ml-1" readonly></div>
+                                        <div>LNG: <input type="number" step="any" name="longitude" id="lng_input" class="bg-transparent border-b border-outline/30 w-24 outline-none ml-1" readonly></div>
+                                    </div>
+                                </div>
                             </div>
                             <input type="hidden" name="logo_url" id="logoUrlHiddenDummy">
                             <input type="hidden" name="theme_color" id="themeColorHiddenDummy">
@@ -1864,6 +1895,14 @@
                 // Hydrate Settings Forms
                 const gForm = document.getElementById('form-gym-profile');
                 if (globalSettings.gym_name) gForm.gym_name.value = globalSettings.gym_name;
+                if (globalSettings.latitude) document.getElementById('lat_input').value = globalSettings.latitude;
+                if (globalSettings.longitude) document.getElementById('lng_input').value = globalSettings.longitude;
+                if (globalSettings.geofence_radius) document.getElementById('geofence_radius').value = globalSettings.geofence_radius;
+                
+                // Initialize Map
+                setTimeout(() => {
+                    if (typeof initGymMap === 'function') initGymMap();
+                }, 100);
                 if (globalSettings.logo_url) {
                     gForm.logo_url.value = globalSettings.logo_url;
                     document.getElementById('logoPreview').src = globalSettings.logo_url;
@@ -2599,6 +2638,88 @@
 
         // Initialize
         window.addEventListener('DOMContentLoaded', loadData);
+
+        let gymMap, gymMarker, gymCircle;
+
+        function initGymMap() {
+            if (gymMap) return; // Already initialized
+
+            const latInput = document.getElementById('lat_input');
+            const lngInput = document.getElementById('lng_input');
+            const radiusInput = document.getElementById('geofence_radius');
+
+            // Default to center of US or provided lat/lng
+            let startLat = parseFloat(latInput.value) || 39.8283;
+            let startLng = parseFloat(lngInput.value) || -98.5795;
+            let startZoom = (latInput.value && lngInput.value) ? 17 : 4;
+
+            gymMap = L.map('gym-map').setView([startLat, startLng], startZoom);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(gymMap);
+
+            gymMarker = L.marker([startLat, startLng], { draggable: true }).addTo(gymMap);
+            gymCircle = L.circle([startLat, startLng], {
+                color: '#3b82f6', // primary color
+                fillColor: '#3b82f6',
+                fillOpacity: 0.2,
+                radius: parseInt(radiusInput.value) || 50
+            }).addTo(gymMap);
+
+            function updateInputsAndCircle(lat, lng) {
+                latInput.value = lat.toFixed(6);
+                lngInput.value = lng.toFixed(6);
+                gymCircle.setLatLng([lat, lng]);
+            }
+
+            gymMarker.on('dragend', function (e) {
+                const pos = gymMarker.getLatLng();
+                updateInputsAndCircle(pos.lat, pos.lng);
+            });
+
+            gymMap.on('click', function (e) {
+                gymMarker.setLatLng(e.latlng);
+                updateInputsAndCircle(e.latlng.lat, e.latlng.lng);
+            });
+            
+            // Re-render map tiles correctly if it was initialized while hidden
+            setTimeout(() => { gymMap.invalidateSize(); }, 500);
+        }
+
+        function updateCircleRadius() {
+            if (gymCircle) {
+                const r = parseInt(document.getElementById('geofence_radius').value) || 50;
+                gymCircle.setRadius(r);
+            }
+        }
+
+        async function searchAddress() {
+            const query = document.getElementById('map-search-input').value.trim();
+            if (!query) return;
+
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                if (data && data.length > 0) {
+                    const lat = parseFloat(data[0].lat);
+                    const lon = parseFloat(data[0].lon);
+                    
+                    if (gymMap && gymMarker && gymCircle) {
+                        gymMap.flyTo([lat, lon], 17);
+                        gymMarker.setLatLng([lat, lon]);
+                        gymCircle.setLatLng([lat, lon]);
+                        document.getElementById('lat_input').value = lat.toFixed(6);
+                        document.getElementById('lng_input').value = lon.toFixed(6);
+                    }
+                } else {
+                    alert('Address not found. Please try a different search term.');
+                }
+            } catch (err) {
+                console.error('Error geocoding address:', err);
+                alert('Could not search address at this time.');
+            }
+        }
 
     </script>
     <div id="jsb-mobile-nav"></div>

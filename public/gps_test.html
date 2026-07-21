@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Attendance Test</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; max-width: 600px; margin: 0 auto; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    #log { background: #f0f0f0; padding: 10px; margin-top: 20px; min-height: 100px; font-family: monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>GPS Geofencing Test</h1>
+  <p>Uses the browser's Geolocation API to check in via <code>POST /api/v1/attendance/checkin</code>.</p>
+  
+  <div>
+    <label>Member ID:</label><br>
+    <input type="text" id="member_id" placeholder="m... (get from members table)" style="width: 100%; padding: 8px; margin-bottom: 15px;">
+  </div>
+  
+  <button onclick="checkIn()">Simulate GPS Check-in</button>
+
+  <div id="log">Logs will appear here...</div>
+
+  <script>
+    function logMsg(msg) {
+      document.getElementById('log').innerText += '\n' + msg;
+    }
+
+    async function checkIn() {
+      const memberId = document.getElementById('member_id').value.trim();
+      if (!memberId) {
+        alert("Please enter a valid member ID.");
+        return;
+      }
+
+      logMsg("Requesting location...");
+      
+      if (!navigator.geolocation) {
+        logMsg("Geolocation is not supported by your browser.");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const { latitude, longitude } = position.coords;
+        logMsg(`Acquired GPS: Lat ${latitude}, Lng ${longitude}`);
+        
+        try {
+          logMsg("Sending POST to /api/v1/attendance/checkin...");
+          const res = await fetch('/api/v1/attendance/checkin', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              latitude,
+              longitude,
+              timestamp: Date.now(),
+              member_id: memberId
+            })
+          });
+
+          const data = await res.json();
+          logMsg(`Response: ${res.status} ${res.statusText}\n${JSON.stringify(data, null, 2)}`);
+        } catch (err) {
+          logMsg("Error: " + err.message);
+        }
+      }, (err) => {
+        logMsg(`GPS Error: ${err.message}`);
+      });
+    }
+  </script>
+</body>
+</html>

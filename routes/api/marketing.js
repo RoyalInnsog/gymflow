@@ -148,7 +148,7 @@ router.post('/whatsapp/send', async (req, res) => {
     }
 
     const normalizedPhone = whatsappCloud.validateAndNormalizePhone(member.phone);
-    const ntId = 'nt' + Date.now() + Math.floor(Math.random() * 1000);
+    const ntId = uid('nt');
     
     if (!normalizedPhone) {
       // Log as failed immediately

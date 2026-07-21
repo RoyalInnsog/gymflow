@@ -1,4 +1,4 @@
-const queue = require('./backgroundQueue');
+const { whatsappQueue, genericQueue, Worker, connection } = require('./redisQueue');
 const whatsappCloud = require('./whatsappCloud.service');
 const billing = require('../lib/billingState');
 const { runQuery } = require('../database');
@@ -36,11 +36,21 @@ async function handleWhatsAppDispatch(tenantId, payload, job) {
   }
 }
 
-queue.register('whatsapp_dispatch', handleWhatsAppDispatch);
+const whatsappWorker = new Worker('whatsapp_messages', async (job) => {
+  const { tenantId, normalizedPhone, message, notificationId, media } = job.data;
+  await handleWhatsAppDispatch(tenantId, { normalizedPhone, message, notificationId, media }, job);
+}, { connection });
+
+whatsappWorker.on('failed', (job, err) => {
+  console.error(`[WhatsAppWorker] Job \${job.id} failed:`, err.message);
+});
 
 module.exports = {
   dispatchWhatsAppAsync: async (tenantId, normalizedPhone, message, notificationId, media = null) => {
-    return queue.enqueue(tenantId, 'whatsapp_dispatch', { normalizedPhone, message, notificationId, media });
+    return whatsappQueue.add('send_message', { tenantId, normalizedPhone, message, notificationId, media }, {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 2000 }
+    });
   }
 };
 const { getTodayString } = require('../lib/dateUtils');
@@ -105,8 +115,19 @@ async function handleAutomationScan(tenantId, payload, job) {
   }
 }
 
-queue.register('automation_scan', handleAutomationScan);
+const genericWorker = new Worker('generic_jobs', async (job) => {
+  if (job.name === 'automation_scan') {
+    await handleAutomationScan(job.data.tenantId, {}, job);
+  }
+}, { connection });
+
+genericWorker.on('failed', (job, err) => {
+  console.error(`[GenericWorker] Job \${job.id} failed:`, err.message);
+});
 
 module.exports.enqueueAutomationScan = (tenantId) => {
-  return queue.enqueue(tenantId, 'automation_scan', {});
+  return genericQueue.add('automation_scan', { tenantId }, {
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 5000 }
+  });
 };

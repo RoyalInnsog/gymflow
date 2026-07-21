@@ -27,7 +27,7 @@ const invoicePdf = require('../lib/invoicePdf');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function uid(prefix = 'nt_out') {
-  return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  return prefix + require('crypto').randomUUID().replace(/-/g, '');
 }
 
 // ── Injected dependencies (wired once at boot from routes/api.js) ────────────

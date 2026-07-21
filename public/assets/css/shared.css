@@ -258,20 +258,18 @@ body {
 }
 
 /* ─── MATERIAL SYMBOLS ────────────────────────────────── */
-/* !important ensures these win over Tailwind's preflight base reset
-   (which sets font-family and font-variation-settings on html/button/etc).
-   This is the ONLY place in the CSS stack that defines icon font rules. */
+/* ─── MATERIAL SYMBOLS ────────────────────────────────── */
+/* This is the ONLY place in the CSS stack that defines icon font rules. 
+   Do not use !important on font-variation-settings so inline JS toggles can work. */
 .material-symbols-outlined {
   font-family: "Material Symbols Outlined" !important;
-  font-weight: normal !important;
-  font-style: normal !important;
-  font-size: 22px !important;
-  line-height: 1 !important;
+  font-size: 24px;
+  line-height: 1;
   display: inline-block;
   white-space: nowrap;
   direction: ltr;
-  font-feature-settings: "liga" !important;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+  font-feature-settings: "liga" !important; /* Required to beat global resets */
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
   -webkit-font-smoothing: antialiased;
 }
 

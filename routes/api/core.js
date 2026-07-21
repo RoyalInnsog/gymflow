@@ -70,8 +70,7 @@ router.post('/onboarding/complete-setup', async (req, res) => {
     for (const [key, value] of Object.entries(settingsToSave)) {
       if (value !== undefined && value !== null) {
         await runQuery(`
-          INSERT OR REPLACE INTO settings (setting_key, tenant_id, setting_value, created_at) 
-          VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+          INSERT INTO settings (setting_key, tenant_id, setting_value, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT (tenant_id, setting_key) DO UPDATE SET setting_key = EXCLUDED.setting_key, setting_value = EXCLUDED.setting_value, created_at = EXCLUDED.created_at
         `, [key, req.tenant_id, String(value)]);
       }
     }

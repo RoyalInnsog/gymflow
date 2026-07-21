@@ -45,7 +45,7 @@ const TEMPLATE_COL = {
 };
 
 function uid(prefix = 'wa_') {
-  return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  return prefix + require('crypto').randomUUID().replace(/-/g, '');
 }
 
 /** Shape a raw DB row (or nothing) into a fully-defaulted settings object. */

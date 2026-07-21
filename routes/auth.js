@@ -148,7 +148,7 @@ router.post('/signup', authLimiter, async (req, res) => {
     await runQuery(`INSERT INTO users (id, role_id, tenant_id, email, password_hash, full_name, phone, email_verified, status, password_set) VALUES (?, 'r1', ?, ?, ?, ?, ?, ?, 'active', 1)`,
       [userId, tenantId, email, hash, full_name, normPhone, initialVerified]);
 
-    await runQuery(`INSERT OR IGNORE INTO user_roles (id, user_id, tenant_id, role_id) VALUES (?, ?, ?, 'r1')`,
+    await runQuery(`INSERT INTO user_roles (id, user_id, tenant_id, role_id) VALUES (?, ?, ?, 'r1') ON CONFLICT DO NOTHING`,
       ['ur_' + userId + '_' + tenantId + '_r1', userId, tenantId]);
     await seedTenantDefaults(tenantId, gymName);
     await events.record({ userId, email, event: 'signup', req, meta: { provider: 'password' } });
@@ -869,7 +869,7 @@ router.get('/google/callback', async (req, res) => {
         [tenantId, gymName, subdomain, userId, trialStart, trialEnd]);
       await runQuery(`INSERT INTO users (id, role_id, tenant_id, email, password_hash, full_name, email_verified, status, password_set) VALUES (?, 'r1', ?, ?, NULL, ?, 1, 'active', 0)`,
         [userId, tenantId, email, fullName]);
-      await runQuery(`INSERT OR IGNORE INTO user_roles (id, user_id, tenant_id, role_id) VALUES (?, ?, ?, 'r1')`,
+      await runQuery(`INSERT INTO user_roles (id, user_id, tenant_id, role_id) VALUES (?, ?, ?, 'r1') ON CONFLICT DO NOTHING`,
         ['ur_' + userId + '_' + tenantId + '_r1', userId, tenantId]);
       await account.linkProvider(userId, 'google', sub, email);
       await seedTenantDefaults(tenantId, gymName);

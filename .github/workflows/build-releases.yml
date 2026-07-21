@@ -1,0 +1,64 @@
+name: Build Apple Releases (macOS & iOS)
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          
+      - name: Install Desktop Dependencies
+        working-directory: ./desktop
+        run: npm install
+
+      - name: Build macOS DMG
+        working-directory: ./desktop
+        run: npm run dist:mac
+
+      - name: Upload DMG Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macOS-DMG
+          path: desktop/dist/*.dmg
+
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          
+      - name: Install Mobile Dependencies
+        working-directory: ./mobile
+        run: npm install
+
+      - name: Sync iOS Capacitor Project
+        working-directory: ./mobile
+        run: npx cap sync ios
+
+      - name: Build iOS App
+        working-directory: ./mobile/ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release CODE_SIGNING_ALLOWED=NO -sdk iphonesimulator build
+          # Note: Creating a signed .ipa requires Apple Developer Certificates and Provisioning Profiles.
+          # This compiles an unsigned .app bundle as proof of successful build.
+
+      - name: Upload iOS App Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iOS-App
+          path: mobile/ios/App/build/Release-iphonesimulator/App.app

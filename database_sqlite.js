@@ -1,4 +1,6 @@
-const { createClient } = require('@libsql/client');
+const { Pool } = require('pg');
+const { AsyncLocalStorage } = require('async_hooks');
+const tenantContext = new AsyncLocalStorage();
 const { pathToFileURL } = require('url');
 const path = require('path');
 const bcrypt = require('bcryptjs');
@@ -16,22 +18,19 @@ const bcrypt = require('bcryptjs');
 //   when you run `node server.js` locally. DATABASE_PATH still overrides the file.
 // ---------------------------------------------------------------------------
 function buildDbConfig() {
-  if (process.env.TURSO_DATABASE_URL) {
-    return { url: process.env.TURSO_DATABASE_URL, authToken: process.env.TURSO_AUTH_TOKEN };
-  }
-  const file = process.env.DATABASE_PATH
-    ? path.resolve(process.env.DATABASE_PATH)
-    : path.resolve(__dirname, 'database.db');
-  return { url: pathToFileURL(file).href };
+  return {
+    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/gymflow',
+    ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false }
+  };
 }
 
-const usingTurso = !!process.env.TURSO_DATABASE_URL;
-const db = createClient(buildDbConfig());
-console.log(`Connected to the database (${usingTurso ? 'Turso cloud' : 'local SQLite file'}).`);
+const usingPg = true;
+const db = new Pool(buildDbConfig());
+console.log('Connected to PostgreSQL database.');
 
 // Enforce referential integrity (SQLite/libSQL leave foreign keys off by
 // default). Best-effort; harmless if the host manages it server-side.
-db.execute('PRAGMA foreign_keys = ON').catch(() => {});
+// PRAGMA foreign_keys = ON not needed for pg
 
 // libSQL is stricter than node-sqlite3 about bind values: undefined and JS
 // booleans throw. Normalize to what the old driver tolerated (undefined -> NULL,
@@ -1741,6 +1740,7 @@ async function initializeDatabase() {
 }
 
 module.exports = {
+  tenantContext,
   db,
   runQuery,
   getQuery,

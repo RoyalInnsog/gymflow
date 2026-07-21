@@ -6,7 +6,11 @@ const crypto = require('crypto');
 require('dotenv').config();
 const { initializeDatabase, getQuery, runQuery, allQuery, seedTenantDefaults } = require('./database');
 const emailService = require('./lib/emailService');
+const { dispatchWhatsAppAsync } = require('./services/whatsappJobs');
+const waAutomations = require('./services/whatsappAutomations');
 
+// Initialize WhatsApp automations to push via Redis BullMQ
+waAutomations.init({ dispatch: dispatchWhatsAppAsync });
 const app = express();
 const PORT = process.env.PORT || 3000;
 

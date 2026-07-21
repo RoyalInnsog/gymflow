@@ -44,12 +44,12 @@
             -webkit-font-smoothing: antialiased;
         }
         
-        /* Subtle mesh gradient background simulation using CSS and theme colors */
+        /* Subtle dark background */
         .bg-mesh {
-            background-color: #131313; /* background */
+            background-color: #0f1014; /* Match global background */
             background-image: 
-                radial-gradient(at 0% 0%, rgba(53, 53, 53, 0.4) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(31, 31, 31, 0.5) 0px, transparent 50%);
+                radial-gradient(at 0% 0%, rgba(22, 200, 238, 0.05) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(0, 255, 170, 0.05) 0px, transparent 50%);
         }
     </style>
 
@@ -59,49 +59,31 @@
 <!-- Atmospheric background light elements -->
 <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-surface-variant/20 rounded-full blur-[120px] pointer-events-none"></div>
 <div class="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[150px] pointer-events-none"></div>
-<!-- Split layout: brand hero (desktop only) + login column -->
+<!-- Split layout: image hero (desktop only) + login column -->
 <div class="relative z-10 min-h-screen flex">
 <!-- Brand / Hero Panel (lg and up) -->
-<aside class="hidden lg:flex flex-col justify-between w-1/2 xl:w-[55%] relative overflow-hidden p-12 xl:p-16 border-r border-outline-variant/20">
-<!-- Decorative layers -->
-<div class="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent pointer-events-none"></div>
-<div class="absolute -bottom-40 -left-40 w-[480px] h-[480px] bg-primary/10 rounded-full blur-[160px] pointer-events-none"></div>
-<span class="material-symbols-outlined absolute -right-20 -bottom-24 text-on-surface/[0.04] pointer-events-none select-none leading-none" style="font-size: 440px;">exercise</span>
-<!-- Brand row -->
-<div class="relative z-10 flex items-center gap-4">
-<div class="h-12 w-12 flex items-center justify-center rounded-lg bg-surface-container-highest border border-outline-variant/50 shadow-inner">
-<span class="material-symbols-outlined text-3xl text-primary dynamic-logo" style="font-variation-settings: 'FILL' 1;">hexagon</span>
+<aside class="hidden lg:flex flex-col justify-end w-1/2 xl:w-[55%] relative overflow-hidden bg-black">
+<!-- Unsplash background image -->
+<img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1470&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay" alt="Gym Background">
+<!-- Decorative gradient overlay -->
+<div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
+
+<!-- Brand row at the top left -->
+<div class="absolute top-12 left-12 z-20 flex items-center gap-4">
+  <div class="h-12 w-12 flex items-center justify-center rounded-lg bg-surface-container/60 backdrop-blur-md border border-white/10 shadow-inner">
+    <span class="material-symbols-outlined text-3xl text-white dynamic-logo" style="font-variation-settings: 'FILL' 1;">hexagon</span>
+  </div>
+  <span class="font-headline-md text-headline-md text-white uppercase tracking-widest dynamic-gym-name font-bold"></span>
 </div>
-<span class="font-headline-md text-headline-md text-on-surface uppercase tracking-widest dynamic-gym-name"></span>
+
+<!-- Tagline over image -->
+<div class="relative z-20 p-12 max-w-xl">
+  <div class="inline-block px-4 py-1.5 rounded-full bg-primary/20 border border-primary/50 backdrop-blur-md mb-6">
+    <span class="font-label-caps text-label-caps text-primary uppercase tracking-widest">Gym Flow OS</span>
+  </div>
+  <h2 class="font-headline-xl text-headline-xl text-white leading-tight font-bold mb-4 drop-shadow-lg">Run your gym<br>on autopilot.</h2>
+  <p class="font-body-lg text-body-lg text-white/80 max-w-md drop-shadow-md">The most powerful, intuitive command center for your entire facility. Syncs everywhere, instantly.</p>
 </div>
-<!-- Tagline -->
-<div class="relative z-10 max-w-xl">
-<p class="font-label-caps text-label-caps text-primary uppercase tracking-widest mb-4">Gym Flow OS</p>
-<h2 class="font-headline-xl text-headline-xl text-on-surface leading-tight">Run your gym<br>on autopilot.</h2>
-<p class="font-body-md text-body-md text-on-surface-variant mt-4 max-w-md">Members, billing, attendance and growth — one command center for your entire facility.</p>
-<div class="flex flex-col gap-4 mt-10">
-<div class="flex items-center gap-3">
-<div class="h-9 w-9 flex items-center justify-center rounded-lg bg-surface-container-highest/60 border border-outline-variant/30 shrink-0">
-<span class="material-symbols-outlined text-[18px] text-primary">qr_code_scanner</span>
-</div>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Instant QR check-ins with live capacity</span>
-</div>
-<div class="flex items-center gap-3">
-<div class="h-9 w-9 flex items-center justify-center rounded-lg bg-surface-container-highest/60 border border-outline-variant/30 shrink-0">
-<span class="material-symbols-outlined text-[18px] text-primary">payments</span>
-</div>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Automated billing, renewals and reminders</span>
-</div>
-<div class="flex items-center gap-3">
-<div class="h-9 w-9 flex items-center justify-center rounded-lg bg-surface-container-highest/60 border border-outline-variant/30 shrink-0">
-<span class="material-symbols-outlined text-[18px] text-primary">monitoring</span>
-</div>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Real-time analytics across your facility</span>
-</div>
-</div>
-</div>
-<!-- Hero footer -->
-<p class="relative z-10 font-body-sm text-body-sm text-on-surface-variant/50">Works offline. Syncs everywhere.</p>
 </aside>
 <!-- Login Column -->
 <div class="flex-1 flex items-center justify-center p-margin-mobile md:p-margin-desktop">

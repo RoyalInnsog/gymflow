@@ -114,6 +114,32 @@ window.GymGeofence = (function () {
 
   function startWatch() {
     if (watchId != null) return;
+
+    if (window.Capacitor && window.Capacitor.Plugins) {
+      if (window.Capacitor.Plugins.BackgroundGeolocation) {
+        window.Capacitor.Plugins.BackgroundGeolocation.addWatcher({
+          backgroundMessage: "Checking in to the gym automatically.",
+          backgroundTitle: "Gym Flow Tracking",
+          requestPermissions: true,
+          stale: false,
+          distanceFilter: 10
+        }, function(location, error) {
+          if (error) { emit('geo-error', { code: error.code, message: error.message }); return; }
+          if (location) { onPosition(location); }
+        }).then(function(id) { watchId = id; });
+        return;
+      } else if (window.Capacitor.Plugins.Geolocation) {
+        window.Capacitor.Plugins.Geolocation.requestPermissions().then(function(status) {
+          if (status.location !== 'granted') { emit('geo-error', { code: 1, message: 'Permission denied' }); return; }
+          window.Capacitor.Plugins.Geolocation.watchPosition({ enableHighAccuracy: true }, function(pos, err) {
+            if (err) emit('geo-error', { code: err.code, message: err.message });
+            else onPosition(pos);
+          }).then(function(id) { watchId = id; });
+        });
+        return;
+      }
+    }
+
     if (!('geolocation' in navigator)) { emit('unsupported'); return; }
     watchId = navigator.geolocation.watchPosition(
       onPosition,
@@ -122,8 +148,16 @@ window.GymGeofence = (function () {
     );
   }
   function stopWatch() {
-    if (watchId != null && navigator.geolocation) {
-      try { navigator.geolocation.clearWatch(watchId); } catch (e) {}
+    if (watchId != null) {
+      if (typeof watchId === 'string' && window.Capacitor && window.Capacitor.Plugins) {
+        if (window.Capacitor.Plugins.BackgroundGeolocation) {
+          window.Capacitor.Plugins.BackgroundGeolocation.removeWatcher({ id: watchId }).catch(function(){});
+        } else if (window.Capacitor.Plugins.Geolocation) {
+          window.Capacitor.Plugins.Geolocation.clearWatch({ id: watchId }).catch(function(){});
+        }
+      } else if (navigator.geolocation) {
+        try { navigator.geolocation.clearWatch(watchId); } catch (e) {}
+      }
     }
     watchId = null;
   }

@@ -673,6 +673,68 @@ router.post('/attendance/geo-check-in', billing.verifySubscriptionBilling('allow
 });
 
 // ==========================================
+// KIOSK QR CHECK-IN API (Self Check-in)
+// ==========================================
+
+global.kioskTokens = global.kioskTokens || {};
+
+router.get('/attendance/kiosk-token', authorize('attendance:write'), async (req, res) => {
+  try {
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(8).toString('hex');
+    const expiresAt = Date.now() + 15000; // 15 seconds validity
+    
+    // Store token for this tenant
+    global.kioskTokens[token] = {
+      tenant_id: req.tenant_id,
+      expiresAt: expiresAt
+    };
+    
+    res.json({ token, expiresAt, tenant_id: req.tenant_id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to generate token' });
+  }
+});
+
+router.post('/attendance/kiosk-checkin', async (req, res) => {
+  try {
+    const { token, tenant_id, phone } = req.body;
+    
+    // 1. Validate token
+    const tokenData = global.kioskTokens[token];
+    if (!tokenData || tokenData.tenant_id !== tenant_id || Date.now() > tokenData.expiresAt) {
+      return res.status(400).json({ error: 'QR Code expired. Please scan the latest code on the screen.' });
+    }
+    
+    // 2. Find member by phone
+    const member = await getQuery(`SELECT id, full_name, status FROM members WHERE tenant_id = ? AND phone = ?`, [tenant_id, phone]);
+    if (!member) {
+      return res.status(404).json({ error: 'No member found with this phone number.' });
+    }
+    if (member.status === 'Expired') {
+      return res.status(403).json({ error: 'Membership is expired. Check-in blocked.' });
+    }
+    
+    // 3. Mark attendance
+    const checkInId = 'a' + Date.now();
+    await runQuery(
+      `INSERT INTO attendance (id, tenant_id, member_id, check_in, access_method)
+       VALUES (?, ?, ?, datetime('now', 'localtime'), 'Kiosk-QR')`,
+      [checkInId, tenant_id, member.id]
+    );
+    
+    // One-time use
+    delete global.kioskTokens[token];
+    
+    res.json({ message: `Welcome to the gym, ${member.full_name}!` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Check-in failed' });
+  }
+});
+
+// ==========================================
 // MEMBERSHIP RENEWALS API
 // ==========================================
 router.post('/memberships/renew', authorize('payments:write'), async (req, res) => {

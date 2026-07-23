@@ -126,7 +126,12 @@ genericWorker.on('failed', (job, err) => {
 });
 
 module.exports.enqueueAutomationScan = (tenantId) => {
+  // [B9] Bucket time into 5-minute windows (300,000 ms). BullMQ uses the jobId
+  // for deduplication, so even if 10 nodes run the 5-minute setInterval simultaneously,
+  // only 1 job per tenant per 5-minute block will be queued.
+  const bucket = Math.floor(Date.now() / 300000);
   return genericQueue.add('automation_scan', { tenantId }, {
+    jobId: `scan_${tenantId}_${bucket}`,
     attempts: 3,
     backoff: { type: 'exponential', delay: 5000 }
   });

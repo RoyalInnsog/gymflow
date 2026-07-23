@@ -73,10 +73,16 @@ router.get('/subscription/status', async (req, res) => {
       // [SEC/REVENUE] Platform's SaaS-collection UPI is server-configured (env),
       // never hardcoded in the client. Empty when unset → the Direct-UPI tab hides
       // its QR/handle instead of showing a stale personal UPI ID.
-      platformUpi: {
-        id: process.env.PLATFORM_UPI_ID || '',
-        name: process.env.PLATFORM_UPI_NAME || 'GymFlow'
-      }
+      platformUpi: (() => {
+        let id = process.env.PLATFORM_UPI_ID || '';
+        if (id && !/^[\w.-]+@[\w.-]+$/.test(id)) {
+          id = '';
+        }
+        return {
+          id,
+          name: process.env.PLATFORM_UPI_NAME || 'GymFlow'
+        };
+      })()
     });
   } catch (err) {
     console.error(err);
@@ -168,7 +174,7 @@ router.post('/subscription/create-order', async (req, res) => {
     return res.status(400).json({ error: 'Invalid plan selected.' });
   }
 
-  const prices = { basic: 299, pro: 499, enterprise: 999 };
+  const prices = { basic: 0, pro: 499, enterprise: 999 };
   const price = prices[plan];
 
   try {
@@ -225,7 +231,7 @@ router.post('/subscription/verify-payment', async (req, res) => {
       return res.status(400).json({ error: 'Could not verify the payment order.' });
     }
 
-    const prices = { basic: 299, pro: 499, enterprise: 999 };
+    const prices = { basic: 0, pro: 499, enterprise: 999 };
     const notes = (order && order.notes) || {};
     const orderPlan = notes.plan;
 
@@ -312,7 +318,7 @@ router.post('/subscription/submit-upi-payment', async (req, res) => {
   }
 
   try {
-    const prices = { basic: 299, pro: 499, enterprise: 999 };
+    const prices = { basic: 0, pro: 499, enterprise: 999 };
     const price = prices[plan];
 
     const currentTenant = await getQuery("SELECT subscription_plan, gym_name FROM tenants WHERE id = ? ", [req.tenant_id]);
@@ -476,6 +482,9 @@ router.post('/finance/collect', authorize('payments:write'), async (req, res) =>
     // Online gateway path ONLY for non-manual Card/UPI: creates a Pending order
     // that a Razorpay webhook/verify flips to Successful.
     if ((method === 'Card' || method === 'UPI') && !manual) {
+      if (!isRazorpayConfigured()) {
+        return res.status(400).json({ error: 'Payment gateway not configured. Please use manual collection.' });
+      }
       const order = await createOrder(payAmount, invoice.invoice_number);
       await runQuery(`
         INSERT INTO payments (id, tenant_id, invoice_id, member_id, amount, method, status)

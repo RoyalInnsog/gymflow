@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getQuery, runQuery, allQuery } = require('../../database');
-const { authorize, requireFeature, checkSubscription, getTaxConfig, computeTax, resolveRenewalDiscount, uid, nextInvoiceNumber } = require('../../lib/apiUtils');
+const { authorize, requireFeature, checkSubscription, getTaxConfig, computeTax, resolveRenewalDiscount, uid, nextInvoiceNumber, ALLOWED_DISCOUNT_IDS, ALLOWED_DISCOUNT_TYPES, FEET_PER_METER, inLatRange, inLonRange, isFiniteNum } = require('../../lib/apiUtils');
 
 // Temporary aliases for missing dependencies
 const { PLANS, isRazorpayConfigured, createOrder, verifyPaymentSignature, fetchOrder, cancelSubscription } = require('../../lib/razorpay');
@@ -75,7 +75,10 @@ router.post('/settings', authorize('settings:write'), async (req, res) => {
     }
 
     // Persist under the authenticated tenant
-    for (const [key, value] of Object.entries(otherSettings)) {
+    for (let [key, value] of Object.entries(otherSettings)) {
+      if (key === 'currency' && typeof value === 'object' && value !== null) {
+        value = value.value || value.symbol || value.code || '₹';
+      }
       await runQuery(
         `INSERT INTO settings (setting_key, tenant_id, setting_value) VALUES (?, ?, ?) ON CONFLICT (tenant_id, setting_key) DO UPDATE SET setting_key = EXCLUDED.setting_key, setting_value = EXCLUDED.setting_value`,
         [key, req.tenant_id, value === undefined || value === null ? '' : String(value)]

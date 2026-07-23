@@ -83,9 +83,9 @@ async function sendTest(req, res) {
     const ntId = 'nt_test' + Date.now().toString(36);
     const normalized = cloud.validateAndNormalizePhone(phone) || phone;
     await runQuery(
-      `INSERT INTO notifications (id, tenant_id, type, priority, title, message, is_read, recipient_phone, delivery_status, failure_reason, campaign_source)
-       VALUES (?, ?, 'WhatsApp', 'Low', 'WhatsApp: Test Message', ?, 1, ?, ?, ?, 'Manual Test')`,
-      [ntId, req.tenant_id, body, normalized, result.success ? 'Delivered' : 'Failed', result.success ? null : (result.error || 'Send failed')]
+      `INSERT INTO notifications (id, tenant_id, type, priority, title, message, is_read, recipient_phone, delivery_status, failure_reason, campaign_source, provider_message_id)
+       VALUES (?, ?, 'WhatsApp', 'Low', 'WhatsApp: Test Message', ?, 1, ?, ?, ?, 'Manual Test', ?)`,
+      [ntId, req.tenant_id, body, normalized, result.success ? 'Delivered' : 'Failed', result.success ? null : (result.error || 'Send failed'), result.messageId || null]
     );
 
     if (!result.success) return res.status(502).json({ error: result.error || 'Failed to send test message.' });

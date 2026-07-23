@@ -1,4 +1,4 @@
-﻿const { getQuery, allQuery } = require('../database');
+const { getQuery, allQuery } = require('../database');
 const http = require('http');
 
 /**
@@ -17,9 +17,9 @@ async function gatherGymContext(tenantId) {
     [tenantId]
   );
 
-  // Get members expiring in the next 7 days
+  // Get members expiring in the next 7 days (anonymized)
   const expiries = await allQuery(
-    "SELECT m.full_name, ms.end_date FROM memberships ms JOIN members m ON ms.member_id = m.id WHERE ms.tenant_id = ? AND ms.status = 'Active' AND ms.end_date >= date('now') AND ms.end_date <= date('now', '+7 days')",
+    "SELECT m.id, ms.end_date FROM memberships ms JOIN members m ON ms.member_id = m.id WHERE ms.tenant_id = ? AND ms.status = 'Active' AND ms.end_date >= date('now') AND ms.end_date <= date('now', '+7 days')",
     [tenantId]
   );
 
@@ -28,14 +28,14 @@ GYM BUSINESS CONTEXT:
 - Total Active Members: ${activeMembers.count || 0}
 - Revenue This Month: ${revenueThisMonth.total || 0}
 - Upcoming Expiries (Next 7 days): ${expiries.length} members
-  ${expiries.map(e => `* ${e.full_name} (Exp: ${e.end_date})`).join('\n  ')}
+  ${expiries.map(e => `* Member ID: ${e.id} (Exp: ${e.end_date})`).join('\n  ')}
   `;
 }
 
 /**
  * Connects to local Ollama instance and streams the response via SSE.
  */
-async function streamAIResponse(tenantId, userMessage, res) {
+async function streamAIResponse(tenantId, userMessage, req, res) {
   const context = await gatherGymContext(tenantId);
   
   const systemPrompt = `You are a highly intelligent AI assistant embedded in 'Gym Flow', a SaaS platform for Gym Owners. 
@@ -52,9 +52,12 @@ ${context}`;
     stream: true
   });
 
+  const ollamaUrl = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
+  const urlObj = new URL(ollamaUrl);
+
   const options = {
-    hostname: '127.0.0.1',
-    port: 11434,
+    hostname: urlObj.hostname,
+    port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
     path: '/api/generate',
     method: 'POST',
     headers: {
@@ -63,7 +66,7 @@ ${context}`;
     }
   };
 
-  const req = http.request(options, (ollamaRes) => {
+  const ollamaReq = http.request(options, (ollamaRes) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -95,15 +98,23 @@ ${context}`;
     });
   });
 
-  req.on('error', (e) => {
+  ollamaReq.on('error', (e) => {
     console.error('[AI] Ollama connection error:', e.message);
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.write(`data: ${JSON.stringify({ error: 'Failed to connect to local AI engine. Please ensure Ollama is installed and running on port 11434.' })}\n\n`);
+    if (!res.headersSent) res.setHeader('Content-Type', 'text/event-stream');
+    res.write(`data: ${JSON.stringify({ error: 'Could not reach AI service.' })}\n\n`);
     res.end();
   });
 
-  req.write(requestBody);
-  req.end();
+  ollamaReq.setTimeout(30000, () => {
+    ollamaReq.destroy(new Error('Timeout'));
+  });
+
+  req.on('close', () => {
+    ollamaReq.destroy();
+  });
+
+  ollamaReq.write(requestBody);
+  ollamaReq.end();
 }
 
 module.exports = {

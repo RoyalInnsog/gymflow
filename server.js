@@ -22,7 +22,10 @@ const PORT = process.env.PORT || 3000;
 // off for direct/local deployments where req.ip is already the client.
 if (process.env.TRUST_PROXY) {
   const tp = process.env.TRUST_PROXY.trim();
-  app.set('trust proxy', tp === 'true' ? true : (isNaN(Number(tp)) ? tp : Number(tp)));
+  if (tp === 'true') app.set('trust proxy', true);
+  else if (!isNaN(Number(tp))) app.set('trust proxy', Number(tp));
+  else if (/^([\d\.\:\/a-fA-F, ]+|loopback|linklocal|uniquelocal)$/.test(tp)) app.set('trust proxy', tp);
+  else console.warn('Invalid TRUST_PROXY value ignored.');
 }
 
 // [SEC] Do not advertise the server framework/version (info disclosure).
@@ -32,7 +35,7 @@ const helmet = require('helmet');
 const RZP = 'https://*.razorpay.com';
 
 app.use(helmet({
-  contentSecurityPolicy: process.env.DISABLE_CSP === 'true' ? false : {
+  contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       baseUri: ["'self'"],
@@ -47,11 +50,16 @@ app.use(helmet({
       frameSrc: ["https://checkout.razorpay.com", "https://api.razorpay.com", RZP]
     }
   },
-  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' }, // Needed for Razorpay
+  // [L1] Razorpay requires a popup for its payment flow that can communicate with
+  // our origin window via postMessage. Setting COOP to 'same-origin-allow-popups'
+  // securely balances COOP isolation with payment gateway functionality.
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
   hsts: process.env.NODE_ENV === 'production' ? { maxAge: 15552000, includeSubDomains: true } : false
 }));
 
 app.use((req, res, next) => {
+  // [L2] Geolocation is required for staff GPS check-ins; Camera is required
+  // for scanning member QR codes via Kiosk Mode.
   res.setHeader('Permissions-Policy', 'geolocation=(self), microphone=(), camera=(self), usb=()');
   next();
 });
@@ -127,7 +135,8 @@ app.post('/webhooks/razorpay', express.raw({ type: '*/*', limit: '1mb' }), async
   try { evt = JSON.parse(raw.toString('utf8')); } catch { return res.status(400).json({ error: 'Malformed payload.' }); }
 
   // Idempotency: a duplicate delivery (same event id) is acknowledged but not re-applied.
-  const eventId = req.headers['x-razorpay-event-id'] || evt.id || (evt.event + '_' + (evt.created_at || Date.now()));
+  const payloadHash = crypto.createHash('sha256').update(raw).digest('hex').slice(0, 16);
+  const eventId = req.headers['x-razorpay-event-id'] || evt.id || (evt.event + '_' + payloadHash);
   try {
     const inserted = await runQuery(
       `INSERT INTO billing_events (id, tenant_id, event_type, razorpay_event_id, payload, status) VALUES (?, ?, ?, ?, ?, 'received') ON CONFLICT DO NOTHING`,
@@ -194,7 +203,9 @@ app.get('/whatsapp/invoice/:token', async (req, res) => {
     });
 
     res.set('Content-Type', 'application/pdf');
-    res.set('Content-Disposition', `inline; filename="Invoice-${inv.invoice_number || invoice_id}.pdf"`);
+    // [L5] Force download (attachment) instead of inline to prevent malicious
+    // PDFs from rendering script/XSS within the origin's browsing context.
+    res.set('Content-Disposition', `attachment; filename="Invoice-${inv.invoice_number || invoice_id}.pdf"`);
     res.set('Cache-Control', 'private, max-age=600');
     res.send(pdf);
   } catch (e) {
@@ -203,8 +214,8 @@ app.get('/whatsapp/invoice/:token', async (req, res) => {
   }
 });
 
-app.use(express.json({ limit: '8mb' }));
-app.use(express.urlencoded({ extended: true, limit: '8mb' }));
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 app.use(cookieParser());
 
 // [H5] Scope CORS to an explicit allow-list (credentials enabled). Wildcard
@@ -229,7 +240,13 @@ function verifyCsrfOrigin(req, res, next) {
   const origin = req.headers.origin;
   const referer = req.headers.referer;
   const source = origin || referer;
-  if (!source) return next(); // not a browser form/fetch; nothing to forge with
+  if (!source) {
+    // If the request relies on cookie auth, missing Origin is not allowed (blocks scripts/curl from using stolen cookies without faking Origin)
+    if (req.cookies && req.cookies.auth_token) {
+      return res.status(403).json({ error: 'Origin header required for cookie-authenticated requests.' });
+    }
+    return next(); // API keys or unauthenticated callers
+  }
   let host;
   try { host = new URL(source).host; } catch { return res.status(403).json({ error: 'Bad request origin.' }); }
   const allowedHosts = new Set([req.headers.host, ...ALLOWED_ORIGINS.map(o => { try { return new URL(o).host; } catch { return o; } })]);
@@ -399,6 +416,10 @@ app.use('/api/v1/member', authenticateToken, apiLimiter, requireTenant, identity
 app.post('/api/v1/attendance/checkin', authenticateToken, apiLimiter, requireTenant, idempotency, async (req, res) => {
   const { latitude, longitude, timestamp, isMocked, mocked } = req.body;
   let memberId = req.body.member_id;
+
+  if (req.user && req.user.pending_role_selection) {
+    return res.status(403).json({ error: 'Please select an organization role first.' });
+  }
 
   try {
     // 1. Resolve member context. If it's a member (r5), force their own linked member ID.
@@ -586,7 +607,9 @@ app.post('/api/v1/health/sync', authenticateToken, apiLimiter, requireTenant, as
       }
     });
 
-    // Upsert aggregated records into health_logs
+    await runQuery('BEGIN TRANSACTION');
+    try {
+      // Upsert aggregated records into health_logs
     for (const logDate of Object.keys(dailyData)) {
       const data = dailyData[logDate];
       const avgHr = data.heart_rate.length 
@@ -631,10 +654,13 @@ app.post('/api/v1/health/sync', authenticateToken, apiLimiter, requireTenant, as
         );
       }
     }
+    await runQuery('COMMIT');
 
     res.json({ success: true, message: `Synchronized ${Object.keys(dailyData).length} days of metrics successfully.` });
 
   } catch (err) {
+  } catch (err) {
+    await runQuery('ROLLBACK').catch(() => {});
     console.error('[Health Sync Error]:', err);
     res.status(500).json({ error: 'Failed to synchronize biometrics.' });
   }
@@ -696,29 +722,6 @@ app.use('/api/v1/whatsapp', authenticateToken, apiLimiter, requireTenant, requir
 // Also exposed at /api/whatsapp (no /v1 prefix) for the Android WebView.
 app.use('/api/whatsapp', authenticateToken, apiLimiter, requireTenant, requireStaffRole, whatsappRouter);
 
-// [M6] Run automation scans (expiry alerts, payment-due tasks, absent-member
-// alerts) on a background interval for ALL tenants instead of on every dashboard
-// load. Idempotent: each scan checks for an existing alert/task before creating.
-const AUTOMATION_INTERVAL_MS = Number(process.env.AUTOMATION_INTERVAL_MS) || 15 * 60 * 1000;
-if (apiRouter.runAutomationScansForAllTenants) {
-  // Self-scheduling loop (NOT setInterval): a scan run that outlasts the interval
-  // must never overlap itself. The force=true all-tenants scan bypasses the
-  // per-tenant throttle, and the dedup is a non-atomic check-then-insert, so an
-  // overlapping run would double-send member-facing WhatsApp reminders. The next
-  // tick is scheduled only after the current run fully settles.
-  // ponytail: in-process guard; add a DB advisory lock if this ever runs multi-instance.
-  let scanRunning = false;
-  const scanLoop = async () => {
-    if (!scanRunning) {
-      scanRunning = true;
-      try { await apiRouter.runAutomationScansForAllTenants(); }
-      catch (e) { console.error('[automation] scan error:', e.message); }
-      finally { scanRunning = false; }
-    }
-    setTimeout(scanLoop, AUTOMATION_INTERVAL_MS).unref();
-  };
-  setTimeout(scanLoop, 20 * 1000).unref();
-}
 
 // ==========================================
 // [L4] CENTRAL ERROR HANDLER

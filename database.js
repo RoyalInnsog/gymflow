@@ -1049,6 +1049,16 @@ async function initializeDatabase() {
       console.error('[billing] ledger backfill failed:', e.message);
     }
 
+    // kiosk_tokens: multi-instance kiosk check-in tokens
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS kiosk_tokens (
+        token TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        expires_at INTEGER NOT NULL,
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+      )
+    `);
+
     // 19. Email Logs table
     await runQuery(`
       CREATE TABLE IF NOT EXISTS email_logs (

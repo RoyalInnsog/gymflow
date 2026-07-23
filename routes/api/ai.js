@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const { authorize, requireFeature } = require('../../lib/apiUtils');
 const { streamAIResponse } = require('../../services/aiInsights');
@@ -11,8 +11,12 @@ router.post('/ask', authorize('reports:read'), async (req, res) => {
     return res.status(400).json({ error: 'Message is required.' });
   }
 
+  if (message.length > 2000) {
+    return res.status(400).json({ error: 'Message is too long (max 2000 characters).' });
+  }
+
   try {
-    await streamAIResponse(req.tenant_id, message, res);
+    await streamAIResponse(req.tenant_id, message, req, res);
   } catch (err) {
     console.error('[AI Router Error]', err);
     if (!res.headersSent) {

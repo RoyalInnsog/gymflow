@@ -16,11 +16,39 @@ const controller = require('../controllers/whatsappCloud.controller');
 
 // Local RBAC gate (mirrors authorize() in routes/api.js).
 function authorize(...required) {
-  return (req, res, next) => {
-    const perms = (req.user && Array.isArray(req.user.permissions)) ? req.user.permissions : [];
-    if (perms.includes('all')) return next();
-    if (required.length === 0 || required.some((p) => perms.includes(p))) return next();
-    return res.status(403).json({ error: 'You do not have permission to manage WhatsApp automation.' });
+  return async (req, res, next) => {
+    try {
+      let perms = [];
+      if (req.tenant_id && req.user && req.user.id) {
+        const { getQuery, allQuery } = require('../database');
+        const rows = await allQuery(
+          `SELECT r.permissions FROM user_roles ur 
+           JOIN roles r ON r.id = ur.role_id 
+           WHERE ur.user_id = ? AND ur.tenant_id = ? AND (ur.status IS NULL OR ur.status = 'active')`, 
+          [req.user.id, req.tenant_id]
+        );
+        if (rows.length > 0) {
+          for (const row of rows) {
+            try { perms.push(...JSON.parse(row.permissions || '[]')); } catch(e){}
+          }
+        } else {
+          const legacy = await getQuery(
+            `SELECT r.permissions FROM users JOIN roles r ON r.id = users.role_id WHERE users.id = ? AND users.tenant_id = ?`,
+            [req.user.id, req.tenant_id]
+          );
+          if (legacy) try { perms = JSON.parse(legacy.permissions || '[]'); } catch(e){}
+        }
+      } else {
+        perms = (req.user && Array.isArray(req.user.permissions)) ? req.user.permissions : [];
+      }
+      
+      if (perms.includes('all')) return next();
+      if (required.length === 0 || required.some(p => perms.includes(p))) return next();
+      return res.status(403).json({ error: 'You do not have permission to perform this action.' });
+    } catch (err) {
+      console.error('[Authz] Error:', err);
+      return res.status(403).json({ error: 'Permission check failed.' });
+    }
   };
 }
 const requireManager = authorize('settings:write');

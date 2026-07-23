@@ -61,6 +61,9 @@ async function issueLogin(req, res, user, roles, remember, meta) {
 // Login
 // ---------------------------------------------------------------------------
 router.post('/login', authLimiter, async (req, res) => {
+  if (core.IS_PROD && !req.body.captcha && !req.body['g-recaptcha-response']) {
+    return res.status(400).json({ error: 'CAPTCHA is required.' });
+  }
   const email = core.normalizeEmail(req.body && req.body.email);
   const { password, remember } = req.body || {};
   if (!email || !password) {
@@ -135,7 +138,7 @@ router.post('/signup', authLimiter, async (req, res) => {
     const userId = core.newId('u');
     const tenantId = core.newId('t');
     const gymName = full_name.split(' ')[0] + "'s Gym";
-    const subdomain = full_name.toLowerCase().replace(/[^a-z0-9]/g, '') + Math.floor(Math.random() * 1000);
+    const subdomain = full_name.toLowerCase().replace(/[^a-z0-9]/g, '') + require('crypto').randomBytes(2).toString('hex');
     const trialStart = new Date().toISOString();
     // 7-day PRO trial from signup; lapses to the free Basic plan (never a lockout).
     const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -287,7 +290,7 @@ router.post('/forgot-password-otp', sensitiveLimiter, async (req, res) => {
     const user = await getQuery(`SELECT id, email, tenant_id FROM users WHERE phone = ?`, [normPhone]);
     let otp = null;
     if (user) {
-      otp = String(Math.floor(100000 + Math.random() * 900000));
+      otp = String(require('crypto').randomInt(100000, 999999));
       const otpHash = core.sha256(otp);
       const expiresAt = core.sqlTime(10 * 60 * 1000); // 10 minutes
       await runQuery(`INSERT INTO phone_verifications (id, user_id, phone, otp_hash, expires_at) VALUES (?, ?, ?, ?, ?)`,
@@ -714,6 +717,7 @@ router.post('/phone/verify-otp', authLimiter, authenticateToken, async (req, res
   const normPhone = core.normalizePhone(req.body && req.body.phone);
   const code = req.body && req.body.code;
   if (!normPhone || !code) return res.status(400).json({ error: 'Phone and code are required.' });
+  if (req.user && req.user.phone && normPhone !== req.user.phone) return res.status(400).json({ error: 'Phone number mismatch.' });
   try {
     const result = await account.verifyPhoneOtp(req.user.id, normPhone, code);
     if (!result.ok) return res.status(400).json({ error: result.error, code: result.code });
@@ -766,7 +770,7 @@ router.get('/google', authLimiter, (req, res) => {
   }
   const state = core.randomToken(16);
   res.cookie('g_oauth_state', JSON.stringify({ v: state, intent: linkUid ? 'link' : 'login', uid: linkUid }),
-    { httpOnly: true, sameSite: 'lax', maxAge: 10 * 60 * 1000, secure: core.IS_PROD });
+    { httpOnly: true, sameSite: 'none', maxAge: 10 * 60 * 1000, secure: core.IS_PROD });
   const params = new URLSearchParams({
     client_id: core.GOOGLE_CLIENT_ID,
     redirect_uri: `${core.APP_BASE_URL}/api/v1/auth/google/callback`,
@@ -861,7 +865,7 @@ router.get('/google/callback', async (req, res) => {
       const tenantId = core.newId('t');
       const fullName = profile.name || email.split('@')[0];
       const gymName = (fullName.split(' ')[0] || 'My') + "'s Gym";
-      const subdomain = fullName.toLowerCase().replace(/[^a-z0-9]/g, '') + Math.floor(Math.random() * 1000);
+      const subdomain = fullName.toLowerCase().replace(/[^a-z0-9]/g, '') + require('crypto').randomBytes(2).toString('hex');
       const trialStart = new Date().toISOString();
       // 7-day PRO trial from signup; lapses to the free Basic plan (never a lockout).
     const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();

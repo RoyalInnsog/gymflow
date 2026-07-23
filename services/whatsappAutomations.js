@@ -266,7 +266,7 @@ async function sendWelcomeInvoice(tenantId, { memberId }) {
   return logAndSend(tenantId, {
     phone: member.phone, name: member.full_name, message,
     source: 'Auto Welcome Onboarding', title: 'WhatsApp: Welcome + Invoice',
-    priority: 'Medium', media, wait: true
+    priority: 'Medium', media, wait: false
   });
 }
 

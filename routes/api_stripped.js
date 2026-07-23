@@ -30,11 +30,39 @@ const whitelist = (val, allowed, fallback) => allowed.includes(val) ? val : fall
 // + requireTenant already ran (mounted in server.js), so req.user is trusted here.
 // Apply to admin/owner-only mutations so a low-privilege staff token can't escalate.
 function authorize(...required) {
-  return (req, res, next) => {
-    const perms = (req.user && Array.isArray(req.user.permissions)) ? req.user.permissions : [];
-    if (perms.includes('all')) return next();
-    if (required.length === 0 || required.some(p => perms.includes(p))) return next();
-    return res.status(403).json({ error: 'You do not have permission to perform this action.' });
+  return async (req, res, next) => {
+    try {
+      let perms = [];
+      if (req.tenant_id && req.user && req.user.id) {
+        const { getQuery, allQuery } = require('../database');
+        const rows = await allQuery(
+          `SELECT r.permissions FROM user_roles ur 
+           JOIN roles r ON r.id = ur.role_id 
+           WHERE ur.user_id = ? AND ur.tenant_id = ? AND (ur.status IS NULL OR ur.status = 'active')`, 
+          [req.user.id, req.tenant_id]
+        );
+        if (rows.length > 0) {
+          for (const row of rows) {
+            try { perms.push(...JSON.parse(row.permissions || '[]')); } catch(e){}
+          }
+        } else {
+          const legacy = await getQuery(
+            `SELECT r.permissions FROM users JOIN roles r ON r.id = users.role_id WHERE users.id = ? AND users.tenant_id = ?`,
+            [req.user.id, req.tenant_id]
+          );
+          if (legacy) try { perms = JSON.parse(legacy.permissions || '[]'); } catch(e){}
+        }
+      } else {
+        perms = (req.user && Array.isArray(req.user.permissions)) ? req.user.permissions : [];
+      }
+      
+      if (perms.includes('all')) return next();
+      if (required.length === 0 || required.some(p => perms.includes(p))) return next();
+      return res.status(403).json({ error: 'You do not have permission to perform this action.' });
+    } catch (err) {
+      console.error('[Authz] Error:', err);
+      return res.status(403).json({ error: 'Permission check failed.' });
+    }
   };
 }
 
@@ -759,7 +787,7 @@ const fsModule = require('fs');
 
 // [M7] Backups must live OUTSIDE the web root so they can never be downloaded
 // statically. `data/` is excluded from express.static (which only serves public/).
-const BACKUP_DIR = process.env.BACKUP_DIR || path.join(__dirname, '..', 'data', 'backups');
+const BACKUP_DIR = process.env.BACKUP_DIR || path.join(require('os').tmpdir(), 'gymflow_backups');
 
 
 

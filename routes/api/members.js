@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getQuery, runQuery, allQuery } = require('../../database');
-const { authorize, requireFeature, checkSubscription, getTaxConfig, computeTax, resolveRenewalDiscount, uid, nextInvoiceNumber } = require('../../lib/apiUtils');
+const { authorize, requireFeature, checkSubscription, getTaxConfig, computeTax, resolveRenewalDiscount, uid, nextInvoiceNumber, logActivity, FEET_PER_METER, inLatRange, inLonRange, isFiniteNum } = require('../../lib/apiUtils');
 
 // Temporary aliases for missing dependencies
 const { PLANS, isRazorpayConfigured, createOrder, verifyPaymentSignature, fetchOrder, cancelSubscription } = require('../../lib/razorpay');
@@ -385,6 +385,17 @@ router.put('/members/:id', async (req, res) => {
     }
   }
 
+  const targetStatus = status || 'Active';
+  if (targetStatus === 'Active') {
+    const activeMs = await getQuery(
+      `SELECT id FROM memberships WHERE member_id = ? AND tenant_id = ? AND status = 'Active' AND (end_date IS NULL OR end_date >= date('now')) LIMIT 1`,
+      [memberId, req.tenant_id]
+    );
+    if (!activeMs) {
+      return res.status(400).json({ error: 'Cannot set member to Active without a valid, non-expired membership.' });
+    }
+  }
+
   try {
     // [C2 FIX] Scope update to the authenticated tenant to prevent cross-tenant overwrites
     const result = await runQuery(`
@@ -393,11 +404,13 @@ router.put('/members/:id', async (req, res) => {
           emergency_contact_name = ?, emergency_contact_phone = ?,
           height_cm = ?, weight_kg = ?, bmi = ?, status = ?
       WHERE id = ? AND tenant_id = ?
-    `, [full_name, normalizedPhone, trimmedEmail || null, dob, gender, emergency_contact_name, emergency_contact_phone, height_cm, weight_kg, bmi, status || 'Active', memberId, req.tenant_id]);
+    `, [full_name, normalizedPhone, trimmedEmail || null, dob, gender, emergency_contact_name, emergency_contact_phone, height_cm, weight_kg, bmi, targetStatus, memberId, req.tenant_id]);
 
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Member not found or access denied.' });
     }
+
+    await logActivity(req.user?.id || 'u1', req.tenant_id, 'UPDATE', 'members', memberId, { full_name, phone, status: targetStatus });
 
     res.json({ message: 'Member profile updated successfully.' });
   } catch (err) {
@@ -432,6 +445,8 @@ router.delete('/members/:id', authorize('members:write'), async (req, res) => {
     await runQuery(`DELETE FROM memberships WHERE member_id = ? AND tenant_id = ? `, [memberId, req.tenant_id]);
     await runQuery(`DELETE FROM retention_events WHERE member_id = ? AND tenant_id = ? `, [memberId, req.tenant_id]);
     await runQuery(`DELETE FROM members WHERE id = ? AND tenant_id = ?`, [memberId, req.tenant_id]);
+
+    await logActivity(req.user?.id || 'u1', req.tenant_id, 'DELETE', 'members', memberId, { action: 'Full record deletion' });
 
     res.json({ message: 'Member and all associated records deleted successfully.' });
   } catch (err) {
@@ -510,7 +525,7 @@ router.post('/attendance/check-in', billing.verifySubscriptionBilling('allowAtte
       return res.status(403).json({ error: 'Access card restricted. Membership has expired.' });
     }
 
-    const checkInId = 'a' + Date.now();
+    const checkInId = uid('a');
     await runQuery(`
       INSERT INTO attendance (id, tenant_id, member_id, check_in, access_method)
       VALUES (?, ?, ?, datetime('now', 'localtime'), 'Manual')
@@ -654,7 +669,7 @@ router.post('/attendance/geo-check-in', billing.verifySubscriptionBilling('allow
       });
     }
 
-    const checkInId = 'a' + Date.now();
+    const checkInId = uid('a');
     await runQuery(
       `INSERT INTO attendance (id, tenant_id, member_id, check_in, access_method)
        VALUES (?, ?, ?, datetime('now', 'localtime'), 'Geofence')`,
@@ -676,19 +691,23 @@ router.post('/attendance/geo-check-in', billing.verifySubscriptionBilling('allow
 // KIOSK QR CHECK-IN API (Self Check-in)
 // ==========================================
 
-global.kioskTokens = global.kioskTokens || {};
-
 router.get('/attendance/kiosk-token', authorize('attendance:write'), async (req, res) => {
   try {
     const crypto = require('crypto');
-    const token = crypto.randomBytes(8).toString('hex');
+    const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = Date.now() + 15000; // 15 seconds validity
     
+    // Garbage collection
+    await runQuery(`DELETE FROM kiosk_tokens WHERE expires_at < ?`, [Date.now()]);
+    
+    // Rate limiting: count active tokens for this tenant
+    const countRow = await getQuery(`SELECT COUNT(*) as cnt FROM kiosk_tokens WHERE tenant_id = ?`, [req.tenant_id]);
+    if (countRow && countRow.cnt >= 3) {
+      return res.status(429).json({ error: 'Too many active QR codes. Please wait.' });
+    }
+
     // Store token for this tenant
-    global.kioskTokens[token] = {
-      tenant_id: req.tenant_id,
-      expiresAt: expiresAt
-    };
+    await runQuery(`INSERT INTO kiosk_tokens (token, tenant_id, expires_at) VALUES (?, ?, ?)`, [token, req.tenant_id, expiresAt]);
     
     res.json({ token, expiresAt, tenant_id: req.tenant_id });
   } catch (err) {
@@ -701,9 +720,9 @@ router.post('/attendance/kiosk-checkin', async (req, res) => {
   try {
     const { token, tenant_id, phone } = req.body;
     
-    // 1. Validate token
-    const tokenData = global.kioskTokens[token];
-    if (!tokenData || tokenData.tenant_id !== tenant_id || Date.now() > tokenData.expiresAt) {
+    // 1. Validate token from DB
+    const tokenData = await getQuery(`SELECT * FROM kiosk_tokens WHERE token = ?`, [token]);
+    if (!tokenData || tokenData.tenant_id !== tenant_id || Date.now() > tokenData.expires_at) {
       return res.status(400).json({ error: 'QR Code expired. Please scan the latest code on the screen.' });
     }
     
@@ -717,7 +736,7 @@ router.post('/attendance/kiosk-checkin', async (req, res) => {
     }
     
     // 3. Mark attendance
-    const checkInId = 'a' + Date.now();
+    const checkInId = uid('a');
     await runQuery(
       `INSERT INTO attendance (id, tenant_id, member_id, check_in, access_method)
        VALUES (?, ?, ?, datetime('now', 'localtime'), 'Kiosk-QR')`,
@@ -725,7 +744,7 @@ router.post('/attendance/kiosk-checkin', async (req, res) => {
     );
     
     // One-time use
-    delete global.kioskTokens[token];
+    await runQuery(`DELETE FROM kiosk_tokens WHERE token = ?`, [token]);
     
     res.json({ message: `Welcome to the gym, ${member.full_name}!` });
   } catch (err) {
@@ -817,7 +836,7 @@ router.post('/memberships/renew', authorize('payments:write'), async (req, res) 
         key_id: process.env.RAZORPAY_KEY_ID
       });
     } else {
-      const txnRef = (payment_method || 'Cash').toUpperCase() + '/' + Date.now();
+      const txnRef = (payment_method || 'Cash').toUpperCase() + '/' + uid('');
       await runQuery(`
         INSERT INTO payments (id, tenant_id, invoice_id, member_id, amount, method, transaction_reference, status)
         VALUES (?, ?, ?, ?, ?, ?, ?, 'Successful')

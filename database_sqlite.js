@@ -558,6 +558,7 @@ async function initializeDatabase() {
         is_read INTEGER DEFAULT 0,
         target_role_id TEXT,
         target_user_id TEXT,
+        provider_message_id TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (target_role_id) REFERENCES roles (id),
         FOREIGN KEY (target_user_id) REFERENCES users (id)
@@ -1047,6 +1048,16 @@ async function initializeDatabase() {
     } catch (e) {
       console.error('[billing] ledger backfill failed:', e.message);
     }
+
+    // kiosk_tokens: multi-instance kiosk check-in tokens
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS kiosk_tokens (
+        token TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        expires_at INTEGER NOT NULL,
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+      )
+    `);
 
     // 19. Email Logs table
     await runQuery(`

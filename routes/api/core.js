@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { getQuery, runQuery, allQuery } = require('../../database');
 const { authorize, requireFeature, checkSubscription, getTaxConfig, computeTax, resolveRenewalDiscount, uid, nextInvoiceNumber } = require('../../lib/apiUtils');
+const fsModule = require('fs');
+const path = require('path');
+const BACKUP_DIR = process.env.BACKUP_DIR || path.join(require('os').tmpdir(), 'gymflow_backups');
 
 // Temporary aliases for missing dependencies
 const { PLANS, isRazorpayConfigured, createOrder, verifyPaymentSignature, fetchOrder, cancelSubscription } = require('../../lib/razorpay');
@@ -42,20 +45,32 @@ router.post('/onboarding/complete-setup', async (req, res) => {
     // 7-day PRO trial clock (re)starts when setup completes; lapses to free Basic.
     const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    // 1. Update tenants table.
-    // [SEC] Only stamp the trial window on the FIRST onboarding. The CASE guards
-    // mean re-POSTing /onboarding/complete-setup can no longer reset trial_end to
-    // now+7d on every call (which was an infinite-free-trial business-logic flaw).
-    await runQuery(`
-      UPDATE tenants
-      SET onboarding_completed = 1,
-          gym_name = ?,
-          logo_url = ?,
-          opening_time = ?,
-          closing_time = ?,
-          trial_start = CASE WHEN onboarding_completed = 1 THEN trial_start ELSE CURRENT_TIMESTAMP END,
-          trial_end   = CASE WHEN onboarding_completed = 1 THEN trial_end   ELSE ? END
-      WHERE id = ?`, [gym_name, logo_url, opening_time, closing_time, trialEnd, req.tenant_id]);
+    // 1. Check existing state.
+    const existing = await getQuery(`SELECT onboarding_completed FROM tenants WHERE id = ?`, [req.tenant_id]);
+    const isCompleted = existing && existing.onboarding_completed;
+
+    // 2. Update tenants table.
+    // [SEC] Only stamp the trial window on the FIRST onboarding.
+    if (!isCompleted) {
+      await runQuery(`
+        UPDATE tenants
+        SET onboarding_completed = 1,
+            gym_name = ?,
+            logo_url = ?,
+            opening_time = ?,
+            closing_time = ?,
+            trial_start = CURRENT_TIMESTAMP,
+            trial_end   = ?
+        WHERE id = ?`, [gym_name, logo_url, opening_time, closing_time, trialEnd, req.tenant_id]);
+    } else {
+      await runQuery(`
+        UPDATE tenants
+        SET gym_name = ?,
+            logo_url = ?,
+            opening_time = ?,
+            closing_time = ?
+        WHERE id = ?`, [gym_name, logo_url, opening_time, closing_time, req.tenant_id]);
+    }
 
     // 2. Insert Settings using EAV
     const settingsToSave = {
@@ -67,7 +82,10 @@ router.post('/onboarding/complete-setup', async (req, res) => {
       enable_bank_transfer: payment_methods?.includes('bank_transfer') ? 'true' : 'false'
     };
 
-    for (const [key, value] of Object.entries(settingsToSave)) {
+    for (let [key, value] of Object.entries(settingsToSave)) {
+      if (key === 'currency' && typeof value === 'object' && value !== null) {
+        value = value.value || value.symbol || value.code || '₹';
+      }
       if (value !== undefined && value !== null) {
         await runQuery(`
           INSERT INTO settings (setting_key, tenant_id, setting_value, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT (tenant_id, setting_key) DO UPDATE SET setting_key = EXCLUDED.setting_key, setting_value = EXCLUDED.setting_value, created_at = EXCLUDED.created_at
@@ -350,7 +368,11 @@ router.get('/export/:type', authorize('settings:write'), async (req, res) => {
 
     data.forEach((row) => {
       const values = fields.map((f) => {
-        const val = row[f] === null ? '' : String(row[f]);
+        let val = row[f] === null ? '' : String(row[f]);
+        // [L7] CSV Injection Mitigation: Prevent Excel from evaluating formulas.
+        if (/^[=+\-@]/.test(val)) {
+          val = "'" + val;
+        }
         return '"' + val.replace(/"/g, '""') + '"';
       });
       csvRows.push(values.join(','));
@@ -415,7 +437,18 @@ router.get('/backup/download/:file', authorize('settings:write'), (req, res) => 
   if (!file.startsWith(`backup_${req.tenant_id}_`) || !file.endsWith('.json')) return res.status(403).send('Access denied');
   const filePath = path.join(BACKUP_DIR, file);
   if (!fsModule.existsSync(filePath)) return res.status(404).send('File not found');
-  res.download(filePath);
+  
+  // [L6] TOCTOU Mitigation: Ensure the resolved path still points inside BACKUP_DIR
+  // in case the file was swapped for a symlink immediately after the basename check.
+  try {
+    const realPath = fsModule.realpathSync(filePath);
+    if (!realPath.startsWith(fsModule.realpathSync(BACKUP_DIR))) {
+      return res.status(403).send('Access denied');
+    }
+    res.download(realPath);
+  } catch (err) {
+    res.status(500).send('Internal Error');
+  }
 });
 
 module.exports = router;

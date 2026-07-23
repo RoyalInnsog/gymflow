@@ -90,7 +90,9 @@ function wireApiOrigin(session, port) {
   if (!api) return;
   const filter = { urls: [api + '/*'] };
   session.webRequest.onBeforeSendHeaders(filter, (details, cb) => {
-    details.requestHeaders['Origin'] = 'https://localhost';
+    if (details.initiator === `http://127.0.0.1:${port}`) {
+      details.requestHeaders['Origin'] = 'https://localhost';
+    }
     cb({ requestHeaders: details.requestHeaders });
   });
   session.webRequest.onHeadersReceived(filter, (details, cb) => {

@@ -1085,7 +1085,7 @@ async function loadVIPMembers() {
     tbody.innerHTML = data.members.slice(0, 8).map(m => {
       const initials = m.name ? m.name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : 'M';
       const statusClass = m.status === 'Active' ? 'bg-[#81c995]/10 text-[#81c995] border-[#81c995]/30' : 'bg-error/10 text-error border-error/30';
-      return `<tr class="border-b border-outline-variant/10 hover:bg-surface-container-high/20 transition-colors cursor-pointer" onclick="window.location.href='/member-profile?id=${m.id}'">
+      return `<tr class="border-b border-outline-variant/10 hover:bg-surface-container-high/20 transition-colors cursor-pointer" onclick="window.location.href='/member-profile?id=${esc(m.id)}'">
         <td class="py-3 px-3"><div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold text-xs">${initials}</div>
           <div><div class="font-medium text-on-surface">${esc(m.name)}</div><div class="text-[10px] text-on-surface-variant">${esc(m.phone || '')}</div></div>
@@ -1355,7 +1355,7 @@ async function checkExpiryAlerts() {
               <p class="font-title-md text-on-surface">${esc(m.full_name)}</p>
               <p class="font-body-sm text-on-surface-variant">${esc(m.plan_name || 'No Plan')} • ${m.daysLeft < 0 ? Math.abs(m.daysLeft) + ' days ago' : m.daysLeft + ' days left'}</p>
             </div>
-            <a href="/renew?member_id=${m.id}" class="px-3 py-1 bg-primary text-on-primary hover:bg-primary-fixed rounded text-sm font-medium transition-colors">Renew Now</a>
+            <a href="/renew?member_id=${esc(m.id)}" class="px-3 py-1 bg-primary text-on-primary hover:bg-primary-fixed rounded text-sm font-medium transition-colors">Renew Now</a>
           </div>
         `;
       });

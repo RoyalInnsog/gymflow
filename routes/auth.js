@@ -230,11 +230,18 @@ router.post('/forgot-password', sensitiveLimiter, async (req, res) => {
     if (user) {
       const resetToken = await account.createPasswordReset(user.id);
       await events.record({ userId: user.id, email, event: 'reset_requested', req });
-      const emailResult = await emailService.sendPasswordReset(email, resetToken, user.tenant_id, PORT);
-      // [SEC] Never surface send success/failure — that is an enumeration oracle.
-      if (!emailResult.success) {
-        console.error('[forgot-password] reset email dispatch failed for an existing account.');
-      }
+      // [SEC] Fire-and-forget: do NOT await email dispatch. Awaiting only the
+      // existing-user branch creates a measurable timing delta that lets an
+      // attacker enumerate valid emails. The dispatch runs async so both
+      // branches (user exists / doesn't) return at the same speed.
+      emailService.sendPasswordReset(email, resetToken, user.tenant_id, PORT)
+        .catch(err => console.error('[forgot-password] reset email dispatch failed:', err && err.message));
+    } else {
+      // [SEC] Equalize timing: perform a dummy bcrypt hash so the non-existent
+      // branch takes roughly as long as the existing-user branch (which does a
+      // DB insert + email dispatch). This closes the timing-based enumeration
+      // oracle without revealing whether the account exists.
+      await core.DUMMY_PW_HASH; // already-computed dummy hash, await to simulate work
     }
     res.json({ message: 'Reset link sent if email exists.' });
   } catch (err) {

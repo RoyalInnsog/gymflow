@@ -27,14 +27,32 @@ class ApiService {
         // → feature gating defaulted wrong. This makes session restoration identical
         // on desktop and in the app.
         // [CAPACITOR] In bundled APK mode the WebView origin is cross-origin to the
-        // API backend, so httpOnly cookies are not sent. The Authorization header
-        // fills in when available (token stored in native secure storage).
+        // API backend, so httpOnly cookies are not sent. We use the Authorization
+        // header with a token retrieved from Capacitor Secure Storage (not global window).
+        let authToken = undefined;
+        if (window.__NATIVE_SHELL__ && window.Capacitor) {
+            // Retrieve token from Capacitor Secure Storage for native apps
+            try {
+                const { SecureStoragePlugin } = window.Capacitor.Plugins;
+                if (SecureStoragePlugin) {
+                    const result = await SecureStoragePlugin.get({ key: 'auth_token' });
+                    authToken = result?.value;
+                }
+            } catch (e) {
+                // Fallback to window.__AUTH_TOKEN__ if plugin not available (dev mode)
+                authToken = window.__AUTH_TOKEN__;
+            }
+        } else {
+            // Web: httpOnly cookie is sent automatically via credentials: 'include'
+            // No need for Authorization header on web
+        }
+
         const fetchOptions = {
             credentials: 'include',
             ...rest,
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': window.__AUTH_TOKEN__ ? 'Bearer ' + window.__AUTH_TOKEN__ : undefined,
+                ...(authToken ? { 'Authorization': 'Bearer ' + authToken } : {}),
                 ...options.headers
             }
         };

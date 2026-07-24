@@ -19,7 +19,7 @@ on:
 
 # The frontend origin the bundled app talks to (Render backend).
 env:
-  API_BASE: https://gymflow-3svy.onrender.com
+  API_BASE: https://thegymflow.in
 
 jobs:
   build:

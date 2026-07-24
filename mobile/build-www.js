@@ -28,7 +28,7 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const WWW = path.join(__dirname, 'www');
-const API_BASE = (process.env.API_BASE || 'https://desktop-s69biti.tail66553b.ts.net').replace(/\/+$/, '');
+const API_BASE = (process.env.API_BASE || 'https://thegymflow.in').replace(/\/+$/, '');
 
 // ---- 1. Page table: parse server.js so the bundle can never drift from it.
 const serverSrc = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');

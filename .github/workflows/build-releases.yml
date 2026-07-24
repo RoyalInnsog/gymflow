@@ -24,7 +24,7 @@ jobs:
       - name: Build bundled frontend (mobile/www)
         run: node mobile/build-www.js
         env:
-          API_BASE: https://gymflow-3svy.onrender.com
+          API_BASE: https://thegymflow.in
 
       - name: Build macOS DMG
         working-directory: ./desktop
@@ -54,7 +54,7 @@ jobs:
       - name: Build bundled frontend (mobile/www)
         run: node mobile/build-www.js
         env:
-          API_BASE: https://gymflow-3svy.onrender.com
+          API_BASE: https://thegymflow.in
 
       - name: Sync iOS Capacitor Project
         working-directory: ./mobile

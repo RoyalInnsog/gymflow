@@ -12,7 +12,7 @@
 **Android APK** (`mobile/`):
 ```
 cd mobile
-API_BASE=https://gymflow-3svy.onrender.com node build-www.js
+API_BASE=https://thegymflow.in node build-www.js
 npx cap sync android
 cd android && JAVA_HOME="C:/Program Files/Microsoft/jdk-21.0.11.10-hotspot" ./gradlew.bat assembleDebug
 # -> mobile/android/app/build/outputs/apk/debug/app-debug.apk

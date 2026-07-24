@@ -41,7 +41,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       # build-www.js only uses fs/path — no install needed. Bundles the whole
       # frontend into mobile/www with the production API origin baked in.

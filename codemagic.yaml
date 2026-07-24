@@ -13,7 +13,7 @@ workflows:
     working_directory: mobile        # everything runs inside the Capacitor project
 
     environment:
-      node: 20
+      node: 22
       xcode: latest
       cocoapods: default
       vars:

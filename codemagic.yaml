@@ -68,7 +68,7 @@ workflows:
       - name: Build & sign the IPA
         script: |
           xcode-project build-ipa \
-            --project "ios/App/App.xcodeproj" \
+            --workspace "ios/App/App.xcworkspace" \
             --scheme "App"
 
     artifacts:

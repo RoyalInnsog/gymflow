@@ -32,8 +32,13 @@ workflows:
       - name: Install node dependencies
         script: npm ci
 
+      - name: Build web frontend
+        script: node build-www.js
+        env:
+          API_BASE: https://thegymflow.in
+
       - name: Add & sync the iOS platform (runs on macOS only)
-        # No web build step: www/ is prebuilt (thin WebView). cap add is idempotent-guarded.
+        # Web build step added above so www/ exists before cap sync.
         script: |
           [ -d ios ] || npx cap add ios
           npx cap sync ios

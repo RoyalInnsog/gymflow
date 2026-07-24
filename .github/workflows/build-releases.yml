@@ -36,6 +36,46 @@ jobs:
           name: macOS-DMG
           path: desktop/dist/*.dmg
 
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Install Mobile Dependencies
+        working-directory: ./mobile
+        run: npm install
+
+      - name: Build bundled frontend (mobile/www)
+        run: node mobile/build-www.js
+        env:
+          API_BASE: https://thegymflow.in
+
+      - name: Sync Android Capacitor Project
+        working-directory: ./mobile
+        run: npx cap sync android
+
+      - name: Build Android APK
+        working-directory: ./mobile/android
+        run: ./gradlew assembleRelease
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-APK
+          path: mobile/android/app/build/outputs/apk/release/*.apk
+
   build-ios:
     runs-on: macos-latest
     steps:
@@ -60,15 +100,20 @@ jobs:
         working-directory: ./mobile
         run: npx cap sync ios
 
-      - name: Build iOS App
+      - name: Build iOS App (Unsigned for Sideloading)
         working-directory: ./mobile/ios/App
         run: |
-          xcodebuild -project App.xcodeproj -scheme App -configuration Release CODE_SIGNING_ALLOWED=NO -sdk iphonesimulator build
-          # Note: Creating a signed .ipa requires Apple Developer Certificates and Provisioning Profiles.
-          # This compiles an unsigned .app bundle as proof of successful build.
+          # Resolve SPM packages first
+          xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
+          # Build for real device (iphoneos) without signing
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO -sdk iphoneos build
+          # Package into an unsigned IPA
+          mkdir -p Payload
+          cp -r build/Release-iphoneos/App.app Payload/
+          zip -r gymflow-ios-unsigned.ipa Payload
 
-      - name: Upload iOS App Artifact
+      - name: Upload iOS IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: iOS-App
-          path: mobile/ios/App/build/Release-iphonesimulator/App.app
+          name: iOS-Unsigned-IPA
+          path: mobile/ios/App/gymflow-ios-unsigned.ipa

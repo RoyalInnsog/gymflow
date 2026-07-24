@@ -21,6 +21,11 @@ jobs:
         working-directory: ./desktop
         run: npm install
 
+      - name: Build bundled frontend (mobile/www)
+        run: node mobile/build-www.js
+        env:
+          API_BASE: https://gymflow-3svy.onrender.com
+
       - name: Build macOS DMG
         working-directory: ./desktop
         run: npm run dist:mac
@@ -45,6 +50,11 @@ jobs:
       - name: Install Mobile Dependencies
         working-directory: ./mobile
         run: npm install
+
+      - name: Build bundled frontend (mobile/www)
+        run: node mobile/build-www.js
+        env:
+          API_BASE: https://gymflow-3svy.onrender.com
 
       - name: Sync iOS Capacitor Project
         working-directory: ./mobile

@@ -63,7 +63,7 @@ jobs:
       - name: Build iOS App
         working-directory: ./mobile/ios/App
         run: |
-          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release CODE_SIGNING_ALLOWED=NO -sdk iphonesimulator build
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release CODE_SIGNING_ALLOWED=NO -sdk iphonesimulator build
           # Note: Creating a signed .ipa requires Apple Developer Certificates and Provisioning Profiles.
           # This compiles an unsigned .app bundle as proof of successful build.
 

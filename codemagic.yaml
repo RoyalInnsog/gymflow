@@ -67,8 +67,10 @@ workflows:
 
       - name: Build & sign the IPA
         script: |
+          cd ios/App
+          xcodebuild -resolvePackageDependencies -project "App.xcodeproj" -scheme "App"
           xcode-project build-ipa \
-            --project "ios/App/App.xcodeproj" \
+            --project "App.xcodeproj" \
             --scheme "App"
 
     artifacts:

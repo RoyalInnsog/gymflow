@@ -33,9 +33,8 @@ workflows:
         script: npm ci
 
       - name: Build web frontend
-        script: node build-www.js
-        env:
-          API_BASE: https://thegymflow.in
+        script: |
+          API_BASE=https://thegymflow.in node build-www.js
 
       - name: Add & sync the iOS platform (runs on macOS only)
         # Web build step added above so www/ exists before cap sync.

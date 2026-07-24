@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getQuery, runQuery, allQuery } = require('../../database');
+const { getQuery, runQuery, allQuery, cleanupExpiredKioskTokens } = require('../../database');
 const { authorize, requireFeature, checkSubscription, getTaxConfig, computeTax, resolveRenewalDiscount, uid, nextInvoiceNumber, logActivity, FEET_PER_METER, inLatRange, inLonRange, isFiniteNum } = require('../../lib/apiUtils');
 
 // Temporary aliases for missing dependencies
@@ -697,8 +697,8 @@ router.get('/attendance/kiosk-token', authorize('attendance:write'), async (req,
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = Date.now() + 15000; // 15 seconds validity
     
-    // Garbage collection
-    await runQuery(`DELETE FROM kiosk_tokens WHERE expires_at < ?`, [Date.now()]);
+    // Opportunistic cleanup keeps the table small between scheduled cleanups.
+    await cleanupExpiredKioskTokens();
     
     // Rate limiting: count active tokens for this tenant
     const countRow = await getQuery(`SELECT COUNT(*) as cnt FROM kiosk_tokens WHERE tenant_id = ?`, [req.tenant_id]);
@@ -720,13 +720,8 @@ router.post('/attendance/kiosk-checkin', async (req, res) => {
   try {
     const { token, tenant_id, phone } = req.body;
     
-    // 1. Validate token from DB
-    const tokenData = await getQuery(`SELECT * FROM kiosk_tokens WHERE token = ?`, [token]);
-    if (!tokenData || tokenData.tenant_id !== tenant_id || Date.now() > tokenData.expires_at) {
-      return res.status(400).json({ error: 'QR Code expired. Please scan the latest code on the screen.' });
-    }
-    
-    // 2. Find member by phone
+    // 1. Find member by phone. The token is intentionally not consumed until
+    // the supplied member is valid, so a typo can be corrected on the kiosk.
     const member = await getQuery(`SELECT id, full_name, status FROM members WHERE tenant_id = ? AND phone = ?`, [tenant_id, phone]);
     if (!member) {
       return res.status(404).json({ error: 'No member found with this phone number.' });
@@ -734,7 +729,19 @@ router.post('/attendance/kiosk-checkin', async (req, res) => {
     if (member.status === 'Expired') {
       return res.status(403).json({ error: 'Membership is expired. Check-in blocked.' });
     }
-    
+
+    // 2. Atomically consume the durable token. `DELETE ... RETURNING` means
+    // concurrent scans cannot both pass validation and create attendance rows.
+    const consumedToken = await getQuery(
+      `DELETE FROM kiosk_tokens
+       WHERE token = ? AND tenant_id = ? AND expires_at >= ?
+       RETURNING token`,
+      [token, tenant_id, Date.now()]
+    );
+    if (!consumedToken) {
+      return res.status(400).json({ error: 'QR Code expired or was already used. Please scan the latest code on the screen.' });
+    }
+
     // 3. Mark attendance
     const checkInId = uid('a');
     await runQuery(
@@ -742,9 +749,6 @@ router.post('/attendance/kiosk-checkin', async (req, res) => {
        VALUES (?, ?, ?, datetime('now', 'localtime'), 'Kiosk-QR')`,
       [checkInId, tenant_id, member.id]
     );
-    
-    // One-time use
-    await runQuery(`DELETE FROM kiosk_tokens WHERE token = ?`, [token]);
     
     res.json({ message: `Welcome to the gym, ${member.full_name}!` });
   } catch (err) {

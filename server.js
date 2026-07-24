@@ -4,7 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
 require('dotenv').config();
-const { initializeDatabase, getQuery, runQuery, allQuery, seedTenantDefaults } = require('./database');
+const { initializeDatabase, getQuery, runQuery, allQuery, seedTenantDefaults, cleanupExpiredKioskTokens } = require('./database');
 const emailService = require('./lib/emailService');
 const { dispatchWhatsAppAsync } = require('./services/whatsappJobs');
 const waAutomations = require('./services/whatsappAutomations');
@@ -288,8 +288,23 @@ async function idempotency(req, res, next) {
 app.use(express.static(path.join(__dirname, 'public'), { dotfiles: 'deny' }));
 
 // Initialize database
-initializeDatabase().then(() => {
+initializeDatabase().then(async () => {
   console.log('Database initialized successfully.');
+
+  // All kiosk-token state lives in SQLite/libSQL. Run an initial purge after
+  // migrations, then repeat independently of kiosk-token creation so inactive
+  // kiosks cannot leave expired rows behind.
+  const purgeExpiredKioskTokens = async () => {
+    try {
+      const result = await cleanupExpiredKioskTokens();
+      if (result.changes) console.info(`[Kiosk tokens] Purged ${result.changes} expired token(s).`);
+    } catch (err) {
+      console.error('[Kiosk tokens] Cleanup failed:', err.message);
+    }
+  };
+  await purgeExpiredKioskTokens();
+  const kioskTokenCleanupTimer = setInterval(purgeExpiredKioskTokens, 60 * 1000);
+  kioskTokenCleanupTimer.unref();
 }).catch((err) => {
   console.error('Failed to initialize database:', err);
 });
@@ -608,8 +623,7 @@ app.post('/api/v1/health/sync', authenticateToken, apiLimiter, requireTenant, as
     });
 
     await runQuery('BEGIN TRANSACTION');
-    try {
-      // Upsert aggregated records into health_logs
+    // Upsert aggregated records into health_logs
     for (const logDate of Object.keys(dailyData)) {
       const data = dailyData[logDate];
       const avgHr = data.heart_rate.length 
@@ -658,7 +672,6 @@ app.post('/api/v1/health/sync', authenticateToken, apiLimiter, requireTenant, as
 
     res.json({ success: true, message: `Synchronized ${Object.keys(dailyData).length} days of metrics successfully.` });
 
-  } catch (err) {
   } catch (err) {
     await runQuery('ROLLBACK').catch(() => {});
     console.error('[Health Sync Error]:', err);

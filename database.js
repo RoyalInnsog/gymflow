@@ -73,6 +73,13 @@ async function allQuery(sql, params = []) {
   return rowsToObjects(rs);
 }
 
+// Kiosk QR tokens must remain durable so every app instance sees the same
+// one-time token state. Keep expiry cleanup in the database layer as well,
+// rather than relying on process memory or an individual route being called.
+async function cleanupExpiredKioskTokens(now = Date.now()) {
+  return runQuery('DELETE FROM kiosk_tokens WHERE expires_at < ?', [now]);
+}
+
 // ============================================================
 // PER-TENANT DEFAULTS
 // ============================================================
@@ -1058,6 +1065,8 @@ async function initializeDatabase() {
         FOREIGN KEY (tenant_id) REFERENCES tenants (id)
       )
     `);
+    await runQuery(`CREATE INDEX IF NOT EXISTS idx_kiosk_tokens_expires_at ON kiosk_tokens(expires_at)`);
+    await cleanupExpiredKioskTokens();
 
     // 19. Email Logs table
     await runQuery(`
@@ -1737,14 +1746,16 @@ async function initializeDatabase() {
       console.log(`Grandfathered ${grandfathered.changes} tenant(s) past the setup wizard.`);
     }
 
-    // Seed Templates with INSERT OR REPLACE to update existing ones
-    await runQuery(`INSERT INTO templates (id, name, message_body) VALUES ('welcome', 'Welcome Message', 'Hello *{name}*, welcome to *{gym_name}*! Your profile is set up. Let''s crush those fitness goals! 💪') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, message_body = EXCLUDED.message_body,
+    // Seed templates idempotently without replacing any unrelated columns.
+    await runQuery(`INSERT INTO templates (id, name, message_body) VALUES
+      ('welcome', 'Welcome Message', 'Hello *{name}*, welcome to *{gym_name}*! Your profile is set up. Let''s crush those fitness goals! 💪'),
       ('expiry', 'Renewal Reminder', 'Hi *{name}*, this is a friendly reminder from *{gym_name}*. Your {plan_name} membership will expire in *{days_left}* days. Renew today to keep training! 🏋️‍♂️'),
       ('payment', 'Payment Reminder', 'Hi *{name}*, you have a pending payment of *₹{amount_due}* at *{gym_name}*. Please clear it at your earliest convenience. Thank you!'),
       ('inactive', 'Absent Member Alert', 'Hello *{name}*, we missed you at *{gym_name}*! You haven''t checked in for *{days_left}* days. Is everything okay? Let us know if you need any help getting back on track! 🤝'),
       ('promotional', 'Promotional Campaign', 'Dear *{name}*, warm greetings from *{gym_name}*! Celebrate this festival season with a healthy lifestyle. Special 20% discount on annual renewals this week! 🌟'),
       ('lead', 'Lead Follow-Up', 'Hi *{name}*, thank you for visiting *{gym_name}*! Let us know if you are ready to start your fitness journey. 🏆'),
       ('birthday', 'Birthday Greetings', 'Happy Birthday *{name}*! 🎂 Warmest wishes from *{gym_name}*. Have a fantastic day and keep crushing those goals! 🎉')
+      ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, message_body = EXCLUDED.message_body
     `);
     console.log('Updated templates.');
   }
@@ -1755,6 +1766,7 @@ module.exports = {
   runQuery,
   getQuery,
   allQuery,
+  cleanupExpiredKioskTokens,
   initializeDatabase,
   seedTenantDefaults
 };
